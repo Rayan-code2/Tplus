@@ -1,0 +1,6 @@
+{
+  "name": "TETHERPLUS - CONNECT • GROW • EARN",
+  "description": "Full-stack Web3 Decentralized Crypto MLM & Yield Platform with real-time mining ROI, matrix genealogy visualizer, FIFO global boosting queue, crypto deposit/withdrawal, spin wheel rewards, and super admin control panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

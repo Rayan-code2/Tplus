@@ -1,0 +1,248 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+/* CodeByGaurav Animated Login Circle & Floating Inputs */
+.gaurav-login-body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #1f293a;
+}
+
+.gaurav-container {
+  position: relative;
+  width: 256px;
+  height: 256px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.gaurav-container span {
+  position: absolute;
+  left: 0;
+  width: 32px;
+  height: 6px;
+  background: #2c4766;
+  border-radius: 8px;
+  transform-origin: 128px;
+  transform: scale(2.2) rotate(calc(var(--i) * (360deg / 50)));
+  animation: animateBlink 3s linear infinite;
+  animation-delay: calc(var(--i) * (3s / 50));
+}
+
+@keyframes animateBlink {
+  0% {
+    background: #0ef;
+    box-shadow: 0 0 10px #0ef, 0 0 20px #0ef;
+  }
+  25% {
+    background: #2c4766;
+    box-shadow: none;
+  }
+}
+
+.gaurav-login-box {
+  position: absolute;
+  width: 320px;
+  max-width: 80vw;
+}
+
+.gaurav-login-box form {
+  width: 100%;
+  padding: 0 15px;
+}
+
+.gaurav-input-box {
+  position: relative;
+  margin: 18px 0;
+}
+
+.gaurav-input-box input {
+  width: 100%;
+  height: 44px;
+  background: transparent;
+  border: 2px solid #2c4766;
+  outline: none;
+  border-radius: 40px;
+  font-size: 0.88em;
+  color: #fff;
+  padding: 0 16px;
+  transition: 0.4s ease;
+}
+
+.gaurav-input-box input:focus,
+.gaurav-input-box input:valid,
+.gaurav-input-box input.has-value {
+  border-color: #0ef;
+  box-shadow: 0 0 10px rgba(0, 238, 255, 0.25);
+}
+
+.gaurav-input-box label {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  font-size: 0.88em;
+  color: #fff;
+  pointer-events: none;
+  transition: 0.4s ease;
+}
+
+.gaurav-input-box input:focus ~ label,
+.gaurav-input-box input:valid ~ label,
+.gaurav-input-box input.has-value ~ label {
+  top: 0px;
+  font-size: 0.75em;
+  background: #1f293a;
+  padding: 0 6px;
+  color: #0ef;
+}
+
+.gaurav-forgot-pass {
+  margin: -10px 0 12px;
+  text-align: center;
+}
+
+.gaurav-forgot-pass a {
+  font-size: 0.8em;
+  color: #fff;
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+.gaurav-forgot-pass a:hover {
+  color: #0ef;
+  text-decoration: underline;
+}
+
+.gaurav-btn {
+  width: 100%;
+  height: 40px;
+  background: #0ef;
+  border: none;
+  outline: none;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: #1f293a;
+  font-weight: 700;
+  box-shadow: 0 0 15px rgba(0, 238, 255, 0.4);
+  transition: 0.3s ease;
+}
+
+.gaurav-btn:hover {
+  background: #00d4e6;
+  box-shadow: 0 0 25px rgba(0, 238, 255, 0.7);
+}
+
+.gaurav-signup-link {
+  margin: 14px 0 6px;
+  text-align: center;
+}
+
+.gaurav-signup-link button,
+.gaurav-signup-link a {
+  font-size: 0.88em;
+  color: #0ef;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gaurav-signup-link button:hover,
+.gaurav-signup-link a:hover {
+  text-decoration: underline;
+}
+
+/* Mobile specific proportioned sizes so login box fits 100% inside LED ring */
+@media (max-width: 640px) {
+  .gaurav-container {
+    width: 220px;
+    height: 220px;
+  }
+
+  .gaurav-container span {
+    width: 26px;
+    height: 5px;
+    transform-origin: 110px;
+    transform: scale(1.6) rotate(calc(var(--i) * (360deg / 50)));
+  }
+
+  .gaurav-login-box {
+    width: 235px;
+    max-width: 78vw;
+  }
+
+  .gaurav-login-box form {
+    padding: 0 8px;
+  }
+
+  .gaurav-input-box {
+    margin: 10px 0;
+  }
+
+  .gaurav-input-box input {
+    height: 36px;
+    font-size: 0.78em;
+    padding: 0 12px;
+  }
+
+  .gaurav-input-box label {
+    left: 12px;
+    font-size: 0.78em;
+  }
+
+  .gaurav-input-box input:focus ~ label,
+  .gaurav-input-box input:valid ~ label,
+  .gaurav-input-box input.has-value ~ label {
+    top: 0px;
+    font-size: 0.68em;
+    padding: 0 4px;
+  }
+
+  .gaurav-forgot-pass {
+    margin: -6px 0 8px;
+  }
+
+  .gaurav-forgot-pass a {
+    font-size: 0.7em;
+  }
+
+  .gaurav-btn {
+    height: 34px;
+    font-size: 0.82em;
+  }
+
+  .gaurav-signup-link {
+    margin: 8px 0 2px;
+  }
+
+  .gaurav-signup-link button,
+  .gaurav-signup-link a {
+    font-size: 0.8em;
+  }
+}
+
+/* Custom Scrollbar Styles for Smooth Modal & Table Scrolling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050911;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #06b6d4;
+}
+
+html, body {
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
