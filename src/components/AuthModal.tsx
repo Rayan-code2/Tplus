@@ -18,17 +18,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLoginSuccess,
   showToast,
 }) => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
 
   // Login Form
   const [loginInput, setLoginInput] = useState('');
-  const [loginPassword, setLoginPassword] = useState('123456');
+  const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Forgot Password
+  const [forgotInput, setForgotInput] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [isForgotLoading, setIsForgotLoading] = useState(false);
 
   // Register Form
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('123456');
+  const [regPassword, setRegPassword] = useState('');
   const [regWallet, setRegWallet] = useState('');
   const [regSponsorNodeId, setRegSponsorNodeId] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -90,6 +97,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       showToast('Name and Email are required', 'error');
       return;
     }
+    if (!regPassword.trim() || regPassword.trim().length < 4) {
+      showToast('Password is required (Minimum 4 characters)', 'error');
+      return;
+    }
 
     setIsRegistering(true);
     try {
@@ -99,7 +110,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         body: JSON.stringify({
           name: regName.trim(),
           email: regEmail.trim(),
-          password: regPassword,
+          password: regPassword.trim(),
           walletAddress: regWallet.trim() || undefined,
           sponsorNodeId: regSponsorNodeId.trim() || 'NX-ROOT01',
         }),
@@ -117,6 +128,71 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       showToast(err.message || 'Registration failed', 'error');
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleRequestOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotInput.trim()) {
+      showToast('Please enter your registered Email or Node ID', 'error');
+      return;
+    }
+
+    setIsForgotLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: forgotInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+
+      if (data.otpDemo) {
+        showToast(`OTP Code generated! Demo OTP: ${data.otpDemo}`, 'success');
+        setResetOtp(data.otpDemo);
+      } else {
+        showToast(data.message || 'OTP Code sent to your registered email!', 'success');
+      }
+      setForgotStep(2);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to request password reset', 'error');
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetOtp.trim() || !newPassword.trim()) {
+      showToast('Please enter OTP code and new password', 'error');
+      return;
+    }
+
+    setIsForgotLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: forgotInput.trim(),
+          otp: resetOtp.trim(),
+          newPassword: newPassword.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Reset failed');
+
+      showToast('Password reset successfully! Please login with your new password.', 'success');
+      setMode('login');
+      setForgotStep(1);
+      setForgotInput('');
+      setResetOtp('');
+      setNewPassword('');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to reset password', 'error');
+    } finally {
+      setIsForgotLoading(false);
     }
   };
 
@@ -195,14 +271,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs text-slate-300 font-bold block mb-1">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-slate-300 font-bold block">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('forgot');
+                    setForgotStep(1);
+                    if (loginInput) setForgotInput(loginInput);
+                  }}
+                  className="text-[11px] text-cyan-400 hover:underline font-semibold"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <input
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Enter password (default: 123456)"
+                placeholder="Enter your account password"
                 className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2.5 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500"
                 required
               />
@@ -237,6 +326,116 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+        )}
+
+        {/* FORGOT PASSWORD MODE */}
+        {mode === 'forgot' && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-amber-300 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-amber-400" />
+                <span>Reset Account Password</span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                {forgotStep === 1
+                  ? 'Enter your registered Node ID or email address to receive a 6-digit OTP code.'
+                  : `Enter the 6-digit OTP code sent to ${forgotInput} and set your new password.`}
+              </p>
+            </div>
+
+            {forgotStep === 1 ? (
+              <form onSubmit={handleRequestOtp} className="space-y-3">
+                <div>
+                  <label className="text-xs text-slate-300 font-bold block mb-1">
+                    Node ID or Email Address
+                  </label>
+                  <input
+                    type="text"
+                    value={forgotInput}
+                    onChange={(e) => setForgotInput(e.target.value)}
+                    placeholder="e.g. NX-1002 or user@domain.com"
+                    className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2.5 text-amber-300 font-mono text-xs focus:outline-none focus:border-amber-500"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isForgotLoading}
+                  className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)] transition flex items-center justify-center gap-2"
+                >
+                  {isForgotLoading ? 'Sending Reset Code...' : 'Request 6-Digit OTP'}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setMode('login')}
+                    className="text-xs text-slate-400 hover:text-white underline font-medium"
+                  >
+                    ← Back to Login
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
+                <div>
+                  <label className="text-xs text-slate-300 font-bold block mb-1">
+                    6-Digit OTP Code
+                  </label>
+                  <input
+                    type="text"
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2.5 text-amber-300 font-mono text-xs focus:outline-none focus:border-amber-500 text-center tracking-widest font-extrabold"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-slate-300 font-bold block mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (min 4 chars)"
+                    className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2.5 text-amber-300 font-mono text-xs focus:outline-none focus:border-amber-500"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isForgotLoading}
+                  className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition flex items-center justify-center gap-2"
+                >
+                  {isForgotLoading ? 'Updating Password...' : 'Confirm & Update Password'}
+                  <CheckCircle2 className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setForgotStep(1)}
+                    className="text-slate-400 hover:text-white underline"
+                  >
+                    Resend Code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('login')}
+                    className="text-slate-400 hover:text-white underline"
+                  >
+                    Back to Login
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
         {/* REGISTER MODE */}
@@ -282,16 +481,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <div>
               <label className="text-xs text-slate-300 font-bold block mb-1">
-                Create Password *
+                Create Custom Password *
               </label>
               <input
                 type="password"
                 value={regPassword}
                 onChange={(e) => setRegPassword(e.target.value)}
-                placeholder="Set password (default: 123456)"
+                placeholder="Set custom password (min. 4 characters)"
                 className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 font-mono text-xs focus:outline-none focus:border-emerald-500"
                 required
               />
+              <span className="text-[10px] text-emerald-400/90 mt-1 block">
+                • Minimum 4 characters (Letters, Numbers & Special Symbols allowed, up to 64 chars)
+              </span>
             </div>
 
             <div>

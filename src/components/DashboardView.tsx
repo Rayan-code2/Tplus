@@ -133,45 +133,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       )}
 
       {/* 1. TOP WALLET CARDS OVERVIEW */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Deposit Wallet (Fund Balance) */}
+        <div className="bg-gradient-to-br from-[#0a1b2d] to-[#071321] border border-[#0ef]/40 rounded-2xl p-4.5 relative overflow-hidden shadow-[0_0_20px_rgba(0,238,255,0.15)] group hover:border-[#0ef]/70 transition">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[#0ef]/10 rounded-full blur-2xl group-hover:bg-[#0ef]/20 transition" />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-slate-300 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <Wallet className="w-4 h-4 text-[#0ef]" />
+              Deposit Wallet
+            </span>
+            <span className="text-[10px] bg-[#0ef]/20 text-[#0ef] border border-[#0ef]/40 px-2 py-0.5 rounded-full font-bold">
+              Package Fund
+            </span>
+          </div>
+          <div className="text-2xl font-extrabold text-white tracking-tight">
+            ${(user.depositBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="text-xs font-normal text-[#0ef] ml-1">USDT</span>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Deposit fund used for buying & activating Node packages.
+          </p>
+          <div className="mt-3">
+            <button
+              onClick={onOpenDeposit}
+              className="w-full flex items-center justify-center gap-1 text-xs font-bold py-2 rounded-xl bg-[#0ef]/20 hover:bg-[#0ef]/30 text-[#0ef] border border-[#0ef]/50 transition shadow-[0_0_12px_rgba(0,238,255,0.2)]"
+            >
+              <ArrowDownLeft className="w-3.5 h-3.5" />
+              + Add Deposit Fund
+            </button>
+          </div>
+        </div>
+
         {/* Available Balance (Withdrawable) */}
-        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-emerald-500/30 rounded-2xl p-5 relative overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.1)] group hover:border-emerald-500/50 transition">
+        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-emerald-500/30 rounded-2xl p-4.5 relative overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.1)] group hover:border-emerald-500/50 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition" />
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
-              <Wallet className="w-4 h-4 text-emerald-400" />
-              Available Balance (Withdrawable)
+              <Coins className="w-4 h-4 text-emerald-400" />
+              Withdrawable Earnings
             </span>
             <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
               Instant
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-white tracking-tight">
+          <div className="text-2xl font-extrabold text-white tracking-tight">
             ${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            <span className="text-xs font-normal text-emerald-400 ml-1.5">USDT</span>
+            <span className="text-xs font-normal text-emerald-400 ml-1">USDT</span>
           </div>
-          <div className="mt-4 flex items-center gap-2">
-            <button
-              onClick={onOpenDeposit}
-              className="flex-1 flex items-center justify-center gap-1 text-xs font-bold py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 transition"
-            >
-              <ArrowDownLeft className="w-3.5 h-3.5" />
-              Deposit
-            </button>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Mining yield, level & sponsor income ready for payout.
+          </p>
+          <div className="mt-3">
             <button
               onClick={onOpenWithdraw}
-              className="flex-1 flex items-center justify-center gap-1 text-xs font-bold py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 transition"
+              className="w-full flex items-center justify-center gap-1 text-xs font-bold py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 transition"
             >
               <ArrowUpRight className="w-3.5 h-3.5" />
-              Withdraw
+              Withdraw Payout
             </button>
           </div>
         </div>
 
         {/* Shopping Wallet */}
-        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-cyan-500/30 rounded-2xl p-5 relative overflow-hidden shadow-[0_0_20px_rgba(6,182,212,0.1)] group hover:border-cyan-500/50 transition">
+        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-cyan-500/30 rounded-2xl p-4.5 relative overflow-hidden shadow-[0_0_20px_rgba(6,182,212,0.1)] group hover:border-cyan-500/50 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition" />
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
               <RefreshCw className="w-4 h-4 text-cyan-400" />
               Shopping Wallet
@@ -180,34 +206,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               30% Fund
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-white tracking-tight">
+          <div className="text-2xl font-extrabold text-white tracking-tight">
             ${user.upgradeBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            <span className="text-xs font-normal text-cyan-400 ml-1.5">USDT</span>
+            <span className="text-xs font-normal text-cyan-400 ml-1">USDT</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-3">
-            Accumulated via withdrawal 30% deductions for shopping & package upgrades.
+          <p className="text-[10px] text-slate-400 mt-1">
+            Accumulated via 30% withdrawal rule for Amazon Mall.
           </p>
         </div>
 
         {/* Total Lifetime Earnings */}
-        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-amber-500/30 rounded-2xl p-5 relative overflow-hidden shadow-[0_0_20px_rgba(245,158,11,0.1)] group hover:border-amber-500/50 transition">
+        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-amber-500/30 rounded-2xl p-4.5 relative overflow-hidden shadow-[0_0_20px_rgba(245,158,11,0.1)] group hover:border-amber-500/50 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition" />
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-amber-400" />
-              Total Lifetime Earnings
+              Lifetime Income
             </span>
             <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
-              Cumulative
+              Total
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-white tracking-tight">
+          <div className="text-2xl font-extrabold text-white tracking-tight">
             ${user.totalEarned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            <span className="text-xs font-normal text-amber-400 ml-1.5">USDT</span>
+            <span className="text-xs font-normal text-amber-400 ml-1">USDT</span>
           </div>
-          <div className="text-[11px] text-emerald-400 mt-3 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" />
-            Active Package: <span className="font-bold text-white">{activePackage ? activePackage.name : 'None (Buy Package Below)'}</span>
+          <div className="text-[11px] text-emerald-400 mt-2 flex items-center gap-1 truncate">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            Pkg: <span className="font-bold text-white truncate">{activePackage ? activePackage.name : 'None'}</span>
           </div>
         </div>
       </div>
@@ -266,40 +292,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           Income Streams Breakdown
         </h3>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="bg-[#0b1424] border border-cyan-500/20 rounded-xl p-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+          <div className="bg-[#0b1424] border border-cyan-500/20 rounded-xl p-3">
             <div className="text-[10px] text-slate-400 font-medium">ROI Mining</div>
-            <div className="text-lg font-bold text-cyan-300 mt-1">
+            <div className="text-base font-bold text-cyan-300 mt-1">
               ${user.roiEarned.toFixed(2)}
             </div>
           </div>
-          <div className="bg-[#0b1424] border border-emerald-500/20 rounded-xl p-3.5">
-            <div className="text-[10px] text-slate-400 font-medium">10-Level Matrix</div>
-            <div className="text-lg font-bold text-emerald-300 mt-1">
+          <div className="bg-[#0b1424] border border-emerald-500/20 rounded-xl p-3">
+            <div className="text-[10px] text-slate-400 font-medium">Matrix Level</div>
+            <div className="text-base font-bold text-emerald-300 mt-1">
               ${user.levelEarned.toFixed(2)}
             </div>
           </div>
-          <div className="bg-[#0b1424] border border-indigo-500/20 rounded-xl p-3.5">
+          <div className="bg-[#0b1424] border border-indigo-500/20 rounded-xl p-3">
             <div className="text-[10px] text-slate-400 font-medium">Direct Sponsor</div>
-            <div className="text-lg font-bold text-indigo-300 mt-1">
+            <div className="text-base font-bold text-indigo-300 mt-1">
               ${user.sponsorEarned.toFixed(2)}
             </div>
           </div>
-          <div className="bg-[#0b1424] border border-amber-500/20 rounded-xl p-3.5">
+          <div className="bg-[#0b1424] border border-amber-500/40 rounded-xl p-3 shadow-[0_0_10px_rgba(245,158,11,0.1)]">
+            <div className="text-[10px] font-bold text-amber-400">100% Special Bonus</div>
+            <div className="text-base font-extrabold text-amber-300 mt-1">
+              ${(user.specialBonusEarned || 0).toFixed(2)}
+            </div>
+          </div>
+          <div className="bg-[#0b1424] border border-purple-500/20 rounded-xl p-3">
             <div className="text-[10px] text-slate-400 font-medium">Rank Leadership</div>
-            <div className="text-lg font-bold text-amber-300 mt-1">
+            <div className="text-base font-bold text-purple-300 mt-1">
               ${user.rankEarned.toFixed(2)}
             </div>
           </div>
-          <div className="bg-[#0b1424] border border-yellow-500/20 rounded-xl p-3.5">
-            <div className="text-[10px] text-slate-400 font-medium">Gold Boosting Pool</div>
-            <div className="text-lg font-bold text-yellow-300 mt-1">
+          <div className="bg-[#0b1424] border border-yellow-500/20 rounded-xl p-3">
+            <div className="text-[10px] text-slate-400 font-medium">Gold Boosting</div>
+            <div className="text-base font-bold text-yellow-300 mt-1">
               ${user.boostingEarned.toFixed(2)}
             </div>
           </div>
-          <div className="bg-[#0b1424] border border-pink-500/20 rounded-xl p-3.5">
+          <div className="bg-[#0b1424] border border-pink-500/20 rounded-xl p-3">
             <div className="text-[10px] text-slate-400 font-medium">Daily Spin Wins</div>
-            <div className="text-lg font-bold text-pink-300 mt-1">
+            <div className="text-base font-bold text-pink-300 mt-1">
               ${user.spinEarned.toFixed(2)}
             </div>
           </div>
@@ -348,15 +380,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 5. AVAILABLE PACKAGES & NODE UPGRADE STORE */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0c1829] border border-[#0ef]/30 p-3.5 rounded-2xl">
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400" />
+              <Zap className="w-4 h-4 text-[#0ef]" />
               Node Mining Packages Store
             </h3>
             <p className="text-xs text-slate-400">
-              Select a node package to activate daily ROI yield and unlock matrix levels.
+              Packages are purchased using your <span className="text-[#0ef] font-bold">Deposit Wallet</span> balance.
             </p>
+          </div>
+          <div className="flex items-center gap-2 bg-[#050911] border border-[#0ef]/40 px-3 py-1.5 rounded-xl shrink-0">
+            <Wallet className="w-4 h-4 text-[#0ef]" />
+            <div className="text-xs">
+              <span className="text-[10px] text-slate-400 block uppercase leading-none">Deposit Wallet</span>
+              <span className="font-extrabold text-[#0ef]">${(user.depositBalance || 0).toFixed(2)} USDT</span>
+            </div>
+            <button
+              onClick={onOpenDeposit}
+              className="ml-2 text-[10px] font-bold px-2 py-1 rounded bg-[#0ef]/20 hover:bg-[#0ef]/30 text-[#0ef] border border-[#0ef]/40 transition"
+            >
+              + Deposit
+            </button>
           </div>
         </div>
 

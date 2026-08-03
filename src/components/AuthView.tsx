@@ -27,12 +27,19 @@ export const AuthView: React.FC<AuthViewProps> = ({
   showToast,
   onContinueAsGuest,
 }) => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
 
   // Login Form
   const [loginInput, setLoginInput] = useState('NX-GML9L6');
   const [loginPassword, setLoginPassword] = useState('123456');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Forgot / Reset Password Form
+  const [forgotInput, setForgotInput] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [isForgotLoading, setIsForgotLoading] = useState(false);
 
   // Register Form
   const [regName, setRegName] = useState('');
@@ -81,6 +88,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
       showToast('Name and Email are required', 'error');
       return;
     }
+    if (!regPassword.trim() || regPassword.trim().length < 4) {
+      showToast('Password is required (Minimum 4 characters)', 'error');
+      return;
+    }
 
     setIsRegistering(true);
     try {
@@ -90,7 +101,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
         body: JSON.stringify({
           name: regName.trim(),
           email: regEmail.trim(),
-          password: regPassword.trim() || '123456',
+          password: regPassword.trim(),
           walletAddress: regWallet.trim() || undefined,
           sponsorNodeId: regSponsorNodeId.trim() || 'NX-ROOT01',
         }),
@@ -107,6 +118,71 @@ export const AuthView: React.FC<AuthViewProps> = ({
       showToast(err.message || 'Registration failed', 'error');
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleRequestOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotInput.trim()) {
+      showToast('Please enter your registered Email or Node ID', 'error');
+      return;
+    }
+
+    setIsForgotLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: forgotInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+
+      if (data.otpDemo) {
+        showToast(`OTP Code sent! Demo OTP: ${data.otpDemo}`, 'success');
+        setResetOtp(data.otpDemo);
+      } else {
+        showToast(data.message || 'OTP Code sent to your registered email!', 'success');
+      }
+      setForgotStep(2);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to request password reset', 'error');
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetOtp.trim() || !newPassword.trim()) {
+      showToast('Please enter OTP code and new password', 'error');
+      return;
+    }
+
+    setIsForgotLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: forgotInput.trim(),
+          otp: resetOtp.trim(),
+          newPassword: newPassword.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Reset failed');
+
+      showToast('Password reset successfully! Please login with your new password.', 'success');
+      setMode('login');
+      setForgotStep(1);
+      setForgotInput('');
+      setResetOtp('');
+      setNewPassword('');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to reset password', 'error');
+    } finally {
+      setIsForgotLoading(false);
     }
   };
 
@@ -127,16 +203,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             <span className="text-slate-300">BNB Smart Chain</span>
           </div>
-
-          {onContinueAsGuest && (
-            <button
-              onClick={onContinueAsGuest}
-              className="text-xs font-mono font-bold text-[#0ef] hover:text-white px-3.5 py-1.5 rounded-xl border border-[#0ef]/40 hover:border-[#0ef] bg-[#0ef]/10 hover:bg-[#0ef]/20 transition shadow-[0_0_15px_rgba(0,238,255,0.2)] flex items-center gap-1.5"
-            >
-              <span>Preview Guest Node</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
       </header>
 
@@ -185,7 +251,9 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      showToast('Password reset instructions sent to your email', 'success');
+                      setMode('forgot');
+                      setForgotStep(1);
+                      if (loginInput) setForgotInput(loginInput);
                     }}
                   >
                     Forgot your password?
@@ -216,6 +284,106 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   </button>
                 </div>
               </form>
+            ) : mode === 'forgot' ? (
+              <div className="space-y-3 py-1">
+                <h2 className="text-xl sm:text-2xl font-extrabold text-[#0ef] tracking-tight mb-1 text-center">
+                  Reset Password
+                </h2>
+
+                {forgotStep === 1 ? (
+                  <form onSubmit={handleRequestOtp} className="space-y-3">
+                    <p className="text-[11px] text-slate-300 text-center leading-snug">
+                      Enter your Node ID or GoDaddy custom email address to receive a 6-digit verification OTP.
+                    </p>
+
+                    <div className="gaurav-input-box">
+                      <input
+                        type="text"
+                        required
+                        value={forgotInput}
+                        onChange={(e) => setForgotInput(e.target.value)}
+                        className={forgotInput ? 'has-value' : ''}
+                      />
+                      <label>Email / Node ID</label>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isForgotLoading}
+                      className="gaurav-btn flex items-center justify-center gap-2 mt-2"
+                    >
+                      {isForgotLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin text-[#1f293a]" />
+                          <span>Sending OTP...</span>
+                        </>
+                      ) : (
+                        'Send Reset Code'
+                      )}
+                    </button>
+
+                    <div className="gaurav-signup-link">
+                      <button type="button" onClick={() => setMode('login')}>
+                        Back to Login
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
+                    <p className="text-[11px] text-emerald-300 text-center leading-snug font-mono">
+                      Enter the 6-digit OTP sent to {forgotInput} and set your new password.
+                    </p>
+
+                    <div className="gaurav-input-box">
+                      <input
+                        type="text"
+                        required
+                        value={resetOtp}
+                        onChange={(e) => setResetOtp(e.target.value)}
+                        className={resetOtp ? 'has-value' : ''}
+                      />
+                      <label>6-Digit OTP Code</label>
+                    </div>
+
+                    <div className="gaurav-input-box">
+                      <input
+                        type="password"
+                        required
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className={newPassword ? 'has-value' : ''}
+                      />
+                      <label>New Password</label>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isForgotLoading}
+                      className="gaurav-btn flex items-center justify-center gap-2 mt-2"
+                    >
+                      {isForgotLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin text-[#1f293a]" />
+                          <span>Updating...</span>
+                        </>
+                      ) : (
+                        'Update Password'
+                      )}
+                    </button>
+
+                    <div className="gaurav-signup-link">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotStep(1);
+                        }}
+                      >
+                        Resend OTP Code
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             ) : (
               <form onSubmit={handleRegister} className="space-y-1">
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0ef] tracking-tight mb-1 text-center">

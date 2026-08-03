@@ -210,17 +210,7 @@ export const BoostingQueueView: React.FC<BoostingQueueViewProps> = ({
             )}
           </div>
 
-          {/* Interactive FIFO Simulator Button */}
-          <div className="pt-4 border-t border-slate-800">
-            <button
-              onClick={handleSimulateCycle}
-              disabled={simulating}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-extrabold text-xs transition shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              {simulating ? 'Processing FIFO Payout...' : 'Simulate FIFO Cycle & Rebirth Payout'}
-            </button>
-          </div>
+
         </div>
       </div>
 

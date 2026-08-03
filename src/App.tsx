@@ -12,6 +12,7 @@ import {
 } from './types';
 import { HeaderBar } from './components/HeaderBar';
 import { Sidebar } from './components/Sidebar';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { DashboardView } from './components/DashboardView';
 import { MatrixTreeView } from './components/MatrixTreeView';
 import { BoostingQueueView } from './components/BoostingQueueView';
@@ -246,12 +247,12 @@ export default function App() {
     }
   };
 
-  const handleUpdateUserBalance = async (userId: string, balance: number, upgradeBalance: number) => {
+  const handleUpdateUserBalance = async (userId: string, balance: number, upgradeBalance: number, depositBalance?: number) => {
     try {
       const res = await fetch('/api/admin/users/update-balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, balance, upgradeBalance }),
+        body: JSON.stringify({ userId, balance, upgradeBalance, depositBalance }),
       });
       if (res.ok) {
         await fetchState();
@@ -552,7 +553,7 @@ export default function App() {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 max-w-7xl mx-auto w-full overflow-x-hidden">
           {(isAdminView || activeTab === 'admin') && (currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') ? (
             <AdminPanel
               settings={settings}
@@ -638,6 +639,14 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        setIsAdminView={setIsAdminView}
+        user={currentUser}
+      />
 
       {/* Modals */}
       <DepositModal

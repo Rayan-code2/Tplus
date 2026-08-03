@@ -38,6 +38,8 @@ import {
   Printer,
   FileSpreadsheet,
   Filter,
+  Disc,
+  RotateCcw,
 } from 'lucide-react';
 import {
   User,
@@ -49,6 +51,7 @@ import {
   Product,
   ProductOrder,
   RankConfig,
+  SpinReward,
 } from '../types';
 
 interface AdminPanelProps {
@@ -61,7 +64,7 @@ interface AdminPanelProps {
   products?: Product[];
   productOrders?: ProductOrder[];
   onUpdateSettings: (newSettings: SystemSettings) => Promise<void>;
-  onUpdateUserBalance: (userId: string, balance: number, upgradeBalance: number) => Promise<void>;
+  onUpdateUserBalance: (userId: string, balance: number, upgradeBalance: number, depositBalance?: number) => Promise<void>;
   onToggleUserPackage: (userId: string, packageId: string | null) => Promise<void>;
   onDepositAction: (requestId: string, action: 'approve' | 'reject', notes?: string) => Promise<void>;
   onWithdrawAction: (requestId: string, action: 'approve' | 'reject', notes?: string) => Promise<void>;
@@ -650,6 +653,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editWallet, setEditWallet] = useState('');
   const [editSponsorId, setEditSponsorId] = useState('');
   const [editBalNum, setEditBalNum] = useState<number>(0);
+  const [editDepositBalNum, setEditDepositBalNum] = useState<number>(0);
   const [editUpgBalNum, setEditUpgBalNum] = useState<number>(0);
   const [editPkgId, setEditPkgId] = useState<string>('none');
   const [editRank, setEditRank] = useState<string>('None');
@@ -680,6 +684,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditWallet(u.walletAddress || '');
     setEditSponsorId(u.sponsorId || '');
     setEditBalNum(u.balance || 0);
+    setEditDepositBalNum(u.depositBalance || 0);
     setEditUpgBalNum(u.upgradeBalance || 0);
     setEditPkgId(u.activePackageId || 'none');
     setEditRank(u.rank || 'None');
@@ -704,6 +709,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           walletAddress: editWallet,
           sponsorId: editSponsorId,
           balance: parseFloat(editBalNum as any) || 0,
+          depositBalance: parseFloat(editDepositBalNum as any) || 0,
           upgradeBalance: parseFloat(editUpgBalNum as any) || 0,
           activePackageId: editPkgId === 'none' ? null : editPkgId,
           rank: editRank,
@@ -1245,6 +1251,446 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
 
+          {/* SECTION 2.5: SPECIAL SPONSOR LEVEL MATCHING BONUS CONFIG (DYNAMIC RULE ENGINE) */}
+          <div className="bg-[#0b1424] border border-amber-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_20px_rgba(245,158,11,0.08)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-amber-400" />
+                  Special Direct Sponsor Level Matching Bonus (Dynamic Rule Engine)
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Direct Sponsor gets 100% (or custom %) matching bonus when their referred member earns Level Income from a target level (e.g. Level 7).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 bg-[#050911] border border-amber-500/30 px-3 py-1.5 rounded-xl">
+                <span className="text-[11px] font-bold text-slate-300 uppercase">Enable Bonus Protocol</span>
+                <input
+                  type="checkbox"
+                  checked={editableSettings.specialSponsorBonus?.enabled ?? true}
+                  onChange={(e) => {
+                    const current = editableSettings.specialSponsorBonus || {
+                      enabled: true,
+                      targetLevel: 7,
+                      matchingPercent: 100,
+                      requiredSelfPackagePrice: 10,
+                      requiredDirectsCount: 2,
+                    };
+                    setEditableSettings({
+                      ...editableSettings,
+                      specialSponsorBonus: { ...current, enabled: e.target.checked },
+                    });
+                  }}
+                  className="w-4 h-4 accent-amber-500 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-1">
+                <label className="text-[10px] text-amber-400 font-extrabold uppercase">
+                  Target Level (e.g., Level 7)
+                </label>
+                <p className="text-[10px] text-slate-500">
+                  Level in direct referral's team that triggers 100% bonus to Sponsor
+                </p>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max="15"
+                    value={editableSettings.specialSponsorBonus?.targetLevel ?? 7}
+                    onChange={(e) => {
+                      const current = editableSettings.specialSponsorBonus || {
+                        enabled: true,
+                        targetLevel: 7,
+                        matchingPercent: 100,
+                        requiredSelfPackagePrice: 10,
+                        requiredDirectsCount: 2,
+                      };
+                      setEditableSettings({
+                        ...editableSettings,
+                        specialSponsorBonus: {
+                          ...current,
+                          targetLevel: parseInt(e.target.value) || 1,
+                        },
+                      });
+                    }}
+                    className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-cyan-300 font-extrabold"
+                  />
+                  <span className="absolute right-3 top-2 text-[11px] text-slate-400 font-bold">Level</span>
+                </div>
+              </div>
+
+              <div className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-1">
+                <label className="text-[10px] text-emerald-400 font-extrabold uppercase">
+                  Matching Percentage (%)
+                </label>
+                <p className="text-[10px] text-slate-500">
+                  Percentage of referral's Level income credited to Sponsor (Default: 100%)
+                </p>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    step="5"
+                    min="1"
+                    max="500"
+                    value={editableSettings.specialSponsorBonus?.matchingPercent ?? 100}
+                    onChange={(e) => {
+                      const current = editableSettings.specialSponsorBonus || {
+                        enabled: true,
+                        targetLevel: 7,
+                        matchingPercent: 100,
+                        requiredSelfPackagePrice: 10,
+                        requiredDirectsCount: 2,
+                      };
+                      setEditableSettings({
+                        ...editableSettings,
+                        specialSponsorBonus: {
+                          ...current,
+                          matchingPercent: parseFloat(e.target.value) || 0,
+                        },
+                      });
+                    }}
+                    className="w-full bg-[#0d1726] border border-emerald-500/40 rounded-lg p-2 text-emerald-300 font-extrabold"
+                  />
+                  <span className="absolute right-3 top-2 text-[11px] text-slate-400 font-bold">%</span>
+                </div>
+              </div>
+
+              <div className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-1">
+                <label className="text-[10px] text-cyan-400 font-extrabold uppercase">
+                  Required Self Package ($)
+                </label>
+                <p className="text-[10px] text-slate-500">
+                  Minimum package price Sponsor must hold to qualify
+                </p>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={editableSettings.specialSponsorBonus?.requiredSelfPackagePrice ?? 10}
+                    onChange={(e) => {
+                      const current = editableSettings.specialSponsorBonus || {
+                        enabled: true,
+                        targetLevel: 7,
+                        matchingPercent: 100,
+                        requiredSelfPackagePrice: 10,
+                        requiredDirectsCount: 2,
+                      };
+                      setEditableSettings({
+                        ...editableSettings,
+                        specialSponsorBonus: {
+                          ...current,
+                          requiredSelfPackagePrice: parseFloat(e.target.value) || 0,
+                        },
+                      });
+                    }}
+                    className="w-full bg-[#0d1726] border border-cyan-500/40 rounded-lg p-2 text-cyan-300 font-extrabold"
+                  />
+                  <span className="absolute right-3 top-2 text-[11px] text-slate-400 font-bold">$ USDT</span>
+                </div>
+              </div>
+
+              <div className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-1">
+                <label className="text-[10px] text-purple-400 font-extrabold uppercase">
+                  Required Total Directs
+                </label>
+                <p className="text-[10px] text-slate-500">
+                  Minimum total direct referrals Sponsor must have
+                </p>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={editableSettings.specialSponsorBonus?.requiredDirectsCount ?? 2}
+                    onChange={(e) => {
+                      const current = editableSettings.specialSponsorBonus || {
+                        enabled: true,
+                        targetLevel: 7,
+                        matchingPercent: 100,
+                        requiredSelfPackagePrice: 10,
+                        requiredDirectsCount: 2,
+                      };
+                      setEditableSettings({
+                        ...editableSettings,
+                        specialSponsorBonus: {
+                          ...current,
+                          requiredDirectsCount: parseInt(e.target.value) || 0,
+                        },
+                      });
+                    }}
+                    className="w-full bg-[#0d1726] border border-purple-500/40 rounded-lg p-2 text-purple-300 font-extrabold"
+                  />
+                  <span className="absolute right-3 top-2 text-[11px] text-slate-400 font-bold">Directs</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2.7: DAILY SPIN WHEEL REWARDS & PROBABILITY CONFIGURATION */}
+          <div className="bg-[#0b1424] border border-purple-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_20px_rgba(168,85,247,0.08)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
+                  <Disc className="w-4 h-4 text-purple-400" />
+                  Daily Lucky Spin Wheel Rewards & Probability Controller
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Customize wheel reward slices, dollar payouts, winning probability weights (%), and slice colors for members spinning the daily wheel.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const default8: SpinReward[] = [
+                      { id: 'sp-1', label: '$0.50 USDT', amount: 0.5, probability: 25, color: '#10b981' },
+                      { id: 'sp-2', label: '$1.00 USDT', amount: 1.0, probability: 15, color: '#06b6d4' },
+                      { id: 'sp-3', label: '$2.50 USDT', amount: 2.5, probability: 10, color: '#3b82f6' },
+                      { id: 'sp-4', label: '$5.00 USDT', amount: 5.0, probability: 5, color: '#8b5cf6' },
+                      { id: 'sp-5', label: '$10.00 USDT', amount: 10.0, probability: 2, color: '#ec4899' },
+                      { id: 'sp-6', label: '$50.00 USDT', amount: 50.0, probability: 0.5, color: '#f59e0b' },
+                      { id: 'sp-7', label: 'Try Again', amount: 0, probability: 8, color: '#374151' },
+                      { id: 'sp-8', label: 'Extra Spin', amount: 0, probability: 5, color: '#6366f1' },
+                    ];
+                    setEditableSettings({ ...editableSettings, spinWheelRewards: default8 });
+                  }}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                  Reset Default 8 Slices
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentRewards = editableSettings.spinWheelRewards || [];
+                    const newReward: SpinReward = {
+                      id: `sp-${Date.now()}`,
+                      label: '$5.00 USDT',
+                      amount: 5,
+                      probability: 5,
+                      color: '#10b981',
+                    };
+                    setEditableSettings({
+                      ...editableSettings,
+                      spinWheelRewards: [...currentRewards, newReward],
+                    });
+                  }}
+                  className="px-3.5 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-[0_0_10px_rgba(168,85,247,0.2)]"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Wheel Slice
+                </button>
+              </div>
+            </div>
+
+            {/* Spin Wheel Interval & Free Spin Credits Config */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#050911] border border-slate-800 rounded-2xl p-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
+                  Free Spin Cooldown Interval (Hours)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={editableSettings.spinWheelIntervalHours !== undefined ? editableSettings.spinWheelIntervalHours : 24}
+                    onChange={(e) =>
+                      setEditableSettings({
+                        ...editableSettings,
+                        spinWheelIntervalHours: parseInt(e.target.value) || 24,
+                      })
+                    }
+                    className="w-full bg-[#0d1726] border border-purple-500/30 rounded-xl px-3 py-2 text-purple-300 font-extrabold text-xs focus:outline-none focus:border-purple-400"
+                  />
+                  <span className="text-xs text-slate-400 shrink-0">Hours</span>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Time gap before a user gets free spin recharge (e.g. 24 = Once every 24 Hours).
+                </span>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
+                  Free Spins Granted Per Interval
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={editableSettings.spinCreditsPerReset !== undefined ? editableSettings.spinCreditsPerReset : 1}
+                    onChange={(e) =>
+                      setEditableSettings({
+                        ...editableSettings,
+                        spinCreditsPerReset: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    className="w-full bg-[#0d1726] border border-purple-500/30 rounded-xl px-3 py-2 text-purple-300 font-extrabold text-xs focus:outline-none focus:border-purple-400"
+                  />
+                  <span className="text-xs text-slate-400 shrink-0">Spins</span>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Number of free spins automatically awarded every interval cycle.
+                </span>
+              </div>
+            </div>
+
+            {/* Total Probability Summary Bar */}
+            {(() => {
+              const list = editableSettings.spinWheelRewards || [];
+              const totalProb = list.reduce((sum, r) => sum + (r.probability || 0), 0);
+              return (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-[#050911] border border-slate-800 px-4 py-2.5 rounded-xl text-xs gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span className="text-slate-300 font-bold">Total Wheel Slices:</span>
+                    <span className="text-purple-400 font-extrabold">{list.length} Slices</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-medium">Cumulative Probability Weight:</span>
+                    <span
+                      className={`font-mono font-extrabold px-2.5 py-0.5 rounded-md ${
+                        Math.abs(totalProb - 100) < 0.1
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      }`}
+                    >
+                      {totalProb.toFixed(1)}% {Math.abs(totalProb - 100) < 0.1 ? '✓ Balanced' : '(Weighted Relative)'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Slice Items Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              {(editableSettings.spinWheelRewards || []).map((reward, idx) => (
+                <div
+                  key={reward.id || idx}
+                  className="bg-[#050911] border border-slate-800 hover:border-purple-500/40 rounded-xl p-3.5 space-y-3 relative group transition"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-3.5 h-3.5 rounded-full inline-block border border-white/20 shrink-0 shadow-sm"
+                        style={{ backgroundColor: reward.color || '#10b981' }}
+                      />
+                      <span className="text-[11px] font-extrabold text-purple-300 uppercase">
+                        Slice #{idx + 1}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = (editableSettings.spinWheelRewards || []).filter((_, i) => i !== idx);
+                        setEditableSettings({
+                          ...editableSettings,
+                          spinWheelRewards: updated,
+                        });
+                      }}
+                      className="text-slate-600 hover:text-red-400 transition"
+                      title="Delete Slice"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 text-[11px]">
+                    <div>
+                      <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
+                        Reward Label
+                      </label>
+                      <input
+                        type="text"
+                        value={reward.label}
+                        onChange={(e) => {
+                          const updated = [...(editableSettings.spinWheelRewards || [])];
+                          updated[idx].label = e.target.value;
+                          setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                        }}
+                        className="w-full bg-[#0d1726] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-bold focus:outline-none focus:border-purple-400"
+                        placeholder="e.g. $5.00 USDT or Try Again"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-emerald-400 uppercase font-bold block mb-1">
+                          Amount ($ USDT)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={reward.amount}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.spinWheelRewards || [])];
+                            updated[idx].amount = parseFloat(e.target.value) || 0;
+                            setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                          }}
+                          className="w-full bg-[#0d1726] border border-emerald-500/30 rounded-lg px-2 py-1.5 text-emerald-300 font-extrabold focus:outline-none focus:border-emerald-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-amber-400 uppercase font-bold block mb-1">
+                          Chance / Weight (%)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          value={reward.probability}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.spinWheelRewards || [])];
+                            updated[idx].probability = parseFloat(e.target.value) || 0;
+                            setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                          }}
+                          className="w-full bg-[#0d1726] border border-amber-500/30 rounded-lg px-2 py-1.5 text-amber-300 font-extrabold focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
+                        Slice Color
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={reward.color || '#10b981'}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.spinWheelRewards || [])];
+                            updated[idx].color = e.target.value;
+                            setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                          }}
+                          className="w-8 h-8 rounded-lg border border-slate-700 bg-[#0d1726] cursor-pointer p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={reward.color || '#10b981'}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.spinWheelRewards || [])];
+                            updated[idx].color = e.target.value;
+                            setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                          }}
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 font-mono uppercase text-[10px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* SECTION 3: SYSTEM PROTOCOL, WALLETS & DEDUCTION RULES */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
             {/* Top Ticker Text */}
@@ -1410,6 +1856,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <th className="p-3">Node ID</th>
                   <th className="p-3">Name / Email</th>
                   <th className="p-3">Role</th>
+                  <th className="p-3">Deposit Wallet</th>
                   <th className="p-3">Withdrawable Bal</th>
                   <th className="p-3">Upgrade Fund Bal</th>
                   <th className="p-3">Package</th>
@@ -1439,6 +1886,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </span>
                         )}
                       </td>
+                      <td className="p-3 font-bold text-[#0ef]">${(u.depositBalance || 0).toFixed(2)}</td>
                       <td className="p-3 font-bold text-emerald-400">${u.balance.toFixed(2)}</td>
                       <td className="p-3 font-bold text-cyan-400">${u.upgradeBalance.toFixed(2)}</td>
                       <td className="p-3 text-slate-300">
@@ -1628,6 +2076,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* Deposit Wallet Balance ($) */}
+                    <div>
+                      <label className="text-xs text-[#0ef] font-bold block mb-1">
+                        Deposit Wallet Balance ($ USDT) [Package Fund]
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editDepositBalNum}
+                        onChange={(e) => setEditDepositBalNum(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-[#050911] border border-[#0ef]/40 rounded-xl px-3 py-2 text-[#0ef] font-bold text-xs focus:outline-none focus:border-[#0ef]"
+                      />
                     </div>
 
                     {/* Withdrawable Balance ($) */}

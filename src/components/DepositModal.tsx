@@ -98,6 +98,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({
             </div>
           </div>
 
+          <div className="bg-[#0c1829] border border-[#0ef]/30 rounded-xl p-3 text-xs text-slate-300">
+            <span className="text-[#0ef] font-bold block mb-0.5">ℹ️ Deposit Wallet Notice:</span>
+            Approved deposits will be credited to your <strong className="text-[#0ef]">Deposit Wallet</strong>. Use this balance to activate Node Mining Packages.
+          </div>
+
           <div className="space-y-1">
             <label className="text-slate-300 font-bold">Deposit Amount ($ USDT)</label>
             <input

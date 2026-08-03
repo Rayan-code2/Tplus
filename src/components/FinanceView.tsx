@@ -312,15 +312,19 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               </p>
             </div>
 
-            {/* Available Balance Box */}
-            <div className="bg-[#050911] border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            {/* 3 Wallet Overview Cards in Finance */}
+            <div className="grid grid-cols-3 gap-2 bg-[#050911] border border-slate-800 rounded-xl p-3 text-center">
               <div>
-                <span className="text-[10px] text-slate-400 uppercase">Available Withdrawable</span>
-                <div className="text-xl font-bold text-white">${user.balance.toFixed(2)} USDT</div>
+                <span className="text-[9px] text-slate-400 uppercase block">Deposit Wallet</span>
+                <div className="text-sm font-bold text-[#0ef]">${(user.depositBalance || 0).toFixed(2)}</div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] text-slate-400 uppercase">Shopping Wallet</span>
-                <div className="text-sm font-bold text-cyan-400">${user.upgradeBalance.toFixed(2)} USDT</div>
+              <div className="border-x border-slate-800">
+                <span className="text-[9px] text-slate-400 uppercase block">Withdrawable</span>
+                <div className="text-sm font-bold text-emerald-400">${user.balance.toFixed(2)}</div>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase block">Shopping Fund</span>
+                <div className="text-sm font-bold text-cyan-400">${user.upgradeBalance.toFixed(2)}</div>
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import initSqlJs, { Database } from 'sql.js';
 import { createServer as createViteServer } from 'vite';
+import nodemailer from 'nodemailer';
 import {
   User,
   Package,
@@ -19,7 +20,7 @@ import {
 } from './src/types';
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -105,6 +106,15 @@ const defaultSettings: SystemSettings = {
     { id: 'sp-7', label: 'Try Again', amount: 0, probability: 8, color: '#374151' },
     { id: 'sp-8', label: 'Extra Spin', amount: 0, probability: 5, color: '#6366f1' },
   ],
+  spinWheelIntervalHours: 24,
+  spinCreditsPerReset: 1,
+  specialSponsorBonus: {
+    enabled: true,
+    targetLevel: 7,
+    matchingPercent: 100,
+    requiredSelfPackagePrice: 10,
+    requiredDirectsCount: 2,
+  },
   ranks: [
     {
       id: 'rnk-1',
@@ -187,6 +197,7 @@ const initialUsers: User[] = [
     packageActivatedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
     packageExpiryDays: 100,
     balance: 14250.0,
+    depositBalance: 5000.0,
     upgradeBalance: 1200.0,
     totalEarned: 48900.0,
     roiEarned: 3000.0,
@@ -217,6 +228,7 @@ const initialUsers: User[] = [
     packageActivatedAt: new Date(Date.now() - 20 * 86400000).toISOString(),
     packageExpiryDays: 100,
     balance: 1850.5,
+    depositBalance: 1000.0,
     upgradeBalance: 320.0,
     totalEarned: 6400.0,
     roiEarned: 1250.0,
@@ -246,6 +258,7 @@ const initialUsers: User[] = [
     packageActivatedAt: new Date(Date.now() - 10 * 86400000).toISOString(),
     packageExpiryDays: 100,
     balance: 485.5,
+    depositBalance: 500.0,
     upgradeBalance: 110.0,
     totalEarned: 1240.0,
     roiEarned: 220.0,
@@ -275,6 +288,7 @@ const initialUsers: User[] = [
     packageActivatedAt: new Date(Date.now() - 15 * 86400000).toISOString(),
     packageExpiryDays: 100,
     balance: 120.0,
+    depositBalance: 100.0,
     upgradeBalance: 40.0,
     totalEarned: 310.0,
     roiEarned: 90.0,
@@ -304,6 +318,7 @@ const initialUsers: User[] = [
     packageActivatedAt: new Date(Date.now() - 8 * 86400000).toISOString(),
     packageExpiryDays: 100,
     balance: 240.0,
+    depositBalance: 150.0,
     upgradeBalance: 50.0,
     totalEarned: 510.0,
     roiEarned: 176.0,
@@ -333,6 +348,7 @@ const initialUsers: User[] = [
     packageActivatedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
     packageExpiryDays: 100,
     balance: 890.0,
+    depositBalance: 300.0,
     upgradeBalance: 180.0,
     totalEarned: 1450.0,
     roiEarned: 625.0,
@@ -362,6 +378,7 @@ const initialUsers: User[] = [
     packageActivatedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
     packageExpiryDays: 100,
     balance: 3200.0,
+    depositBalance: 1500.0,
     upgradeBalance: 600.0,
     totalEarned: 4800.0,
     roiEarned: 900.0,
@@ -669,6 +686,7 @@ async function initSqlite() {
         packageActivatedAt TEXT,
         packageExpiryDays INTEGER,
         balance REAL,
+        depositBalance REAL,
         upgradeBalance REAL,
         totalEarned REAL,
         roiEarned REAL,
@@ -793,7 +811,7 @@ function saveStore() {
       db.run('DELETE FROM users;');
       for (const u of state.users) {
         db.run(
-          `INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          `INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [
             u.id,
             u.nodeId,
@@ -805,6 +823,7 @@ function saveStore() {
             u.packageActivatedAt || '',
             u.packageExpiryDays || 100,
             u.balance || 0,
+            u.depositBalance || 0,
             u.upgradeBalance || 0,
             u.totalEarned || 0,
             u.roiEarned || 0,
@@ -1116,7 +1135,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   if (password) {
     const userPass = user.password || '123456';
     if (password !== userPass) {
-      return res.status(400).json({ error: 'Incorrect password. Default password is "123456".' });
+      return res.status(400).json({ error: 'Incorrect password. Please enter the password you set during registration.' });
     }
   }
 
@@ -1130,6 +1149,131 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
   state.activeUserId = '';
   saveStore();
   res.json({ success: true });
+});
+
+// Forgot Password - Generate OTP & Send Email / Return Verification State
+app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
+  const { input } = req.body; // Email or Node ID
+  if (!input || !input.trim()) {
+    return res.status(400).json({ error: 'Please enter your registered Email or Node ID' });
+  }
+
+  const cleanInput = input.trim().toLowerCase();
+  const user = state.users.find(
+    (u) => u.email.toLowerCase() === cleanInput || u.nodeId.toLowerCase() === cleanInput
+  );
+
+  if (!user) {
+    return res.status(404).json({ error: 'No account found with this Email or Node ID' });
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  (user as any).resetOtp = otp;
+  (user as any).resetOtpExpires = Date.now() + 15 * 60 * 1000; // 15 mins expiry
+  saveStore();
+
+  console.log(`[PASSWORD RESET] OTP generated for user ${user.nodeId} (${user.email}): ${otp}`);
+
+  // Send real email via SMTP if SMTP_PASS is configured
+  let emailSent = false;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || 'support@tetherplus.live';
+  const smtpUser = process.env.SMTP_USER || process.env.SMTP_FROM || smtpFrom;
+  const smtpHost = process.env.SMTP_HOST || (smtpUser.endsWith('@gmail.com') ? 'smtp.gmail.com' : 'smtpout.secureserver.net');
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+
+  if (smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465, // true for 465 SSL, false for 587 STARTTLS
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"TetherPlus Security" <${smtpFrom}>`,
+        to: user.email,
+        subject: `TetherPlus - Password Reset OTP (${otp})`,
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #0b1424; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px;">
+            <h2 style="color: #00eeff; margin-top: 0;">TetherPlus Password Reset</h2>
+            <p>Hello <strong>${user.name || user.nodeId}</strong>,</p>
+            <p>You requested a password reset for your TetherPlus account. Here is your 6-digit verification OTP code:</p>
+            <div style="background-color: #050911; border: 1px solid #334155; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #00eeff;">${otp}</span>
+            </div>
+            <p style="font-size: 13px; color: #94a3b8;">This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
+            <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;" />
+            <p style="font-size: 11px; color: #64748b; text-align: center;">TetherPlus Ecosystem • ${smtpFrom}</p>
+          </div>
+        `,
+      });
+      emailSent = true;
+      console.log(`[SMTP SUCCESS] Password reset email successfully sent to ${user.email} from ${smtpFrom}`);
+    } catch (mailErr) {
+      console.error('[SMTP ERROR] Failed to send email via SMTP:', mailErr);
+    }
+  }
+
+  res.json({
+    success: true,
+    message: emailSent
+      ? `Password reset OTP has been sent to ${user.email}.`
+      : `Password reset OTP code generated for ${user.email}.`,
+    email: user.email,
+    nodeId: user.nodeId,
+    // Provide demo OTP code if SMTP is not configured or in sandbox mode so testing is instant
+    otpDemo: (!emailSent || process.env.NODE_ENV !== 'production') ? otp : undefined,
+  });
+});
+
+
+// Reset Password with OTP
+app.post('/api/auth/reset-password', (req: Request, res: Response) => {
+  const { input, otp, newPassword } = req.body;
+  if (!input || !otp || !newPassword) {
+    return res.status(400).json({ error: 'Please provide Email/Node ID, OTP code, and new password' });
+  }
+
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'New password must be at least 4 characters long' });
+  }
+
+  const cleanInput = input.trim().toLowerCase();
+  const user = state.users.find(
+    (u) => u.email.toLowerCase() === cleanInput || u.nodeId.toLowerCase() === cleanInput
+  );
+
+  if (!user) {
+    return res.status(404).json({ error: 'Account not found' });
+  }
+
+  const storedOtp = (user as any).resetOtp;
+  const expiresAt = (user as any).resetOtpExpires || 0;
+
+  if (!storedOtp || storedOtp !== otp.trim()) {
+    return res.status(400).json({ error: 'Invalid OTP code. Please check your email or request a new code.' });
+  }
+
+  if (Date.now() > expiresAt) {
+    return res.status(400).json({ error: 'OTP code has expired. Please request a new code.' });
+  }
+
+  // Update Password
+  user.password = newPassword.trim();
+  delete (user as any).resetOtp;
+  delete (user as any).resetOtpExpires;
+  saveStore();
+
+  res.json({
+    success: true,
+    message: `Password reset successfully! You can now login with your new password.`,
+  });
 });
 
 // Change Password for Logged-In User
@@ -1184,6 +1328,10 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Name and Email are required' });
   }
 
+  if (!password || typeof password !== 'string' || password.trim().length < 4) {
+    return res.status(400).json({ error: 'Password is required and must be at least 4 characters long.' });
+  }
+
   const sponsor = findUserByIdOrNodeId(sponsorNodeId || 'NX-ROOT01') || state.users[0];
   const newNodeId = generateNodeId();
 
@@ -1195,7 +1343,7 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
     nodeId: newNodeId,
     name,
     email,
-    password: password || '123456',
+    password: password.trim(),
     walletAddress: walletAddress || `0x${Math.random().toString(16).substring(2, 14)}`,
     sponsorId: sponsor.id,
     placementUplineId: placementUplineId,
@@ -1203,6 +1351,7 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
     packageActivatedAt: null,
     packageExpiryDays: 0,
     balance: 0.0,
+    depositBalance: 0.0,
     upgradeBalance: 0.0,
     totalEarned: 0.0,
     roiEarned: 0.0,
@@ -1242,14 +1391,15 @@ app.post('/api/packages/buy', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid user or package' });
   }
 
-  if (user.balance < pkg.price) {
+  const depositBal = user.depositBalance || 0;
+  if (depositBal < pkg.price) {
     return res.status(400).json({
-      error: `Insufficient balance ($${user.balance.toFixed(2)}). Please deposit at least $${(pkg.price - user.balance).toFixed(2)} USDT first.`,
+      error: `Insufficient Deposit Wallet balance ($${depositBal.toFixed(2)} USDT available). Please deposit at least $${(pkg.price - depositBal).toFixed(2)} USDT to your Deposit Wallet first.`,
     });
   }
 
-  // Deduct package price
-  user.balance -= pkg.price;
+  // Deduct package price from Deposit Wallet
+  user.depositBalance = depositBal - pkg.price;
 
   // Check if this package is an Upgrade / Booster Package (0% ROI)
   const isUpgradePkg = pkg.isUpgradePackage || pkg.dailyRoiPercent === 0;
@@ -1275,7 +1425,7 @@ app.post('/api/packages/buy', (req: Request, res: Response) => {
     type: 'admin_adjust',
     amount: pkg.price,
     status: 'completed',
-    notes: `Activated Package: ${pkg.name} ($${pkg.price})`,
+    notes: `Activated Package: ${pkg.name} ($${pkg.price}) [Paid via Deposit Wallet]`,
     createdAt: new Date().toISOString(),
   };
   state.transactions.unshift(pkgTx);
@@ -1336,6 +1486,48 @@ app.post('/api/packages/buy', (req: Request, res: Response) => {
             notes: `Level ${level} Matrix Income (${levelConfig.percent}%) from #${user.nodeId}`,
             createdAt: new Date().toISOString(),
           });
+
+          // Special 100% Sponsor Level Matching Bonus Logic
+          // Sponsor of "upline" gets matching bonus when "upline" earns from target level (e.g. Level 7)
+          const bonusConfig = state.settings.specialSponsorBonus;
+          if (
+            bonusConfig &&
+            bonusConfig.enabled &&
+            level === (bonusConfig.targetLevel || 7) &&
+            upline.sponsorId
+          ) {
+            const sponsorOfUpline = state.users.find((u) => u.id === upline.sponsorId);
+            if (sponsorOfUpline && sponsorOfUpline.activePackageId) {
+              const sponsorPkg = state.settings.packages.find((p) => p.id === sponsorOfUpline.activePackageId);
+              const sponsorPkgPrice = sponsorPkg ? sponsorPkg.price : 0;
+              const sponsorDirects = sponsorOfUpline.directReferralsCount || 0;
+
+              const reqPkgPrice = bonusConfig.requiredSelfPackagePrice !== undefined ? bonusConfig.requiredSelfPackagePrice : 10;
+              const reqDirects = bonusConfig.requiredDirectsCount !== undefined ? bonusConfig.requiredDirectsCount : 2;
+
+              if (sponsorPkgPrice >= reqPkgPrice && sponsorDirects >= reqDirects) {
+                const matchPct = bonusConfig.matchingPercent !== undefined ? bonusConfig.matchingPercent : 100;
+                const specialMatchAmount = levelBonus * (matchPct / 100);
+
+                if (specialMatchAmount > 0) {
+                  sponsorOfUpline.balance += specialMatchAmount;
+                  sponsorOfUpline.specialBonusEarned = (sponsorOfUpline.specialBonusEarned || 0) + specialMatchAmount;
+                  sponsorOfUpline.totalEarned += specialMatchAmount;
+
+                  state.transactions.unshift({
+                    id: `tx-${Date.now()}-spmatch-lvl${level}`,
+                    userId: sponsorOfUpline.id,
+                    userNodeId: sponsorOfUpline.nodeId,
+                    type: 'special_matching_bonus',
+                    amount: specialMatchAmount,
+                    status: 'completed',
+                    notes: `${matchPct}% Special Sponsor Level Matching Bonus from Direct Referral #${upline.nodeId} (Level ${level} Income)`,
+                    createdAt: new Date().toISOString(),
+                  });
+                }
+              }
+            }
+          }
         }
       }
 
@@ -1622,8 +1814,22 @@ app.post('/api/spin', (req: Request, res: Response) => {
   const user = state.users.find((u) => u.id === state.activeUserId);
   if (!user) return res.status(400).json({ error: 'User not logged in' });
 
+  // Auto-recharge free spins if interval time has passed
+  const intervalHours = state.settings.spinWheelIntervalHours || 24;
+  const creditsToGrant = state.settings.spinCreditsPerReset || 1;
+
   if (user.spinCredits <= 0) {
-    return res.status(400).json({ error: 'No Spin Credits remaining! Refer friends or upgrade package to earn more spins.' });
+    const lastTime = user.lastSpinAt ? new Date(user.lastSpinAt).getTime() : new Date(user.registeredAt).getTime();
+    const elapsedHours = (Date.now() - lastTime) / (1000 * 60 * 60);
+
+    if (elapsedHours >= intervalHours) {
+      user.spinCredits += creditsToGrant;
+    } else {
+      const remainingHours = Math.ceil(intervalHours - elapsedHours);
+      return res.status(400).json({
+        error: `No Spin Credits remaining! Free spin recharges every ${intervalHours} hours. Please wait ~${remainingHours} hour(s) or refer active nodes to earn instant spin credits.`,
+      });
+    }
   }
 
   user.spinCredits -= 1;
@@ -1854,11 +2060,12 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
 
 // A2. Admin Update User Balances
 app.post('/api/admin/users/update-balance', (req: Request, res: Response) => {
-  const { userId, balance, upgradeBalance } = req.body;
+  const { userId, balance, depositBalance, upgradeBalance } = req.body;
   const user = state.users.find((u) => u.id === userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   if (typeof balance === 'number') user.balance = balance;
+  if (typeof depositBalance === 'number') user.depositBalance = depositBalance;
   if (typeof upgradeBalance === 'number') user.upgradeBalance = upgradeBalance;
 
   state.transactions.unshift({
@@ -1868,7 +2075,7 @@ app.post('/api/admin/users/update-balance', (req: Request, res: Response) => {
     type: 'admin_adjust',
     amount: balance,
     status: 'completed',
-    notes: `Admin Manual Balance Adjustment: Balance=$${user.balance.toFixed(2)}, Upgrade=$${user.upgradeBalance.toFixed(2)}`,
+    notes: `Admin Manual Balance Adjustment: Withdrawable=$${user.balance.toFixed(2)}, Deposit Wallet=$${(user.depositBalance || 0).toFixed(2)}, Upgrade=$${user.upgradeBalance.toFixed(2)}`,
     createdAt: new Date().toISOString(),
   });
 
@@ -1931,6 +2138,7 @@ app.post('/api/admin/users/update-user', (req: Request, res: Response) => {
     walletAddress,
     sponsorId,
     balance,
+    depositBalance,
     upgradeBalance,
     rank,
     status,
@@ -1949,6 +2157,7 @@ app.post('/api/admin/users/update-user', (req: Request, res: Response) => {
   if (typeof sponsorId === 'string') user.sponsorId = sponsorId.trim() || null;
 
   if (typeof balance === 'number' && !isNaN(balance)) user.balance = balance;
+  if (typeof depositBalance === 'number' && !isNaN(depositBalance)) user.depositBalance = depositBalance;
   if (typeof upgradeBalance === 'number' && !isNaN(upgradeBalance)) user.upgradeBalance = upgradeBalance;
 
   if (rank && ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Crown'].includes(rank)) {
@@ -2017,7 +2226,7 @@ app.post('/api/admin/deposit/action', (req: Request, res: Response) => {
   if (action === 'approve') {
     const user = state.users.find((u) => u.id === dep.userId);
     if (user) {
-      user.balance += dep.amount;
+      user.depositBalance = (user.depositBalance || 0) + dep.amount;
       state.transactions.unshift({
         id: `tx-${Date.now()}-dep-app`,
         userId: user.id,
@@ -2027,7 +2236,7 @@ app.post('/api/admin/deposit/action', (req: Request, res: Response) => {
         status: 'completed',
         txHash: dep.txHash,
         network: dep.network,
-        notes: `Deposit Approved: +$${dep.amount} USDT`,
+        notes: `Deposit Approved: +$${dep.amount} USDT credited to Deposit Wallet`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -2363,6 +2572,7 @@ app.post('/api/admin/users/import-csv', (req: Request, res: Response) => {
           packageActivatedAt: null,
           packageExpiryDays: 0,
           balance: 0,
+          depositBalance: 0,
           upgradeBalance: 0,
           totalEarned: 0,
           roiEarned: 0,

@@ -115,15 +115,21 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </div>
 
         {/* Network & Wallet Quick Status */}
-        <div className="hidden lg:flex items-center gap-3 bg-[#0d1726] border border-cyan-500/20 px-3 py-1.5 rounded-xl font-mono text-xs">
-          <div className="flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2 bg-[#0d1726] border border-cyan-500/20 px-3 py-1.5 rounded-xl font-mono text-xs">
+          <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" />
-            <span className="text-slate-300">BNB Smart Chain</span>
+            <span className="text-slate-300">BSC</span>
           </div>
           <span className="text-slate-600">|</span>
-          <div className="text-cyan-400 font-semibold flex items-center gap-1">
-            <Wallet className="w-3.5 h-3.5" />
-            ${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} USDT
+          <div className="text-cyan-300 font-semibold flex items-center gap-1" title="Deposit Wallet for buying packages">
+            <Wallet className="w-3.5 h-3.5 text-[#0ef]" />
+            <span className="text-[10px] text-slate-400 uppercase">Deposit:</span>
+            <span className="text-[#0ef] font-bold">${(user.depositBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+          </div>
+          <span className="text-slate-600">|</span>
+          <div className="text-emerald-400 font-semibold flex items-center gap-1" title="Withdrawable Main Balance">
+            <span className="text-[10px] text-slate-400 uppercase">Earned:</span>
+            <span>${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
 
@@ -221,7 +227,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                   type="password"
                   value={currentPassInput}
                   onChange={(e) => setCurrentPassInput(e.target.value)}
-                  placeholder="Enter current password (default: 123456)"
+                  placeholder="Enter current password"
                   className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 text-xs focus:outline-none focus:border-cyan-500 font-mono"
                 />
               </div>

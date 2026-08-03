@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-full md:w-64 bg-[#080d14]/90 border-r border-cyan-500/20 p-4 flex flex-col justify-between font-mono text-sm shrink-0">
+    <aside className="hidden md:flex md:w-64 bg-[#080d14]/90 border-r border-cyan-500/20 p-4 flex-col justify-between font-mono text-sm shrink-0">
       <div className="space-y-6">
         {/* Node Profile Summary Card */}
         <div className="bg-[#0c1524] border border-cyan-500/30 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_15px_rgba(6,182,212,0.1)]">

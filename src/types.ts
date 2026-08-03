@@ -12,6 +12,7 @@ export interface User {
   packageActivatedAt: string | null;
   packageExpiryDays: number;
   balance: number; // Available Withdrawable ($)
+  depositBalance: number; // Deposit / Fund Wallet ($) for buying packages
   upgradeBalance: number; // Reinvestment / Upgrade Wallet ($)
   totalEarned: number; // Lifetime Earnings ($)
   roiEarned: number; // Node Yield ($)
@@ -20,6 +21,7 @@ export interface User {
   rankEarned: number; // Leadership Rank Bonuses ($)
   boostingEarned: number; // Global Gold Pool ($)
   spinEarned: number; // Daily Spin Rewards ($)
+  specialBonusEarned?: number; // Special 100% Level Matching Sponsor Bonus ($)
   directReferralsCount: number;
   teamCount: number;
   teamVolume: number;
@@ -95,6 +97,7 @@ export interface Transaction {
     | 'roi'
     | 'level_income'
     | 'sponsor_bonus'
+    | 'special_matching_bonus'
     | 'boosting_payout'
     | 'spin_reward'
     | 'rank_bonus'
@@ -156,6 +159,14 @@ export interface LevelIncomeConfig {
   percent: number;
 }
 
+export interface SpecialSponsorBonusConfig {
+  enabled: boolean;
+  targetLevel: number; // e.g. Level 7 in direct referral's downline
+  matchingPercent: number; // e.g. 100%
+  requiredSelfPackagePrice: number; // e.g. $10 or $20 self package requirement
+  requiredDirectsCount: number; // e.g. 2 or 5 total direct referrals required
+}
+
 export interface RankConfig {
   id: string;
   name: string;
@@ -200,6 +211,9 @@ export interface SystemSettings {
   upgradeFundDeductionPercent: number;
   tickerText: string;
   spinWheelRewards: SpinReward[];
+  spinWheelIntervalHours?: number;
+  spinCreditsPerReset?: number;
+  specialSponsorBonus?: SpecialSponsorBonusConfig;
   ranks: RankConfig[];
 }
 
