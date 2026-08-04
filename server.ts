@@ -1378,6 +1378,62 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
   sponsor.directReferralsCount += 1;
 
   saveStore();
+
+  // Send Welcome Email asynchronously via SMTP if configured
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || 'support@tetherplus.live';
+  const smtpUser = process.env.SMTP_USER || process.env.SMTP_FROM || smtpFrom;
+  const smtpHost = process.env.SMTP_HOST || (smtpUser.endsWith('@gmail.com') ? 'smtp.gmail.com' : 'smtpout.secureserver.net');
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+
+  if (smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      transporter.sendMail({
+        from: `"TetherPlus Team" <${smtpFrom}>`,
+        to: newUser.email,
+        subject: `Welcome to TetherPlus Cyberpunk Ecosystem, ${newUser.name}! 🚀`,
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #0b0f19; color: #f8fafc; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #1e293b;">
+            <h2 style="color: #06b6d4; margin-top: 0; font-size: 22px; text-align: center;">Welcome to TetherPlus! 🎉</h2>
+            <p style="font-size: 15px; color: #cbd5e1; line-height: 1.6;">Hi <strong>${newUser.name}</strong>,</p>
+            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.6;">Thank you for registering on <strong>TetherPlus Web3 Cyberpunk Ecosystem</strong>. Your account has been successfully created!</p>
+            
+            <div style="background-color: #111827; border: 1px solid #374151; border-radius: 8px; padding: 18px; margin: 20px 0;">
+              <p style="margin: 0 0 8px 0; font-size: 13px; color: #9ca3af;"><strong>Your Node ID:</strong> <span style="color: #38bdf8; font-family: monospace; font-size: 15px; font-weight: bold;">${newUser.nodeId}</span></p>
+              <p style="margin: 0 0 8px 0; font-size: 13px; color: #9ca3af;"><strong>Registered Email:</strong> <span style="color: #f3f4f6;">${newUser.email}</span></p>
+              <p style="margin: 0; font-size: 13px; color: #9ca3af;"><strong>Sponsor:</strong> <span style="color: #a78bfa;">${sponsor.name} (${sponsor.nodeId})</span></p>
+            </div>
+
+            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.6;">You can now activate packages, explore direct level rewards, participate in boosting pools, and build your decentralized team network.</p>
+            
+            <div style="text-align: center; margin: 28px 0;">
+              <a href="https://tetherplus.live" style="background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">Go to Dashboard</a>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;" />
+            <p style="font-size: 11px; color: #64748b; text-align: center;">TetherPlus Ecosystem • ${smtpFrom}</p>
+          </div>
+        `,
+      }).then(() => {
+        console.log(`[WELCOME MAIL SUCCESS] Welcome email sent to ${newUser.email}`);
+      }).catch((mailErr) => {
+        console.error('[WELCOME MAIL ERROR] Failed to send welcome email:', mailErr);
+      });
+    } catch (e) {
+      console.error('[WELCOME MAIL EXCEPTION]', e);
+    }
+  }
+
   res.json({ success: true, user: newUser });
 });
 
