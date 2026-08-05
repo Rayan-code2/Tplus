@@ -127,7 +127,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => onSelectTab('store')}
             className="px-3.5 py-2 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:bg-slate-700/50 transition shrink-0"
           >
-            🛒 Amazon Mall
+            🛒 TetherMart
           </button>
         </div>
       )}
@@ -211,7 +211,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-xs font-normal text-cyan-400 ml-1">USDT</span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1">
-            Accumulated via 30% withdrawal rule for Amazon Mall.
+            Accumulated via 30% withdrawal rule for TetherMart.
           </p>
         </div>
 

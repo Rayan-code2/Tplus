@@ -40,7 +40,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     },
     {
       id: 'store',
-      label: 'Amazon Mall',
+      label: 'TetherMart',
       icon: ShoppingBag,
       badge: 'Hot',
     },

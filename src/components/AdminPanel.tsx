@@ -907,7 +907,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }`}
         >
           <ShoppingBag className="w-4 h-4 text-amber-400" />
-          Amazon Store Products ({products.length})
+          TetherMart Products ({products.length})
         </button>
         <button
           onClick={() => setActiveTab('ranks')}
@@ -2715,7 +2715,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-amber-400" />
-                <span>Amazon Cyber Mall Product & Rate Management</span>
+                <span>TetherMart Product & Rate Management</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1">
                 List new items, set rates in USDT, adjust available stock, or manage customer orders.
@@ -2801,15 +2801,60 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="text-slate-400 font-bold block mb-1">Image URL</label>
-                  <input
-                    type="text"
-                    value={newProdImage}
-                    onChange={(e) => setNewProdImage(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
-                  />
+                <div className="sm:col-span-2 bg-[#050911]/80 border border-slate-800 p-3 rounded-2xl">
+                  <label className="text-amber-400 font-bold block mb-2 text-xs">Product Photo (Direct Mobile/PC File Upload OR URL)</label>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1 cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-4 py-2.5 text-center text-xs font-semibold text-white transition flex items-center justify-center gap-2">
+                        <Upload className="w-4 h-4 text-amber-400" />
+                        Upload Direct Photo from Phone / PC
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (evt) => {
+                                if (evt.target?.result) setNewProdImage(evt.target.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      {newProdImage && (
+                        <button
+                          type="button"
+                          onClick={() => setNewProdImage('')}
+                          className="px-3 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold hover:bg-red-500/30 transition flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remove Photo
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="text-[10px] text-slate-500 text-center font-bold font-mono">OR ENTER IMAGE URL MANUALLY</div>
+
+                    <input
+                      type="text"
+                      value={newProdImage}
+                      onChange={(e) => setNewProdImage(e.target.value)}
+                      placeholder="https://... (Or paste link)"
+                      className="w-full bg-[#0a0f1d] border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-500 font-mono"
+                    />
+
+                    {newProdImage && (
+                      <div className="mt-1 flex items-center gap-3 bg-[#0a0f1d] p-2 rounded-xl border border-slate-800">
+                        <img src={newProdImage} alt="Preview" className="w-14 h-14 object-cover rounded-lg border border-slate-700 shrink-0" />
+                        <div>
+                          <span className="text-xs font-bold text-amber-400 block">✓ Image Ready to Save!</span>
+                          <span className="text-[11px] text-slate-400">Direct photo loaded successfully. Click 'Create Product' to publish.</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -3118,20 +3163,64 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="text-slate-300 font-bold block mb-1">Image URL</label>
-                      <input
-                        type="text"
-                        value={editImage}
-                        onChange={(e) => setEditImage(e.target.value)}
-                        className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 focus:outline-none focus:border-amber-500 text-xs"
-                      />
-                      {editImage && (
-                        <div className="mt-2 flex items-center gap-3 bg-[#050911] p-2 rounded-xl border border-slate-800">
-                          <img src={editImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
-                          <span className="text-[11px] text-slate-400">Image Preview</span>
+                    <div className="sm:col-span-2 bg-[#050911] border border-slate-700/80 p-3 rounded-2xl">
+                      <label className="text-amber-300 font-bold block mb-2 text-xs">Product Image (Upload New Direct Photo OR Edit URL)</label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-4 py-2 text-center text-xs font-semibold text-white transition flex items-center justify-center gap-2">
+                            <Upload className="w-4 h-4 text-amber-400" />
+                            Upload New Photo from Device
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (evt) => {
+                                    if (evt.target?.result) setEditImage(evt.target.result as string);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+                          {editImage && (
+                            <button
+                              type="button"
+                              onClick={() => setEditImage('')}
+                              className="px-3 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold hover:bg-red-500/30 transition flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete Photo
+                            </button>
+                          )}
                         </div>
-                      )}
+
+                        <div className="text-[10px] text-slate-500 text-center font-bold font-mono">OR EDIT URL MANUALLY</div>
+
+                        <input
+                          type="text"
+                          value={editImage}
+                          onChange={(e) => setEditImage(e.target.value)}
+                          placeholder="https://..."
+                          className="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 focus:outline-none focus:border-amber-500 text-xs font-mono"
+                        />
+
+                        {editImage ? (
+                          <div className="mt-1 flex items-center gap-3 bg-[#0a0f1d] p-2 rounded-xl border border-slate-800">
+                            <img src={editImage} alt="Preview" className="w-14 h-14 object-cover rounded-lg border border-slate-700 shrink-0" />
+                            <div>
+                              <span className="text-xs font-bold text-emerald-400 block">✓ Current Photo Active</span>
+                              <span className="text-[11px] text-slate-400">Click "Delete Photo" to remove, or upload a new photo from your device.</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-1 bg-red-500/10 border border-red-500/20 p-2 rounded-xl text-xs text-red-400 font-semibold">
+                            ⚠️ Photo removed. Upload a new photo above or type a URL.
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="sm:col-span-2">
@@ -3153,7 +3242,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-amber-500"
                       />
                       <label htmlFor="editFeatured" className="text-xs text-slate-200 font-bold cursor-pointer">
-                        Mark as "Amazon Choice / Featured Product"
+                        Mark as "TetherMart Choice / Featured Product"
                       </label>
                     </div>
                   </div>

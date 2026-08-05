@@ -39,49 +39,72 @@ export function getWithdrawalCapacityDetails(
   let nextGoalText = '';
   let nextLimitText = '';
 
-  if (!isUpgraded20) {
-    capacityLimit = 10;
-    tierTitle = '$10 Starter Package ($10 Limit)';
-    badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-    nextGoalText = 'Activate the $20 Booster Pass to immediately unlock $100–$700+ withdrawal capacity!';
-    nextLimitText = '$100 USDT';
-  } else if (
-    rankLower.includes('gold') ||
+  if (
     rankLower.includes('diamond') ||
     rankLower.includes('apex') ||
     rankLower.includes('sovereign') ||
     rankLower.includes('crown')
   ) {
     capacityLimit = Infinity;
-    tierTitle = `${user.rank || 'Gold'} Rank (Unlimited)`;
-    badgeColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+    tierTitle = `${user.rank || 'Diamond'} Rank (No Limit)`;
+    badgeColor = 'bg-purple-500/20 text-purple-300 border-purple-500/30';
     isUnlimited = true;
-    nextGoalText = 'Highest Leadership Rank Active! You enjoy UNLIMITED lifetime withdrawal capacity.';
+    nextGoalText = 'Diamond Leadership Rank Active! You enjoy NO LIMIT (Unlimited) lifetime withdrawal capacity.';
+    nextLimitText = 'UNLIMITED';
+  } else if (rankLower.includes('gold')) {
+    capacityLimit = 4000;
+    tierTitle = 'Gold Rank ($4,000 Limit)';
+    badgeColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+    nextGoalText = 'Promote to Diamond Rank to unlock NO LIMIT (Unlimited) lifetime withdrawal capacity!';
     nextLimitText = 'UNLIMITED';
   } else if (rankLower.includes('silver')) {
-    capacityLimit = 700;
-    tierTitle = 'Silver Rank ($700 Limit)';
+    capacityLimit = 2000;
+    tierTitle = 'Silver Rank ($2,000 Limit)';
     badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-    nextGoalText = 'Promote to Gold Rank to unlock UNLIMITED lifetime withdrawal capacity!';
-    nextLimitText = 'UNLIMITED';
+    nextGoalText = 'Promote to Gold Rank to increase lifetime capacity to $4,000 USDT!';
+    nextLimitText = '$4,000 USDT';
   } else if (rankLower.includes('bronze')) {
-    capacityLimit = 400;
-    tierTitle = 'Bronze Rank ($400 Limit)';
+    capacityLimit = 1000;
+    tierTitle = 'Bronze Rank ($1,000 Limit)';
     badgeColor = 'bg-orange-500/20 text-orange-300 border-orange-500/30';
-    nextGoalText = 'Promote to Silver Rank (4 Directs + $2,500 Team Volume) to increase limit to $700 USDT!';
-    nextLimitText = '$700 USDT';
-  } else if (directsCount >= 2) {
+    nextGoalText = 'Promote to Silver Rank to increase lifetime capacity to $2,000 USDT!';
+    nextLimitText = '$2,000 USDT';
+  } else if (isUpgraded20 && directsCount >= 6) {
+    capacityLimit = 600;
+    tierTitle = '$20 Package + 6 Directs ($600 Limit)';
+    badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+    nextGoalText = 'Achieve Bronze Rank to increase lifetime withdrawal capacity to $1,000 USDT!';
+    nextLimitText = '$1,000 USDT';
+  } else if (isUpgraded20 && directsCount >= 4) {
+    capacityLimit = 400;
+    tierTitle = '$20 Package + 4 Directs ($400 Limit)';
+    badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+    nextGoalText = 'Sponsor 2 more direct referrals (total 6 direct) to increase capacity to $600 USDT!';
+    nextLimitText = '$600 USDT';
+  } else if (isUpgraded20 && directsCount >= 2) {
     capacityLimit = 200;
     tierTitle = '$20 Package + 2 Directs ($200 Limit)';
-    badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-    nextGoalText = 'Achieve Bronze Rank (2 Directs + $500 Volume) to increase capacity to $400 USDT!';
-    nextLimitText = '$400 USDT';
-  } else {
-    capacityLimit = 100;
-    tierTitle = '$20 Booster Package ($100 Limit)';
     badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-    nextGoalText = 'Sponsor 2 Direct Members with $20 package to double capacity to $200 USDT!';
+    nextGoalText = 'Sponsor 2 more direct referrals (total 4 direct) to increase capacity to $400 USDT!';
+    nextLimitText = '$400 USDT';
+  } else if (isUpgraded20) {
+    capacityLimit = 100;
+    tierTitle = '$20 Package (<2 Directs) ($100 Limit)';
+    badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+    nextGoalText = 'Sponsor 2 direct referrals to increase capacity to $200 USDT!';
     nextLimitText = '$200 USDT';
+  } else if (directsCount >= 2) {
+    capacityLimit = 100;
+    tierTitle = '$10 Package + 2 Directs ($100 Limit)';
+    badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+    nextGoalText = 'Upgrade to $20 Booster Package to unlock $200+ withdrawal capacity!';
+    nextLimitText = '$200 USDT';
+  } else {
+    capacityLimit = 10;
+    tierTitle = '$10 Starter Package ($10 Limit)';
+    badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+    nextGoalText = 'Sponsor 2 direct referrals to unlock $100 withdrawal capacity (or upgrade to $20 Package)!';
+    nextLimitText = '$100 USDT';
   }
 
   // Calculate total withdrawn so far (non-rejected)

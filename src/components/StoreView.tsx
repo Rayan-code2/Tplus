@@ -135,20 +135,20 @@ export const StoreView: React.FC<StoreViewProps> = ({
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Top Banner - Amazon Cyber Mall Header */}
+      {/* Top Banner - TetherMart Header */}
       <div className="bg-gradient-to-r from-[#0c192d] via-[#10203b] to-[#081222] border border-cyan-500/30 rounded-2xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(6,182,212,0.15)]">
         <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>AMAZON CYBER MALL • WEB3 MARKETPLACE</span>
+              <span>TETHERMART CYBER MALL • WEB3 MARKETPLACE</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              TetherPlus Official Mall
+              TetherMart Official Mall
             </h1>
             <p className="text-slate-300 text-xs max-w-xl">
-              Buy hardware wallets, mining rigs, gadgets & official apparel directly using your Upgrade / Marketing Fund Wallet. (Main Wallet is reserved exclusively for withdrawals).
+              Buy hardware wallets, mining rigs, gadgets & official apparel directly using your Shopping / Marketing Fund Wallet. (Main Wallet is reserved exclusively for withdrawals).
             </p>
           </div>
 
@@ -156,7 +156,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
           <div className="bg-[#050911]/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between md:justify-end gap-3 font-mono">
             <div className="space-y-1">
               <div className="text-[10px] text-amber-400 uppercase font-bold flex items-center gap-1">
-                <span>Upgrade Fund Wallet (Mall & Marketing):</span>
+                <span>Shopping Fund Wallet (Mall & Marketing):</span>
                 <span className="text-white text-xs font-black">${currentUser.upgradeBalance.toFixed(2)} USDT</span>
               </div>
               <div className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
@@ -290,7 +290,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                           )}
                           {product.featured && (
                             <span className="px-2.5 py-1 bg-cyan-500/90 text-black font-mono font-black text-[10px] uppercase rounded-full shadow-lg">
-                              Amazon Choice
+                              TetherMart Choice
                             </span>
                           )}
                         </div>
@@ -517,7 +517,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                 <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
                   <ShoppingCart className="w-5 h-5 text-amber-400" />
                   <div>
-                    <h3 className="font-bold text-white text-sm">Amazon Checkout Order</h3>
+                    <h3 className="font-bold text-white text-sm">TetherMart Checkout Order</h3>
                     <p className="text-[11px] text-slate-400">Pay directly using your node withdrawable balance</p>
                   </div>
                 </div>
@@ -641,7 +641,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     <span>x{quantity}</span>
                   </div>
                   <div className="flex justify-between text-amber-300 font-bold">
-                    <span>Upgrade Fund Balance:</span>
+                    <span>Shopping Fund Balance:</span>
                     <span>${currentUser.upgradeBalance.toFixed(2)} USDT</span>
                   </div>
                   <div className="flex justify-between text-slate-500 text-[10px]">
@@ -654,11 +654,11 @@ export const StoreView: React.FC<StoreViewProps> = ({
                   </div>
                 </div>
 
-                {/* Insufficient upgrade balance alert */}
+                {/* Insufficient shopping balance alert */}
                 {currentUser.upgradeBalance < selectedProduct.priceUsdt * quantity && (
                   <div className="p-3 bg-red-500/10 border border-red-500/40 rounded-xl text-red-300 text-xs flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold">Insufficient Upgrade Fund Wallet</span>
+                      <span className="font-bold">Insufficient Shopping Fund Wallet</span>
                       <button
                         type="button"
                         onClick={() => {

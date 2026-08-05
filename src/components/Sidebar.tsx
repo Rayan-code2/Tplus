@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'store',
-      label: 'Amazon Mall',
+      label: 'TetherMart',
       icon: ShoppingBag,
       badge: 'Hot Deals',
       highlight: true,

@@ -215,6 +215,13 @@ export interface SystemSettings {
   spinCreditsPerReset?: number;
   specialSponsorBonus?: SpecialSponsorBonusConfig;
   ranks: RankConfig[];
+  smtp?: {
+    host?: string;
+    port?: number;
+    user?: string;
+    pass?: string;
+    from?: string;
+  };
 }
 
 export interface MatrixNode {

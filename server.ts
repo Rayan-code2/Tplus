@@ -650,6 +650,24 @@ let state = {
   activeUserId: 'usr-demo',
 };
 
+// SMTP Configuration Helper
+function getSmtpConfig() {
+  const smtpPass = process.env.SMTP_PASS || state.settings?.smtp?.pass;
+  const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || state.settings?.smtp?.from || state.settings?.smtp?.user || 'support@tetherplus.live';
+  const smtpUser = process.env.SMTP_USER || process.env.SMTP_FROM || state.settings?.smtp?.user || smtpFrom;
+  const smtpHost = process.env.SMTP_HOST || state.settings?.smtp?.host || (smtpUser.endsWith('@gmail.com') ? 'smtp.gmail.com' : 'smtpout.secureserver.net');
+  const smtpPort = Number(process.env.SMTP_PORT || state.settings?.smtp?.port) || (smtpHost.includes('gmail') ? 587 : 465);
+
+  return {
+    smtpPass,
+    smtpFrom,
+    smtpUser,
+    smtpHost,
+    smtpPort,
+    isConfigured: Boolean(smtpPass && smtpPass.trim().length > 0),
+  };
+}
+
 // SQLite Database Setup & Persistence Handlers
 async function initSqlite() {
   try {
@@ -767,6 +785,53 @@ async function initSqlite() {
       );
     `);
 
+    // Ensure users table schema matches expected columns
+    try {
+      const userCols = db.exec("PRAGMA table_info(users)");
+      if (userCols.length > 0) {
+        const existingColNames = userCols[0].values.map((v: any) => v[1]);
+        const requiredCols: [string, string][] = [
+          ['walletAddress', 'TEXT DEFAULT ""'],
+          ['sponsorId', 'TEXT DEFAULT ""'],
+          ['activePackageId', 'TEXT DEFAULT ""'],
+          ['packageActivatedAt', 'TEXT DEFAULT ""'],
+          ['packageExpiryDays', 'INTEGER DEFAULT 100'],
+          ['balance', 'REAL DEFAULT 0'],
+          ['depositBalance', 'REAL DEFAULT 0'],
+          ['upgradeBalance', 'REAL DEFAULT 0'],
+          ['totalEarned', 'REAL DEFAULT 0'],
+          ['roiEarned', 'REAL DEFAULT 0'],
+          ['levelEarned', 'REAL DEFAULT 0'],
+          ['sponsorEarned', 'REAL DEFAULT 0'],
+          ['rankEarned', 'REAL DEFAULT 0'],
+          ['boostingEarned', 'REAL DEFAULT 0'],
+          ['spinEarned', 'REAL DEFAULT 0'],
+          ['directReferralsCount', 'INTEGER DEFAULT 0'],
+          ['teamCount', 'INTEGER DEFAULT 0'],
+          ['teamVolume', 'REAL DEFAULT 0'],
+          ['rank', 'TEXT DEFAULT "Member"'],
+          ['status', 'TEXT DEFAULT "active"'],
+          ['registeredAt', 'TEXT DEFAULT ""'],
+          ['lastRoiClaimAt', 'TEXT DEFAULT ""'],
+          ['spinCredits', 'INTEGER DEFAULT 0'],
+          ['lastSpinAt', 'TEXT DEFAULT ""'],
+        ];
+
+        for (const [colName, colType] of requiredCols) {
+          if (!existingColNames.includes(colName)) {
+            try {
+              db.run(`ALTER TABLE users ADD COLUMN ${colName} ${colType};`);
+              console.log(`🔧 Auto-migrated: Added missing column ${colName} to users table in SQLite.`);
+            } catch (colErr) {
+              // Ignore if already exists
+            }
+          }
+        }
+      }
+    } catch (migErr) {
+      console.error('Migration check error:', migErr);
+    }
+
     // Load from SQLite if settings record exists, otherwise fallback to JSON or seed
     const settingsCheck = db.exec('SELECT COUNT(*) as count FROM settings');
     const settingsCount = (settingsCheck[0]?.values[0][0] as number) || 0;
@@ -808,41 +873,125 @@ function saveStore() {
       ]);
 
       // 2. Users
-      db.run('DELETE FROM users;');
-      for (const u of state.users) {
-        db.run(
-          `INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [
-            u.id,
-            u.nodeId,
-            u.name,
-            u.email,
-            u.walletAddress || '',
-            u.sponsorId || '',
-            u.activePackageId || '',
-            u.packageActivatedAt || '',
-            u.packageExpiryDays || 100,
-            u.balance || 0,
-            u.depositBalance || 0,
-            u.upgradeBalance || 0,
-            u.totalEarned || 0,
-            u.roiEarned || 0,
-            u.levelEarned || 0,
-            u.sponsorEarned || 0,
-            u.rankEarned || 0,
-            u.boostingEarned || 0,
-            u.spinEarned || 0,
-            u.directReferralsCount || 0,
-            u.teamCount || 0,
-            u.teamVolume || 0,
-            u.rank || 'Member',
-            u.status || 'active',
-            u.registeredAt || new Date().toISOString(),
-            u.lastRoiClaimAt || new Date().toISOString(),
-            u.spinCredits || 0,
-            u.lastSpinAt || '',
-          ]
-        );
+      try {
+        db.run('DELETE FROM users;');
+        for (const u of state.users) {
+          db.run(
+            `INSERT INTO users (
+              id, nodeId, name, email, walletAddress, sponsorId, activePackageId,
+              packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
+              totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
+              spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
+              registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+              u.id,
+              u.nodeId,
+              u.name,
+              u.email,
+              u.walletAddress || '',
+              u.sponsorId || '',
+              u.activePackageId || '',
+              u.packageActivatedAt || '',
+              u.packageExpiryDays || 100,
+              u.balance || 0,
+              u.depositBalance || 0,
+              u.upgradeBalance || 0,
+              u.totalEarned || 0,
+              u.roiEarned || 0,
+              u.levelEarned || 0,
+              u.sponsorEarned || 0,
+              u.rankEarned || 0,
+              u.boostingEarned || 0,
+              u.spinEarned || 0,
+              u.directReferralsCount || 0,
+              u.teamCount || 0,
+              u.teamVolume || 0,
+              u.rank || 'Member',
+              u.status || 'active',
+              u.registeredAt || new Date().toISOString(),
+              u.lastRoiClaimAt || new Date().toISOString(),
+              u.spinCredits || 0,
+              u.lastSpinAt || '',
+            ]
+          );
+        }
+      } catch (userInsertErr) {
+        console.error('Users table insert failed, recreating users table structure:', userInsertErr);
+        db.run('DROP TABLE IF EXISTS users;');
+        db.run(`
+          CREATE TABLE users (
+            id TEXT PRIMARY KEY,
+            nodeId TEXT,
+            name TEXT,
+            email TEXT,
+            walletAddress TEXT,
+            sponsorId TEXT,
+            activePackageId TEXT,
+            packageActivatedAt TEXT,
+            packageExpiryDays INTEGER,
+            balance REAL,
+            depositBalance REAL,
+            upgradeBalance REAL,
+            totalEarned REAL,
+            roiEarned REAL,
+            levelEarned REAL,
+            sponsorEarned REAL,
+            rankEarned REAL,
+            boostingEarned REAL,
+            spinEarned REAL,
+            directReferralsCount INTEGER,
+            teamCount INTEGER,
+            teamVolume REAL,
+            rank TEXT,
+            status TEXT,
+            registeredAt TEXT,
+            lastRoiClaimAt TEXT,
+            spinCredits INTEGER,
+            lastSpinAt TEXT
+          );
+        `);
+        for (const u of state.users) {
+          db.run(
+            `INSERT INTO users (
+              id, nodeId, name, email, walletAddress, sponsorId, activePackageId,
+              packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
+              totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
+              spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
+              registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+              u.id,
+              u.nodeId,
+              u.name,
+              u.email,
+              u.walletAddress || '',
+              u.sponsorId || '',
+              u.activePackageId || '',
+              u.packageActivatedAt || '',
+              u.packageExpiryDays || 100,
+              u.balance || 0,
+              u.depositBalance || 0,
+              u.upgradeBalance || 0,
+              u.totalEarned || 0,
+              u.roiEarned || 0,
+              u.levelEarned || 0,
+              u.sponsorEarned || 0,
+              u.rankEarned || 0,
+              u.boostingEarned || 0,
+              u.spinEarned || 0,
+              u.directReferralsCount || 0,
+              u.teamCount || 0,
+              u.teamVolume || 0,
+              u.rank || 'Member',
+              u.status || 'active',
+              u.registeredAt || new Date().toISOString(),
+              u.lastRoiClaimAt || new Date().toISOString(),
+              u.spinCredits || 0,
+              u.lastSpinAt || '',
+            ]
+          );
+        }
       }
 
       // 3. Transactions
@@ -1175,59 +1324,65 @@ app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
 
   console.log(`[PASSWORD RESET] OTP generated for user ${user.nodeId} (${user.email}): ${otp}`);
 
-  // Send real email via SMTP if SMTP_PASS is configured
+  // Send real email via SMTP if configured
   let emailSent = false;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || 'support@tetherplus.live';
-  const smtpUser = process.env.SMTP_USER || process.env.SMTP_FROM || smtpFrom;
-  const smtpHost = process.env.SMTP_HOST || (smtpUser.endsWith('@gmail.com') ? 'smtp.gmail.com' : 'smtpout.secureserver.net');
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  let emailErrorMsg: string | undefined = undefined;
+  const smtpConfig = getSmtpConfig();
 
-  if (smtpPass) {
+  if (smtpConfig.isConfigured) {
+    console.log(`[FORGOT PASSWORD] Attempting to send OTP email to ${user.email} via ${smtpConfig.smtpHost}:${smtpConfig.smtpPort} (from ${smtpConfig.smtpFrom})`);
     try {
       const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465, // true for 465 SSL, false for 587 STARTTLS
+        host: smtpConfig.smtpHost,
+        port: smtpConfig.smtpPort,
+        secure: smtpConfig.smtpPort === 465,
         auth: {
-          user: smtpUser,
-          pass: smtpPass,
+          user: smtpConfig.smtpUser,
+          pass: smtpConfig.smtpPass,
+        },
+        tls: {
+          rejectUnauthorized: false,
         },
       });
 
       await transporter.sendMail({
-        from: `"TetherPlus Security" <${smtpFrom}>`,
+        from: `"TetherPlus Security" <${smtpConfig.smtpFrom}>`,
         to: user.email,
         subject: `TetherPlus - Password Reset OTP (${otp})`,
         html: `
-          <div style="font-family: Arial, sans-serif; background-color: #0b1424; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px;">
-            <h2 style="color: #00eeff; margin-top: 0;">TetherPlus Password Reset</h2>
+          <div style="font-family: Arial, sans-serif; background-color: #0b1424; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #1e293b;">
+            <h2 style="color: #00eeff; margin-top: 0; text-align: center;">TetherPlus Password Reset</h2>
             <p>Hello <strong>${user.name || user.nodeId}</strong>,</p>
-            <p>You requested a password reset for your TetherPlus account. Here is your 6-digit verification OTP code:</p>
-            <div style="background-color: #050911; border: 1px solid #334155; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #00eeff;">${otp}</span>
+            <p>You requested a password reset for your TetherPlus account (#${user.nodeId}). Here is your 6-digit verification OTP code:</p>
+            <div style="background-color: #050911; border: 1px solid #00eeff; border-radius: 8px; padding: 18px; text-align: center; margin: 20px 0;">
+              <span style="font-size: 34px; font-weight: bold; letter-spacing: 8px; color: #00eeff;">${otp}</span>
             </div>
             <p style="font-size: 13px; color: #94a3b8;">This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
             <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;" />
-            <p style="font-size: 11px; color: #64748b; text-align: center;">TetherPlus Ecosystem • ${smtpFrom}</p>
+            <p style="font-size: 11px; color: #64748b; text-align: center;">TetherPlus Cyberpunk Ecosystem • ${smtpConfig.smtpFrom}</p>
           </div>
         `,
       });
       emailSent = true;
-      console.log(`[SMTP SUCCESS] Password reset email successfully sent to ${user.email} from ${smtpFrom}`);
-    } catch (mailErr) {
-      console.error('[SMTP ERROR] Failed to send email via SMTP:', mailErr);
+      console.log(`[SMTP SUCCESS] Password reset OTP email successfully sent to ${user.email} from ${smtpConfig.smtpFrom}`);
+    } catch (mailErr: any) {
+      emailErrorMsg = mailErr.message || String(mailErr);
+      console.error(`[SMTP ERROR] Failed to send OTP email to ${user.email}:`, mailErr);
     }
+  } else {
+    console.log(`[FORGOT PASSWORD] SMTP is not configured (SMTP_PASS missing). Skipping email dispatch.`);
   }
 
   res.json({
     success: true,
+    emailSent,
+    emailError: emailErrorMsg,
     message: emailSent
-      ? `Password reset OTP has been sent to ${user.email}.`
-      : `Password reset OTP code generated for ${user.email}.`,
+      ? `Password reset OTP sent to ${user.email}. Please check your inbox (and spam folder).`
+      : `OTP code generated for ${user.email}.${emailErrorMsg ? ` (SMTP warning: ${emailErrorMsg})` : ''}`,
     email: user.email,
     nodeId: user.nodeId,
-    // Provide demo OTP code if SMTP is not configured or in sandbox mode so testing is instant
+    // Provide demo OTP code if SMTP is not configured or if email delivery failed
     otpDemo: (!emailSent || process.env.NODE_ENV !== 'production') ? otp : undefined,
   });
 });
@@ -1380,26 +1535,25 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
   saveStore();
 
   // Send Welcome Email asynchronously via SMTP if configured
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || 'support@tetherplus.live';
-  const smtpUser = process.env.SMTP_USER || process.env.SMTP_FROM || smtpFrom;
-  const smtpHost = process.env.SMTP_HOST || (smtpUser.endsWith('@gmail.com') ? 'smtp.gmail.com' : 'smtpout.secureserver.net');
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  const smtpConfig = getSmtpConfig();
 
-  if (smtpPass) {
+  if (smtpConfig.isConfigured) {
     try {
       const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
+        host: smtpConfig.smtpHost,
+        port: smtpConfig.smtpPort,
+        secure: smtpConfig.smtpPort === 465,
         auth: {
-          user: smtpUser,
-          pass: smtpPass,
+          user: smtpConfig.smtpUser,
+          pass: smtpConfig.smtpPass,
+        },
+        tls: {
+          rejectUnauthorized: false,
         },
       });
 
       transporter.sendMail({
-        from: `"TetherPlus Team" <${smtpFrom}>`,
+        from: `"TetherPlus Team" <${smtpConfig.smtpFrom}>`,
         to: newUser.email,
         subject: `Welcome to TetherPlus Cyberpunk Ecosystem, ${newUser.name}! 🚀`,
         html: `
@@ -1421,7 +1575,7 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
             </div>
 
             <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;" />
-            <p style="font-size: 11px; color: #64748b; text-align: center;">TetherPlus Ecosystem • ${smtpFrom}</p>
+            <p style="font-size: 11px; color: #64748b; text-align: center;">TetherPlus Ecosystem • ${smtpConfig.smtpFrom}</p>
           </div>
         `,
       }).then(() => {
@@ -1754,12 +1908,14 @@ app.post('/api/withdraw', (req: Request, res: Response) => {
   }
 
   // 2. Check Total Lifetime Capacity Capping Rule:
-  // - $10 Package: $10 Max Cap (Must upgrade to $20 Booster Package to unlock higher limits)
-  // - $20 Package: $100 Cap
-  // - $20 Package + 2 Directs: $200 Cap
-  // - Bronze Rank (with $20 Pkg): $400 Cap
-  // - Silver Rank (with $20 Pkg): $700 Cap
-  // - Gold Rank+ (with $20 Pkg): Unlimited Cap
+  // - $10 Package + 2 Directs: $100 Lifetime Cap (Without 2 directs: $10 limit)
+  // - $20 Package + 2 Directs: $200 Lifetime Cap
+  // - $20 Package + 4 Directs (2 previous + 2 new = 4): $400 Lifetime Cap
+  // - $20 Package + 6 Directs: $600 Lifetime Cap
+  // - Bronze Rank: $1,000 Lifetime Cap
+  // - Silver Rank: $2,000 Lifetime Cap
+  // - Gold Rank: $4,000 Lifetime Cap
+  // - Diamond Rank (or higher): No Limit (Unlimited)
   const activePkg = state.settings.packages.find((p) => p.id === user.activePackageId);
   const hasBoosterTx = state.transactions.some(
     (t) => t.userId === user.id && t.notes && (t.notes.includes('Booster Pass') || t.notes.includes('$20') || t.notes.includes('pkg-20'))
@@ -1771,48 +1927,55 @@ app.post('/api/withdraw', (req: Request, res: Response) => {
     hasBoosterTx
   );
 
+  const rankLower = (user.rank || '').toLowerCase();
+  const directsCount = user.directReferralsCount || 0;
+
   let capacityLimit = 10;
   let tierName = '$10 Starter Package ($10 Max Cap)';
   let isUnlimited = false;
 
-  if (!isUpgraded20) {
-    // $10 Starter Package: Maximum $10 withdrawal capacity strictly enforced!
-    capacityLimit = 10;
-    tierName = '$10 Starter Package ($10 Max Cap)';
+  if (
+    rankLower.includes('diamond') ||
+    rankLower.includes('apex') ||
+    rankLower.includes('sovereign') ||
+    rankLower.includes('crown')
+  ) {
+    capacityLimit = Infinity;
+    tierName = 'Diamond Rank (No Limit)';
+    isUnlimited = true;
+  } else if (rankLower.includes('gold')) {
+    capacityLimit = 4000;
+    tierName = 'Gold Rank ($4,000 Lifetime Cap)';
+  } else if (rankLower.includes('silver')) {
+    capacityLimit = 2000;
+    tierName = 'Silver Rank ($2,000 Lifetime Cap)';
+  } else if (rankLower.includes('bronze')) {
+    capacityLimit = 1000;
+    tierName = 'Bronze Rank ($1,000 Lifetime Cap)';
+  } else if (isUpgraded20 && directsCount >= 6) {
+    capacityLimit = 600;
+    tierName = '$20 Package + 6 Directs ($600 Lifetime Cap)';
+  } else if (isUpgraded20 && directsCount >= 4) {
+    capacityLimit = 400;
+    tierName = '$20 Package + 4 Directs ($400 Lifetime Cap)';
+  } else if (isUpgraded20 && directsCount >= 2) {
+    capacityLimit = 200;
+    tierName = '$20 Package + 2 Directs ($200 Lifetime Cap)';
+  } else if (isUpgraded20) {
+    capacityLimit = 100;
+    tierName = '$20 Package (<2 Directs) ($100 Lifetime Cap)';
+  } else if (directsCount >= 2) {
+    capacityLimit = 100;
+    tierName = '$10 Package + 2 Directs ($100 Lifetime Cap)';
   } else {
-    // $20 Booster Package / Upgraded Package unlocks higher caps and rank benefits
-    const rankLower = (user.rank || '').toLowerCase();
-    const directsCount = user.directReferralsCount || 0;
-
-    if (
-      rankLower.includes('gold') ||
-      rankLower.includes('diamond') ||
-      rankLower.includes('apex') ||
-      rankLower.includes('sovereign') ||
-      rankLower.includes('crown')
-    ) {
-      capacityLimit = Infinity;
-      tierName = 'Gold Rank (Unlimited)';
-      isUnlimited = true;
-    } else if (rankLower.includes('silver')) {
-      capacityLimit = 700;
-      tierName = 'Silver Rank ($700 Cap)';
-    } else if (rankLower.includes('bronze')) {
-      capacityLimit = 400;
-      tierName = 'Bronze Rank ($400 Cap)';
-    } else if (directsCount >= 2) {
-      capacityLimit = 200;
-      tierName = '$20 Package + 2 Directs ($200 Cap)';
-    } else {
-      capacityLimit = 100;
-      tierName = '$20 Booster Package ($100 Cap)';
-    }
+    capacityLimit = 10;
+    tierName = '$10 Package (<2 Directs) ($10 Lifetime Cap)';
   }
 
   if (!isUnlimited && (reqAmt > capacityLimit || totalWithdrawnSoFar + reqAmt > capacityLimit)) {
     const remainingCap = Math.max(0, capacityLimit - totalWithdrawnSoFar);
     return res.status(400).json({
-      error: `Withdrawal Limit Exceeded! Your status (${tierName}) allows maximum total withdrawal of $${capacityLimit} USDT. You requested $${reqAmt.toFixed(2)} USDT (already withdrawn: $${totalWithdrawnSoFar.toFixed(2)} USDT). Remaining allowed: $${remainingCap.toFixed(2)} USDT. Please upgrade to $20 Booster package to unlock higher withdrawal limits!`,
+      error: `Withdrawal Capping Limit Exceeded! Your current tier (${tierName}) permits a maximum total lifetime withdrawal of $${capacityLimit} USDT. You requested $${reqAmt.toFixed(2)} USDT (already withdrawn: $${totalWithdrawnSoFar.toFixed(2)} USDT). Remaining allowed capacity: $${remainingCap.toFixed(2)} USDT. Please refer direct members or upgrade rank/package to unlock higher limits.`,
     });
   }
 
@@ -2383,6 +2546,71 @@ app.post('/api/admin/boosting/sync', (req: Request, res: Response) => {
   res.json({ success: true, boostingQueue: state.boostingQueue });
 });
 
+// Admin SMTP Test & Configuration Check
+app.post('/api/admin/smtp-test', async (req: Request, res: Response) => {
+  const { testEmail } = req.body;
+  const config = getSmtpConfig();
+
+  if (!config.isConfigured) {
+    return res.status(400).json({
+      error: 'SMTP Password (SMTP_PASS) is missing. Please set SMTP_PASS in environment variables or Admin Settings.',
+      config: {
+        host: config.smtpHost,
+        port: config.smtpPort,
+        user: config.smtpUser,
+        from: config.smtpFrom,
+        configured: false,
+      },
+    });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: config.smtpHost,
+      port: config.smtpPort,
+      secure: config.smtpPort === 465,
+      auth: {
+        user: config.smtpUser,
+        pass: config.smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    const target = testEmail || config.smtpFrom;
+    await transporter.sendMail({
+      from: `"TetherPlus System" <${config.smtpFrom}>`,
+      to: target,
+      subject: 'TetherPlus SMTP Test Email 🚀',
+      text: `Hello! If you are reading this email, your TetherPlus SMTP configuration for ${config.smtpUser} (${config.smtpHost}:${config.smtpPort}) is working perfectly!`,
+    });
+
+    return res.json({
+      success: true,
+      message: `Test email sent successfully to ${target}!`,
+      config: {
+        host: config.smtpHost,
+        port: config.smtpPort,
+        user: config.smtpUser,
+        from: config.smtpFrom,
+        configured: true,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      error: `Failed to send SMTP email: ${err.message}`,
+      config: {
+        host: config.smtpHost,
+        port: config.smtpPort,
+        user: config.smtpUser,
+        from: config.smtpFrom,
+        configured: true,
+      },
+    });
+  }
+});
+
 // A8. SQLite Admin Info & Database File Download
 app.get('/api/admin/sqlite-status', (req: Request, res: Response) => {
   let fileSizeKb = 0;
@@ -2803,7 +3031,7 @@ app.post('/api/products/buy', (req: Request, res: Response) => {
   const totalCost = product.priceUsdt * quantity;
   if (user.upgradeBalance < totalCost) {
     return res.status(400).json({
-      error: `Insufficient Upgrade Fund Wallet balance ($${user.upgradeBalance.toFixed(2)} USDT available). Required: $${totalCost.toFixed(2)} USDT. Main Wallet is reserved for withdrawals.`,
+      error: `Insufficient Shopping Fund Wallet balance ($${user.upgradeBalance.toFixed(2)} USDT available). Required: $${totalCost.toFixed(2)} USDT. Main Wallet is reserved for withdrawals.`,
     });
   }
 
@@ -2844,7 +3072,7 @@ app.post('/api/products/buy', (req: Request, res: Response) => {
     type: 'product_purchase',
     amount: totalCost,
     status: 'completed',
-    notes: `Purchased ${quantity}x ${itemDesc} from Amazon Store (Deducted from Upgrade Fund Wallet)`,
+    notes: `Purchased ${quantity}x ${itemDesc} from TetherMart (Deducted from Shopping Fund Wallet)`,
     createdAt: new Date().toISOString(),
   });
 

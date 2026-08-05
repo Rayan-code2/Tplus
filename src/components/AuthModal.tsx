@@ -30,6 +30,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [resetOtp, setResetOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotTargetEmail, setForgotTargetEmail] = useState('');
   const [isForgotLoading, setIsForgotLoading] = useState(false);
 
   // Register Form
@@ -148,8 +149,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Request failed');
 
+      if (data.email) {
+        setForgotTargetEmail(data.email);
+      }
+
       if (data.otpDemo) {
-        showToast(`OTP Code generated! Demo OTP: ${data.otpDemo}`, 'success');
+        showToast(`OTP Code: ${data.otpDemo} (Auto-filled)`, 'success');
         setResetOtp(data.otpDemo);
       } else {
         showToast(data.message || 'OTP Code sent to your registered email!', 'success');
@@ -339,7 +344,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <p className="text-[11px] text-slate-400">
                 {forgotStep === 1
                   ? 'Enter your registered Node ID or email address to receive a 6-digit OTP code.'
-                  : `Enter the 6-digit OTP code sent to ${forgotInput} and set your new password.`}
+                  : `Enter the 6-digit OTP code sent to ${forgotTargetEmail || forgotInput} and set your new password.`}
               </p>
             </div>
 
