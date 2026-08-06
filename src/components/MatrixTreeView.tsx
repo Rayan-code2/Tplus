@@ -32,19 +32,79 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
 
   const rootUser = users.find((u) => u.id === selectedRootId) || currentUser;
 
-  // Build recursive children matrix tree (via 2x2 Matrix Placement)
+  // Build 2x2 Forced Matrix Placement Map with strict max 2 children per parent
+  const buildPlacementTree = () => {
+    const childrenMap = new Map<string, User[]>();
+
+    const getChildren = (pId: string) => childrenMap.get(pId) || [];
+
+    const addChild = (pId: string, child: User) => {
+      const existing = childrenMap.get(pId) || [];
+      if (existing.length < 2 && !existing.some((u) => u.id === child.id)) {
+        childrenMap.set(pId, [...existing, child]);
+        return true;
+      }
+      return false;
+    };
+
+    // Sort users by registration or array order
+    const remainingUsers = [...users].filter((u) => u.id !== rootUser.id);
+
+    remainingUsers.forEach((u) => {
+      // 1. Try explicit placementUplineId if valid and < 2 children
+      if (u.placementUplineId) {
+        const added = addChild(u.placementUplineId, u);
+        if (added) return;
+      }
+
+      // 2. Otherwise BFS spillover placement starting from sponsorId (or rootUser)
+      const startSponsorId = u.sponsorId && users.some((s) => s.id === u.sponsorId) ? u.sponsorId : rootUser.id;
+      const queue = [startSponsorId];
+      const visited = new Set<string>([startSponsorId]);
+
+      while (queue.length > 0) {
+        const currParentId = queue.shift()!;
+        const currChildren = getChildren(currParentId);
+
+        if (currChildren.length < 2) {
+          addChild(currParentId, u);
+          break;
+        }
+
+        for (const childNode of currChildren) {
+          if (!visited.has(childNode.id)) {
+            visited.add(childNode.id);
+            queue.push(childNode.id);
+          }
+        }
+      }
+    });
+
+    return childrenMap;
+  };
+
+  const placementMap = buildPlacementTree();
+
+  // Get direct placement children for visual tree
   const getDirectChildren = (parentId: string): User[] => {
-    return users.filter(
+    const list = placementMap.get(parentId) || [];
+    if (!searchQuery) return list;
+    return list.filter(
       (u) =>
-        (u.placementUplineId || u.sponsorId) === parentId &&
-        (searchQuery === '' ||
-          u.nodeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+        u.nodeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
   };
 
-  // Build Dynamic Level Breakdown Table data (Placement Tree)
+  const getUserActivePackage = (u: User) => {
+    if (!u.activePackageId || u.activePackageId === 'none' || u.activePackageId === 'null' || u.activePackageId === '') {
+      return null;
+    }
+    return settings.packages.find((p) => p.id === u.activePackageId) || null;
+  };
+
+  // Build Dynamic Level Breakdown Table data (2x2 Matrix Placement Tree)
   const getLevelBreakdown = (): LevelBreakdownRow[] => {
     const rows: LevelBreakdownRow[] = [];
 
@@ -54,28 +114,37 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
     for (let level = 1; level <= maxLevelCount; level++) {
       const nextLevelUsers: User[] = [];
       currentLevelUsers.forEach((parent) => {
-        const children = users.filter((u) => (u.placementUplineId || u.sponsorId) === parent.id);
+        const children = placementMap.get(parent.id) || [];
         nextLevelUsers.push(...children);
       });
 
       const config = settings.levelIncomePercentages.find((l) => l.level === level);
-      const levelPercent = config ? config.percent : 1;
-      const activeCount = nextLevelUsers.filter((u) => u.activePackageId).length;
+      const levelPercent = config ? config.percent : 0;
 
-      // Calculate total volume of level
+      const activeUsersList = nextLevelUsers.filter((u) => getUserActivePackage(u) !== null);
+      const activeCount = activeUsersList.length;
+      const inactiveCount = nextLevelUsers.length - activeCount;
+
+      // Calculate total volume of level (only from users with active packages)
       const volume = nextLevelUsers.reduce((sum, u) => {
-        const pkg = settings.packages.find((p) => p.id === u.activePackageId);
+        const pkg = getUserActivePackage(u);
         return sum + (pkg ? pkg.price : 0);
       }, 0);
 
       const earned = volume * (levelPercent / 100);
+
+      // Income per active node (e.g., for $10 node at 5% = $0.50 USDT per node)
+      const avgNodePrice = activeCount > 0 ? volume / activeCount : settings.packages[0]?.price || 10;
+      const incomePerNode = avgNodePrice * (levelPercent / 100);
 
       rows.push({
         level,
         percentage: levelPercent,
         totalUsers: nextLevelUsers.length,
         activeUsers: activeCount,
+        inactiveUsers: inactiveCount,
         volume,
+        incomePerNode,
         earned,
       });
 
@@ -86,6 +155,12 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
   };
 
   const levelBreakdown = getLevelBreakdown();
+
+  const totalDownlineMembers = levelBreakdown.reduce((sum, r) => sum + r.totalUsers, 0);
+  const totalActiveNodes = levelBreakdown.reduce((sum, r) => sum + r.activeUsers, 0);
+  const totalInactiveNodes = levelBreakdown.reduce((sum, r) => sum + r.inactiveUsers, 0);
+  const totalMatrixVolume = levelBreakdown.reduce((sum, r) => sum + r.volume, 0);
+  const totalEstEarnings = levelBreakdown.reduce((sum, r) => sum + r.earned, 0);
 
   return (
     <div className="space-y-8 font-mono pb-12">
@@ -164,7 +239,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
               <div className="text-[10px] text-slate-400">
                 Pkg:{' '}
                 <span className="text-emerald-400 font-bold">
-                  {settings.packages.find((p) => p.id === rootUser.activePackageId)?.name || 'None'}
+                  {getUserActivePackage(rootUser)?.name || 'None'}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[10px] pt-2 border-t border-slate-800 text-slate-300">
@@ -188,7 +263,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
               <div className="flex flex-wrap justify-center gap-6">
                 {getDirectChildren(rootUser.id).map((child) => {
                   const grandChildren = getDirectChildren(child.id);
-                  const pkg = settings.packages.find((p) => p.id === child.activePackageId);
+                  const pkg = getUserActivePackage(child);
 
                   return (
                     <div key={child.id} className="flex flex-col items-center space-y-2">
@@ -201,7 +276,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
                           <span className="text-cyan-300 font-bold text-xs">#{child.nodeId}</span>
                           <span
                             className={`w-2 h-2 rounded-full ${
-                              child.activePackageId ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : 'bg-slate-600'
+                              pkg ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : 'bg-slate-600'
                             }`}
                           />
                         </div>
@@ -249,24 +324,52 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
         </div>
       </div>
 
-      {/* 10-LEVEL BREAKDOWN STATS TABLE */}
+      {/* 10-LEVEL BREAKDOWN STATS SUMMARY & TABLE */}
       <div className="space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-          <Layers className="w-4 h-4 text-cyan-400" />
-          10-Level Matrix Performance & Commission Structure
-        </h3>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-cyan-400" />
+            10-Level Matrix Performance & Commission Report
+          </h3>
+        </div>
 
+        {/* STATS OVERVIEW CARDS */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-[#0b1424] border border-slate-800 rounded-xl p-3">
+            <div className="text-[10px] text-slate-400 font-bold uppercase">Total Downline</div>
+            <div className="text-sm font-extrabold text-white mt-0.5">{totalDownlineMembers} Users</div>
+            <div className="text-[10px] text-slate-500 mt-1">
+              <span className="text-emerald-400 font-bold">{totalActiveNodes} Active</span> / {totalInactiveNodes} Inactive
+            </div>
+          </div>
+          <div className="bg-[#0b1424] border border-slate-800 rounded-xl p-3">
+            <div className="text-[10px] text-slate-400 font-bold uppercase">Active Nodes</div>
+            <div className="text-sm font-extrabold text-emerald-400 mt-0.5">{totalActiveNodes} Active</div>
+            <div className="text-[10px] text-slate-500 mt-1">Paid package members</div>
+          </div>
+          <div className="bg-[#0b1424] border border-slate-800 rounded-xl p-3">
+            <div className="text-[10px] text-slate-400 font-bold uppercase">Inactive Nodes</div>
+            <div className="text-sm font-extrabold text-slate-400 mt-0.5">{totalInactiveNodes} Inactive</div>
+            <div className="text-[10px] text-slate-500 mt-1">Free / Unpaid members</div>
+          </div>
+          <div className="bg-[#0b1424] border border-amber-500/30 rounded-xl p-3 bg-amber-500/5">
+            <div className="text-[10px] text-amber-400 font-bold uppercase">Total Level Income</div>
+            <div className="text-sm font-extrabold text-amber-300 mt-0.5">${totalEstEarnings.toFixed(2)} USDT</div>
+            <div className="text-[10px] text-amber-500/80 mt-1">Calculated Level Commission</div>
+          </div>
+        </div>
+
+        {/* CLEAN & TRANSPARENT TABLE */}
         <div className="bg-[#0b1424] border border-cyan-500/30 rounded-2xl overflow-hidden shadow-lg">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
               <thead className="bg-[#050911] text-slate-400 uppercase text-[10px] border-b border-slate-800">
                 <tr>
                   <th className="p-3.5">Level #</th>
-                  <th className="p-3.5">Level Commission %</th>
-                  <th className="p-3.5">Total Users</th>
-                  <th className="p-3.5">Active Nodes</th>
-                  <th className="p-3.5">Level Volume ($)</th>
-                  <th className="p-3.5">Estimated Earnings ($)</th>
+                  <th className="p-3.5">Level Comm. %</th>
+                  <th className="p-3.5">Total Members</th>
+                  <th className="p-3.5">Active / Inactive Status</th>
+                  <th className="p-3.5 text-right">Level Income (USDT)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80 text-slate-300">
@@ -279,12 +382,18 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
                       Level {row.level}
                     </td>
                     <td className="p-3.5 font-bold text-emerald-400">{row.percentage}%</td>
-                    <td className="p-3.5">{row.totalUsers} users</td>
+                    <td className="p-3.5 font-bold text-white">{row.totalUsers} users</td>
                     <td className="p-3.5">
-                      <span className="text-emerald-400 font-bold">{row.activeUsers}</span> active
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                          {row.activeUsers} Active
+                        </span>
+                        <span className="px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700">
+                          {row.inactiveUsers} Inactive
+                        </span>
+                      </div>
                     </td>
-                    <td className="p-3.5 font-bold text-white">${row.volume.toFixed(2)}</td>
-                    <td className="p-3.5 font-bold text-amber-300">
+                    <td className="p-3.5 font-bold text-amber-300 text-right">
                       ${row.earned.toFixed(2)} USDT
                     </td>
                   </tr>

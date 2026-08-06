@@ -235,6 +235,8 @@ export interface LevelBreakdownRow {
   percentage: number;
   totalUsers: number;
   activeUsers: number;
+  inactiveUsers: number;
   volume: number;
+  incomePerNode: number;
   earned: number;
 }
