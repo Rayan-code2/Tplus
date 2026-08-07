@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowDownLeft, QrCode, Copy, Check } from 'lucide-react';
+import { X, ArrowDownLeft, Copy, Check } from 'lucide-react';
 import { SystemSettings } from '../types';
 
 interface DepositModalProps {

@@ -109,7 +109,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
     const rows: LevelBreakdownRow[] = [];
 
     let currentLevelUsers: User[] = [rootUser];
-    const maxLevelCount = Math.max(10, settings.levelIncomePercentages?.length || 10);
+    const maxLevelCount = Math.max(15, settings.levelIncomePercentages?.length || 15);
 
     for (let level = 1; level <= maxLevelCount; level++) {
       const nextLevelUsers: User[] = [];
@@ -169,7 +169,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
         <div>
           <h2 className="text-lg font-bold text-cyan-300 flex items-center gap-2">
             <GitFork className="w-5 h-5 text-cyan-400" />
-            10-Level Matrix Genealogy Tree
+            15-Level Matrix Genealogy Tree
           </h2>
           <p className="text-xs text-slate-400 mt-1">
             Visualizing Node <span className="text-white font-bold">#{rootUser.nodeId}</span> ({rootUser.name})
@@ -324,12 +324,12 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
         </div>
       </div>
 
-      {/* 10-LEVEL BREAKDOWN STATS SUMMARY & TABLE */}
+      {/* 15-LEVEL BREAKDOWN STATS SUMMARY & TABLE */}
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
             <Layers className="w-4 h-4 text-cyan-400" />
-            10-Level Matrix Performance & Commission Report
+            15-Level Matrix Performance & Commission Report
           </h3>
         </div>
 

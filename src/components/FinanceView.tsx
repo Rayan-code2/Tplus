@@ -4,7 +4,6 @@ import {
   ArrowUpRight,
   Copy,
   Check,
-  QrCode,
   ShieldAlert,
   AlertTriangle,
   Clock,
@@ -190,16 +189,6 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                     <Copy className="w-4 h-4" />
                   )}
                 </button>
-              </div>
-
-              {/* QR Code Graphic Mockup */}
-              <div className="flex items-center justify-center py-3 bg-slate-900/60 rounded-xl border border-slate-800">
-                <div className="flex flex-col items-center space-y-1.5">
-                  <div className="p-3 bg-white rounded-xl shadow-lg">
-                    <QrCode className="w-24 h-24 text-black" />
-                  </div>
-                  <span className="text-[10px] text-slate-400">Scan QR to Deposit USDT</span>
-                </div>
               </div>
             </div>
 

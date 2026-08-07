@@ -352,7 +352,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
           <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-            Earn 40% Direct + 10 Levels
+            Earn 40% Direct + 15 Levels
           </span>
         </div>
 
