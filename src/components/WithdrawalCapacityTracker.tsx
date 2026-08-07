@@ -19,7 +19,11 @@ export function getWithdrawalCapacityDetails(
 ) {
   const activePkg = settings.packages?.find((p) => p.id === user.activePackageId);
   const hasBoosterTx = transactions?.some(
-    (t) => t.userId === user.id && t.notes && (t.notes.toLowerCase().includes('booster') || t.notes.includes('$20') || t.notes.includes('pkg-20'))
+    (t) =>
+      t.userId === user.id &&
+      t.notes &&
+      !t.notes.toLowerCase().includes('deposit') &&
+      (t.notes.includes('Activated Package') || t.notes.toLowerCase().includes('booster') || t.notes.includes('pkg-20'))
   );
 
   const isUpgraded20 = !!(

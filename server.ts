@@ -1240,11 +1240,18 @@ function updateTeamVolumeAndCounts() {
 
     const activePkg = state.settings.packages.find((p) => p.id === u.activePackageId);
     const hasBoosterTx = state.transactions.some(
-      (t) => t.userId === u.id && t.notes && (t.notes.includes('Booster Pass') || t.notes.includes('$20') || t.notes.includes('pkg-20'))
+      (t) =>
+        t.userId === u.id &&
+        t.notes &&
+        !t.notes.toLowerCase().includes('deposit') &&
+        (t.notes.includes('Activated Package') || t.notes.includes('Booster Pass') || t.notes.includes('pkg-20'))
     );
-    if (!u.isUpgraded && ((activePkg && (activePkg.price >= 20 || activePkg.isUpgradePackage)) || u.activePackageId === 'pkg-20' || hasBoosterTx)) {
-      u.isUpgraded = true;
-    }
+    const isUpgraded = !!(
+      (activePkg && (activePkg.price >= 20 || activePkg.isUpgradePackage)) ||
+      u.activePackageId === 'pkg-20' ||
+      hasBoosterTx
+    );
+    u.isUpgraded = isUpgraded;
   });
 }
 
@@ -1918,7 +1925,11 @@ app.post('/api/withdraw', (req: Request, res: Response) => {
   // - Diamond Rank (or higher): No Limit (Unlimited)
   const activePkg = state.settings.packages.find((p) => p.id === user.activePackageId);
   const hasBoosterTx = state.transactions.some(
-    (t) => t.userId === user.id && t.notes && (t.notes.includes('Booster Pass') || t.notes.includes('$20') || t.notes.includes('pkg-20'))
+    (t) =>
+      t.userId === user.id &&
+      t.notes &&
+      !t.notes.toLowerCase().includes('deposit') &&
+      (t.notes.includes('Activated Package') || t.notes.includes('Booster Pass') || t.notes.includes('pkg-20'))
   );
   const isUpgraded20 = !!(
     user.isUpgraded ||
