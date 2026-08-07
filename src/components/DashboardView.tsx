@@ -94,6 +94,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
+  const userTransactions = transactions.filter(
+    (tx) => tx.userId === user.id || (user.nodeId && tx.userNodeId === user.nodeId)
+  );
+
   return (
     <div className="space-y-8 font-mono pb-12">
       {/* QUICK MENU TABS BAR */}
@@ -604,14 +608,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800 text-slate-300">
-                {transactions.length === 0 ? (
+                {userTransactions.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-6 text-center text-slate-500">
-                      No recent transactions found.
+                      No recent transactions found for your account.
                     </td>
                   </tr>
                 ) : (
-                  transactions.slice(0, 5).map((tx) => (
+                  userTransactions.slice(0, 8).map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-800/40">
                       <td className="p-3 font-semibold capitalize text-cyan-400">
                         {tx.type.replace('_', ' ')}
