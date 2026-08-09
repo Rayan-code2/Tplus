@@ -356,12 +356,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               <div className="text-[10px] text-slate-400 bg-[#070e1b]/80 p-2 rounded-lg border border-slate-800/80 leading-relaxed">
                 💡 <span className="text-amber-300 font-bold">Withdrawal Capacity Rule:</span> Earnings continue crediting to your wallet normally. Capacity limits dictate how much total USDT you can withdraw:
                 <div className="mt-1 font-mono text-[9.5px] text-slate-300 space-y-0.5">
-                  <div>• $10 Pkg: $10 Max Withdrawal</div>
-                  <div>• $20 Pkg: $100 Max Withdrawal</div>
-                  <div>• $20 Pkg + 2 Directs: $200 Max Withdrawal</div>
-                  <div>• Bronze Rank: $400 Max Withdrawal</div>
-                  <div>• Silver Rank: $700 Max Withdrawal</div>
-                  <div>• Gold Rank+: Unlimited Withdrawal</div>
+                  <div>• $10 Package (0-1 Direct): $10 Max Withdrawal</div>
+                  <div>• $10 Package (2+ Directs): $100 Max Withdrawal</div>
+                  <div>• $20 Package + 2 Directs: $200 Max Withdrawal</div>
+                  <div>• $20 Package + 4 Directs: $400 Max Withdrawal</div>
+                  <div>• $20 Package + 6 Directs: $600 Max Withdrawal</div>
+                  <div>• Bronze Rank: $1,000 Max Withdrawal</div>
+                  <div>• Silver Rank: $2,000 Max Withdrawal</div>
+                  <div>• Gold Rank: $4,000 Max Withdrawal</div>
+                  <div>• Diamond Rank+: UNLIMITED Withdrawal</div>
                 </div>
               </div>
             </div>

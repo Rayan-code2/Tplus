@@ -570,7 +570,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleChangeUserPassword = async (userId: string, currentPass?: string) => {
-    const newPass = prompt(`Change Password for User (Current: "${currentPass || '123456'}"):\nEnter new password:`, currentPass || '123456');
+    const newPass = prompt(`Change Password for User (Current: "${currentPass || 'None'}"):\nEnter new password:`, currentPass || '');
     if (!newPass || !newPass.trim()) return;
     try {
       const res = await fetch('/api/admin/users/change-password', {
@@ -679,7 +679,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditingUser(u);
     setEditName(u.name || '');
     setEditEmail(u.email || '');
-    setEditPassword(u.password || '123456');
+    setEditPassword(u.password || '');
     setEditNodeId(u.nodeId || '');
     setEditWallet(u.walletAddress || '');
     setEditSponsorId(u.sponsorId || '');
@@ -1894,7 +1894,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </td>
                       <td className="p-3">
                         <span className="font-mono text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded text-[11px]">
-                          {u.password || '123456'}
+                          {u.password || 'N/A'}
                         </span>
                       </td>
                       <td className="p-3 flex items-center gap-2">

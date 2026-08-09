@@ -83,32 +83,31 @@ export function getWithdrawalCapacityDetails(
     capacityLimit = 400;
     tierTitle = '$20 Package + 4 Directs ($400 Limit)';
     badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-    nextGoalText = 'Sponsor 2 more direct referrals (total 6 direct) to increase capacity to $600 USDT!';
+    const rem = Math.max(1, 6 - directsCount);
+    nextGoalText = `Sponsor ${rem} more direct referral(s) (total 6 direct) to increase capacity to $600 USDT!`;
     nextLimitText = '$600 USDT';
   } else if (isUpgraded20 && directsCount >= 2) {
     capacityLimit = 200;
     tierTitle = '$20 Package + 2 Directs ($200 Limit)';
     badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-    nextGoalText = 'Sponsor 2 more direct referrals (total 4 direct) to increase capacity to $400 USDT!';
+    const rem = Math.max(1, 4 - directsCount);
+    nextGoalText = `Sponsor ${rem} more direct referral(s) (total 4 direct) to increase capacity to $400 USDT!`;
     nextLimitText = '$400 USDT';
-  } else if (isUpgraded20) {
-    capacityLimit = 100;
-    tierTitle = '$20 Package (<2 Directs) ($100 Limit)';
-    badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-    nextGoalText = 'Sponsor 2 direct referrals to increase capacity to $200 USDT!';
-    nextLimitText = '$200 USDT';
   } else if (directsCount >= 2) {
     capacityLimit = 100;
     tierTitle = '$10 Package + 2 Directs ($100 Limit)';
     badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-    nextGoalText = 'Upgrade to $20 Booster Package to unlock $200+ withdrawal capacity!';
+    nextGoalText = 'Activate $20 Booster Package to unlock $200+ withdrawal capacity!';
     nextLimitText = '$200 USDT';
   } else {
     capacityLimit = 10;
-    tierTitle = '$10 Starter Package ($10 Limit)';
+    tierTitle = isUpgraded20 ? '$20 Package (<2 Directs) ($10 Limit)' : '$10 Starter Package ($10 Limit)';
     badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-    nextGoalText = 'Sponsor 2 direct referrals to unlock $100 withdrawal capacity (or upgrade to $20 Package)!';
-    nextLimitText = '$100 USDT';
+    const rem = Math.max(1, 2 - directsCount);
+    nextGoalText = isUpgraded20
+      ? `Sponsor ${rem} more direct referral(s) (total 2 direct) to unlock $200 USDT capacity!`
+      : `Sponsor ${rem} more direct referral(s) (total 2 direct) to unlock $100 capacity (or $200 with $20 Package)!`;
+    nextLimitText = isUpgraded20 ? '$200 USDT' : '$100 USDT';
   }
 
   // Calculate total withdrawn so far (non-rejected)

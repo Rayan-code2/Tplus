@@ -30,8 +30,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
 
   // Login Form
-  const [loginInput, setLoginInput] = useState('NX-GML9L6');
-  const [loginPassword, setLoginPassword] = useState('123456');
+  const [loginInput, setLoginInput] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Forgot / Reset Password Form

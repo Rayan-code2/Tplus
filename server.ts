@@ -40,7 +40,7 @@ const defaultSettings: SystemSettings = {
       price: 10,
       dailyRoiPercent: 1.5,
       durationDays: 100,
-      maxMatrixLevels: 15,
+      maxMatrixLevels: 10,
       totalRoiReturnPercent: 150,
       sponsorBonusPercent: 10,
       badgeColor: '#10b981',
@@ -191,6 +191,7 @@ const initialUsers: User[] = [
     nodeId: 'NX-ROOT01',
     name: 'Sovereign Nexus (Root Master)',
     email: 'admin@tetherplus.io',
+    password: '123456',
     walletAddress: '0x88921a91e1293348f98a213985',
     sponsorId: null,
     activePackageId: 'pkg-20',
@@ -222,6 +223,7 @@ const initialUsers: User[] = [
     nodeId: 'NX-CYBER1',
     name: 'Cyber Titan',
     email: 'titan@cyber.io',
+    password: '123456',
     walletAddress: '0x321a91e1293348f98a21398501',
     sponsorId: 'usr-root',
     activePackageId: 'pkg-20',
@@ -252,6 +254,7 @@ const initialUsers: User[] = [
     nodeId: 'NX-GML9L6',
     name: 'Alex Cyberpunk (Demo Account)',
     email: 'alex@web3crypto.io',
+    password: '123456',
     walletAddress: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
     sponsorId: 'usr-cyber1',
     activePackageId: 'pkg-10',
@@ -282,6 +285,7 @@ const initialUsers: User[] = [
     nodeId: 'NX-ALPHA2',
     name: 'Neo Matrix',
     email: 'neo@matrix.org',
+    password: '123456',
     walletAddress: '0x992381283918239128391283',
     sponsorId: 'usr-cyber1',
     activePackageId: 'pkg-10',
@@ -312,6 +316,7 @@ const initialUsers: User[] = [
     nodeId: 'NX-BETA3',
     name: 'Valkyrie Crypto',
     email: 'valk@nodes.io',
+    password: '123456',
     walletAddress: '0x129381923812938129381293',
     sponsorId: 'usr-demo',
     activePackageId: 'pkg-10',
@@ -342,6 +347,7 @@ const initialUsers: User[] = [
     nodeId: 'NX-GAMMA4',
     name: 'Solana Spectre',
     email: 'spectre@sol.io',
+    password: '123456',
     walletAddress: '0x881239128391823918239182',
     sponsorId: 'usr-demo',
     activePackageId: 'pkg-20',
@@ -372,6 +378,7 @@ const initialUsers: User[] = [
     nodeId: 'NX-OMEGA6',
     name: 'Aether Sovereign',
     email: 'aether@sovereign.net',
+    password: '123456',
     walletAddress: '0x551293819238192381923812',
     sponsorId: 'usr-beta3',
     activePackageId: 'pkg-20',
@@ -698,6 +705,7 @@ async function initSqlite() {
         nodeId TEXT,
         name TEXT,
         email TEXT,
+        password TEXT,
         walletAddress TEXT,
         sponsorId TEXT,
         activePackageId TEXT,
@@ -791,6 +799,7 @@ async function initSqlite() {
       if (userCols.length > 0) {
         const existingColNames = userCols[0].values.map((v: any) => v[1]);
         const requiredCols: [string, string][] = [
+          ['password', 'TEXT DEFAULT "123456"'],
           ['walletAddress', 'TEXT DEFAULT ""'],
           ['sponsorId', 'TEXT DEFAULT ""'],
           ['activePackageId', 'TEXT DEFAULT ""'],
@@ -878,17 +887,18 @@ function saveStore() {
         for (const u of state.users) {
           db.run(
             `INSERT INTO users (
-              id, nodeId, name, email, walletAddress, sponsorId, activePackageId,
+              id, nodeId, name, email, password, walletAddress, sponsorId, activePackageId,
               packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
               totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
               spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
               registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
               u.id,
               u.nodeId,
               u.name,
               u.email,
+              u.password || '123456',
               u.walletAddress || '',
               u.sponsorId || '',
               u.activePackageId || '',
@@ -925,6 +935,7 @@ function saveStore() {
             nodeId TEXT,
             name TEXT,
             email TEXT,
+            password TEXT,
             walletAddress TEXT,
             sponsorId TEXT,
             activePackageId TEXT,
@@ -954,17 +965,18 @@ function saveStore() {
         for (const u of state.users) {
           db.run(
             `INSERT INTO users (
-              id, nodeId, name, email, walletAddress, sponsorId, activePackageId,
+              id, nodeId, name, email, password, walletAddress, sponsorId, activePackageId,
               packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
               totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
               spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
               registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
             [
               u.id,
               u.nodeId,
               u.name,
               u.email,
+              u.password || '123456',
               u.walletAddress || '',
               u.sponsorId || '',
               u.activePackageId || '',
@@ -1972,15 +1984,14 @@ app.post('/api/withdraw', (req: Request, res: Response) => {
   } else if (isUpgraded20 && directsCount >= 2) {
     capacityLimit = 200;
     tierName = '$20 Package + 2 Directs ($200 Lifetime Cap)';
-  } else if (isUpgraded20) {
-    capacityLimit = 100;
-    tierName = '$20 Package (<2 Directs) ($100 Lifetime Cap)';
   } else if (directsCount >= 2) {
     capacityLimit = 100;
     tierName = '$10 Package + 2 Directs ($100 Lifetime Cap)';
   } else {
     capacityLimit = 10;
-    tierName = '$10 Package (<2 Directs) ($10 Lifetime Cap)';
+    tierName = isUpgraded20
+      ? '$20 Package (<2 Directs) ($10 Lifetime Cap)'
+      : '$10 Package (<2 Directs) ($10 Lifetime Cap)';
   }
 
   if (!isUnlimited && (reqAmt > capacityLimit || totalWithdrawnSoFar + reqAmt > capacityLimit)) {
@@ -2745,7 +2756,7 @@ app.get('/api/admin/users/export-csv', (req: Request, res: Response) => {
       `"${u.sponsorId || ''}"`,
       `"${u.rank || 'Bronze'}"`,
       `"${u.status || 'active'}"`,
-      `"${u.password || '123456'}"`,
+      `"${u.password || ''}"`,
       u.spinCredits || 0,
       `"${u.walletAddress || ''}"`,
       `"${u.registeredAt || ''}"`,
