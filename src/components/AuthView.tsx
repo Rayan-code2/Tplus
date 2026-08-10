@@ -9,6 +9,8 @@ import {
   UserCheck,
   RefreshCw,
   Fingerprint,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { User, SystemSettings } from '../types';
 
@@ -28,6 +30,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
   onContinueAsGuest,
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+
+  // Password Visibility States
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Login Form
   const [loginInput, setLoginInput] = useState('');
@@ -235,15 +242,22 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   <label>Email / Node ID</label>
                 </div>
 
-                <div className="gaurav-input-box">
+                <div className="gaurav-input-box relative">
                   <input
-                    type="password"
+                    type={showLoginPassword ? 'text' : 'password'}
                     required
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className={loginPassword ? 'has-value' : ''}
+                    className={loginPassword ? 'has-value pr-10' : 'pr-10'}
                   />
                   <label>Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-400 hover:text-cyan-300 z-10 p-1"
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
 
                 <div className="gaurav-forgot-pass">
@@ -345,15 +359,22 @@ export const AuthView: React.FC<AuthViewProps> = ({
                       <label>6-Digit OTP Code</label>
                     </div>
 
-                    <div className="gaurav-input-box">
+                    <div className="gaurav-input-box relative">
                       <input
-                        type="password"
+                        type={showNewPassword ? 'text' : 'password'}
                         required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className={newPassword ? 'has-value' : ''}
+                        className={newPassword ? 'has-value pr-10' : 'pr-10'}
                       />
                       <label>New Password</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-400 hover:text-cyan-300 z-10 p-1"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
 
                     <button
@@ -412,15 +433,22 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   <label>Email</label>
                 </div>
 
-                <div className="gaurav-input-box">
+                <div className="gaurav-input-box relative">
                   <input
-                    type="password"
+                    type={showRegPassword ? 'text' : 'password'}
                     required
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className={regPassword ? 'has-value' : ''}
+                    className={regPassword ? 'has-value pr-10' : 'pr-10'}
                   />
                   <label>Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-400 hover:text-cyan-300 z-10 p-1"
+                  >
+                    {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
 
                 <div className="gaurav-input-box">

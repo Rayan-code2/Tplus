@@ -230,6 +230,47 @@ export interface MatrixNode {
   children: MatrixNode[];
 }
 
+export interface LuckyDrawTicket {
+  id: string;
+  ticketNumber: string;
+  userId: string;
+  userNodeId: string;
+  userName: string;
+  purchasedAt: string;
+}
+
+export interface LuckyDrawWinner {
+  id: string;
+  drawTitle: string;
+  ticketNumber: string;
+  userId: string;
+  userNodeId: string;
+  userName: string;
+  prizeAmount: number;
+  prizeTier?: '1st Prize (6 Digits Match)' | '2nd Prize (Last 5 Digits)' | '3rd Prize (Last 4 Digits)' | string;
+  matchedDigits?: number;
+  winningNumber?: string;
+  wonAt: string;
+}
+
+export interface LuckyDrawState {
+  id: string;
+  title: string;
+  description?: string;
+  ticketPrice: number;
+  prizeAmount: number; // 1st Prize
+  secondPrizeAmount?: number; // 2nd Prize (Last 5 Digits Match)
+  thirdPrizeAmount?: number; // 3rd Prize (Last 4 Digits Match)
+  targetEndTime: string;
+  status: 'active' | 'rolling' | 'completed';
+  forcedWinnerUserId?: string | null;
+  forcedWinnerTicketNumber?: string | null;
+  tickets: LuckyDrawTicket[];
+  pastWinners: LuckyDrawWinner[];
+  lastDrawAt?: string;
+  lastWinningNumber?: string;
+}
+
 export interface LevelBreakdownRow {
   level: number;
   percentage: number;

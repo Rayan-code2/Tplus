@@ -245,7 +245,9 @@
       "registeredAt": "2026-04-28T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T14:56:23.737Z",
       "spinCredits": 5,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false,
+      "password": "123456"
     },
     {
       "id": "usr-cyber1",
@@ -274,7 +276,9 @@
       "registeredAt": "2026-05-28T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T13:56:23.737Z",
       "spinCredits": 3,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false,
+      "password": "123456"
     },
     {
       "id": "usr-demo",
@@ -303,7 +307,9 @@
       "registeredAt": "2026-07-02T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T11:56:23.737Z",
       "spinCredits": 2,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false,
+      "password": "123456"
     },
     {
       "id": "usr-alpha2",
@@ -332,7 +338,9 @@
       "registeredAt": "2026-07-07T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T10:56:23.737Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false,
+      "password": "123456"
     },
     {
       "id": "usr-beta3",
@@ -361,7 +369,9 @@
       "registeredAt": "2026-07-15T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T10:23:03.737Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false,
+      "password": "123456"
     },
     {
       "id": "usr-gamma4",
@@ -390,7 +400,9 @@
       "registeredAt": "2026-07-19T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T12:36:23.737Z",
       "spinCredits": 2,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false,
+      "password": "123456"
     },
     {
       "id": "usr-omega6",
@@ -419,7 +431,9 @@
       "registeredAt": "2026-07-22T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T14:56:23.737Z",
       "spinCredits": 4,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false,
+      "password": "123456"
     },
     {
       "id": "usr-1785537091494",
@@ -448,7 +462,9 @@
       "registeredAt": "2026-07-31T22:31:31.494Z",
       "lastRoiClaimAt": "2026-07-31T22:31:31.494Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true,
+      "password": "123456"
     },
     {
       "id": "usr-1785537410379",
@@ -477,7 +493,9 @@
       "registeredAt": "2026-07-31T22:36:50.379Z",
       "lastRoiClaimAt": "2026-07-31T22:36:50.379Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true,
+      "password": "123456"
     },
     {
       "id": "usr-1785537482252",
@@ -506,7 +524,9 @@
       "registeredAt": "2026-07-31T22:38:02.252Z",
       "lastRoiClaimAt": "2026-07-31T22:38:02.252Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true,
+      "password": "123456"
     },
     {
       "id": "usr-1785537563063",
@@ -535,7 +555,9 @@
       "registeredAt": "2026-07-31T22:39:23.063Z",
       "lastRoiClaimAt": "2026-07-31T22:39:23.063Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true,
+      "password": "123456"
     },
     {
       "id": "usr-1785537990692",
@@ -564,7 +586,9 @@
       "registeredAt": "2026-07-31T22:46:30.692Z",
       "lastRoiClaimAt": "2026-07-31T22:46:30.692Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true,
+      "password": "123456"
     },
     {
       "id": "usr-1785538090422",
@@ -593,7 +617,9 @@
       "registeredAt": "2026-07-31T22:48:10.422Z",
       "lastRoiClaimAt": "2026-07-31T22:48:10.422Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true,
+      "password": "123456"
     }
   ],
   "transactions": [
@@ -1333,5 +1359,5 @@
     }
   ],
   "productOrders": [],
-  "activeUserId": "usr-1785538090422"
+  "activeUserId": "usr-root"
 }

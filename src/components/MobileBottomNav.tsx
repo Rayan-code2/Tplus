@@ -5,6 +5,7 @@ import {
   Zap,
   ShoppingBag,
   Disc,
+  Ticket,
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
@@ -23,8 +24,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const navItems = [
     {
       id: 'dashboard',
-      label: 'Dashboard',
+      label: 'Home',
       icon: LayoutDashboard,
+    },
+    {
+      id: 'luckydraw',
+      label: 'Draw',
+      icon: Ticket,
+      isGold: true,
+      badge: 'Win',
     },
     {
       id: 'matrix',
@@ -33,20 +41,18 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     },
     {
       id: 'boosting',
-      label: 'Gold Boost',
+      label: 'Boost',
       icon: Zap,
-      isGold: true,
       badge: '$50',
     },
     {
       id: 'store',
-      label: 'TetherMart',
+      label: 'Store',
       icon: ShoppingBag,
-      badge: 'Hot',
     },
     {
       id: 'rewards',
-      label: 'Spin & Rank',
+      label: 'Rewards',
       icon: Disc,
       badge: user?.spinCredits ? `${user.spinCredits}` : undefined,
     },
@@ -59,7 +65,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#080d14]/95 backdrop-blur-xl border-t border-cyan-500/30 px-1 py-1.5 shadow-[0_-8px_30px_rgba(0,0,0,0.9)]">
-      <div className="grid grid-cols-5 items-center justify-between max-w-md mx-auto">
+      <div className="grid grid-cols-6 items-center justify-between max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

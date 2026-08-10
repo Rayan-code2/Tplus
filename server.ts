@@ -17,6 +17,9 @@ import {
   Product,
   ProductOrder,
   RankConfig,
+  LuckyDrawState,
+  LuckyDrawTicket,
+  LuckyDrawWinner,
 } from './src/types';
 
 const app = express();
@@ -644,6 +647,79 @@ const initialProducts: Product[] = [
 
 const initialOrders: ProductOrder[] = [];
 
+const initialLuckyDraw: LuckyDrawState = {
+  id: 'draw-001',
+  title: '⚡ MEGA USDT ELECTRIC LUCKY DRAW',
+  description: 'Pick your custom 6-digit lucky coupons! Match 6, 5, or 4 digits to win 1st, 2nd, and 3rd USDT prizes!',
+  ticketPrice: 5,
+  prizeAmount: 250, // 1st Prize
+  secondPrizeAmount: 50, // 2nd Prize (Last 5 Digits)
+  thirdPrizeAmount: 10, // 3rd Prize (Last 4 Digits)
+  targetEndTime: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+  status: 'active',
+  forcedWinnerUserId: null,
+  forcedWinnerTicketNumber: null,
+  tickets: [
+    {
+      id: 'tkt-101',
+      ticketNumber: '839210',
+      userId: 'usr-demo',
+      userNodeId: 'NX-GML9L6',
+      userName: 'Alex Cyberpunk (Demo Account)',
+      purchasedAt: new Date(Date.now() - 3600000).toISOString(),
+    },
+    {
+      id: 'tkt-102',
+      ticketNumber: '492015',
+      userId: 'usr-alpha2',
+      userNodeId: 'NX-ALPHA2',
+      userName: 'Neo Matrix',
+      purchasedAt: new Date(Date.now() - 7200000).toISOString(),
+    },
+  ],
+  pastWinners: [
+    {
+      id: 'pwin-001',
+      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
+      ticketNumber: '772910',
+      userId: 'usr-beta3',
+      userNodeId: 'NX-BETA3',
+      userName: 'Valkyrie Crypto',
+      prizeAmount: 250,
+      prizeTier: '1st Prize (6 Digits Match)',
+      matchedDigits: 6,
+      winningNumber: '772910',
+      wonAt: new Date(Date.now() - 86400000).toISOString(),
+    },
+    {
+      id: 'pwin-002',
+      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
+      ticketNumber: '772915',
+      userId: 'usr-alpha2',
+      userNodeId: 'NX-ALPHA2',
+      userName: 'Neo Matrix',
+      prizeAmount: 50,
+      prizeTier: '2nd Prize (Last 5 Digits)',
+      matchedDigits: 5,
+      winningNumber: '772910',
+      wonAt: new Date(Date.now() - 86400000).toISOString(),
+    },
+    {
+      id: 'pwin-003',
+      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
+      ticketNumber: '772900',
+      userId: 'usr-demo',
+      userNodeId: 'NX-GML9L6',
+      userName: 'Alex Cyberpunk (Demo Account)',
+      prizeAmount: 10,
+      prizeTier: '3rd Prize (Last 4 Digits)',
+      matchedDigits: 4,
+      winningNumber: '772910',
+      wonAt: new Date(Date.now() - 86400000).toISOString(),
+    },
+  ],
+};
+
 // Global State Store
 let state = {
   settings: defaultSettings,
@@ -654,6 +730,7 @@ let state = {
   boostingQueue: initialBoostingQueue,
   products: initialProducts,
   productOrders: initialOrders,
+  luckyDraw: initialLuckyDraw,
   activeUserId: 'usr-demo',
 };
 
@@ -868,234 +945,253 @@ function saveStore() {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
 
-    // Always backup to JSON
+    // Ensure every user object has an explicit password fallback if missing
+    if (Array.isArray(state.users)) {
+      state.users.forEach((u) => {
+        if (!u.password) {
+          u.password = '123456';
+        }
+      });
+    }
+
+    // Always backup full state to JSON synchronously first
     fs.writeFileSync(DB_FILE_JSON, JSON.stringify(state, null, 2), 'utf-8');
 
-    // Sync to SQLite database tables
+    // Sync to SQLite database tables safely
     if (db) {
-      // Begin transaction
-      db.run('BEGIN TRANSACTION;');
-
-      // 1. Settings
-      db.run('INSERT OR REPLACE INTO settings (id, data) VALUES (1, ?)', [
-        JSON.stringify(state.settings),
-      ]);
-
-      // 2. Users
       try {
-        db.run('DELETE FROM users;');
-        for (const u of state.users) {
-          db.run(
-            `INSERT INTO users (
-              id, nodeId, name, email, password, walletAddress, sponsorId, activePackageId,
-              packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
-              totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
-              spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
-              registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [
-              u.id,
-              u.nodeId,
-              u.name,
-              u.email,
-              u.password || '123456',
-              u.walletAddress || '',
-              u.sponsorId || '',
-              u.activePackageId || '',
-              u.packageActivatedAt || '',
-              u.packageExpiryDays || 100,
-              u.balance || 0,
-              u.depositBalance || 0,
-              u.upgradeBalance || 0,
-              u.totalEarned || 0,
-              u.roiEarned || 0,
-              u.levelEarned || 0,
-              u.sponsorEarned || 0,
-              u.rankEarned || 0,
-              u.boostingEarned || 0,
-              u.spinEarned || 0,
-              u.directReferralsCount || 0,
-              u.teamCount || 0,
-              u.teamVolume || 0,
-              u.rank || 'Member',
-              u.status || 'active',
-              u.registeredAt || new Date().toISOString(),
-              u.lastRoiClaimAt || new Date().toISOString(),
-              u.spinCredits || 0,
-              u.lastSpinAt || '',
-            ]
-          );
+        try {
+          db.run('BEGIN TRANSACTION;');
+        } catch (_) {
+          // Transaction already active or reset
         }
-      } catch (userInsertErr) {
-        console.error('Users table insert failed, recreating users table structure:', userInsertErr);
-        db.run('DROP TABLE IF EXISTS users;');
-        db.run(`
-          CREATE TABLE users (
-            id TEXT PRIMARY KEY,
-            nodeId TEXT,
-            name TEXT,
-            email TEXT,
-            password TEXT,
-            walletAddress TEXT,
-            sponsorId TEXT,
-            activePackageId TEXT,
-            packageActivatedAt TEXT,
-            packageExpiryDays INTEGER,
-            balance REAL,
-            depositBalance REAL,
-            upgradeBalance REAL,
-            totalEarned REAL,
-            roiEarned REAL,
-            levelEarned REAL,
-            sponsorEarned REAL,
-            rankEarned REAL,
-            boostingEarned REAL,
-            spinEarned REAL,
-            directReferralsCount INTEGER,
-            teamCount INTEGER,
-            teamVolume REAL,
-            rank TEXT,
-            status TEXT,
-            registeredAt TEXT,
-            lastRoiClaimAt TEXT,
-            spinCredits INTEGER,
-            lastSpinAt TEXT
-          );
-        `);
-        for (const u of state.users) {
-          db.run(
-            `INSERT INTO users (
-              id, nodeId, name, email, password, walletAddress, sponsorId, activePackageId,
-              packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
-              totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
-              spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
-              registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-            [
-              u.id,
-              u.nodeId,
-              u.name,
-              u.email,
-              u.password || '123456',
-              u.walletAddress || '',
-              u.sponsorId || '',
-              u.activePackageId || '',
-              u.packageActivatedAt || '',
-              u.packageExpiryDays || 100,
-              u.balance || 0,
-              u.depositBalance || 0,
-              u.upgradeBalance || 0,
-              u.totalEarned || 0,
-              u.roiEarned || 0,
-              u.levelEarned || 0,
-              u.sponsorEarned || 0,
-              u.rankEarned || 0,
-              u.boostingEarned || 0,
-              u.spinEarned || 0,
-              u.directReferralsCount || 0,
-              u.teamCount || 0,
-              u.teamVolume || 0,
-              u.rank || 'Member',
-              u.status || 'active',
-              u.registeredAt || new Date().toISOString(),
-              u.lastRoiClaimAt || new Date().toISOString(),
-              u.spinCredits || 0,
-              u.lastSpinAt || '',
-            ]
-          );
+
+        // 1. Settings
+        db.run('INSERT OR REPLACE INTO settings (id, data) VALUES (1, ?)', [
+          JSON.stringify(state.settings),
+        ]);
+
+        // 2. Users
+        try {
+          db.run('DELETE FROM users;');
+          for (const u of state.users) {
+            db.run(
+              `INSERT INTO users (
+                id, nodeId, name, email, password, walletAddress, sponsorId, activePackageId,
+                packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
+                totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
+                spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
+                registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
+              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              [
+                u.id,
+                u.nodeId,
+                u.name,
+                u.email,
+                u.password || '123456',
+                u.walletAddress || '',
+                u.sponsorId || '',
+                u.activePackageId || '',
+                u.packageActivatedAt || '',
+                u.packageExpiryDays || 100,
+                u.balance || 0,
+                u.depositBalance || 0,
+                u.upgradeBalance || 0,
+                u.totalEarned || 0,
+                u.roiEarned || 0,
+                u.levelEarned || 0,
+                u.sponsorEarned || 0,
+                u.rankEarned || 0,
+                u.boostingEarned || 0,
+                u.spinEarned || 0,
+                u.directReferralsCount || 0,
+                u.teamCount || 0,
+                u.teamVolume || 0,
+                u.rank || 'Member',
+                u.status || 'active',
+                u.registeredAt || new Date().toISOString(),
+                u.lastRoiClaimAt || new Date().toISOString(),
+                u.spinCredits || 0,
+                u.lastSpinAt || '',
+              ]
+            );
+          }
+        } catch (userInsertErr) {
+          console.error('Users table insert failed, recreating structure:', userInsertErr);
+          db.run('DROP TABLE IF EXISTS users;');
+          db.run(`
+            CREATE TABLE users (
+              id TEXT PRIMARY KEY,
+              nodeId TEXT,
+              name TEXT,
+              email TEXT,
+              password TEXT,
+              walletAddress TEXT,
+              sponsorId TEXT,
+              activePackageId TEXT,
+              packageActivatedAt TEXT,
+              packageExpiryDays INTEGER,
+              balance REAL,
+              depositBalance REAL,
+              upgradeBalance REAL,
+              totalEarned REAL,
+              roiEarned REAL,
+              levelEarned REAL,
+              sponsorEarned REAL,
+              rankEarned REAL,
+              boostingEarned REAL,
+              spinEarned REAL,
+              directReferralsCount INTEGER,
+              teamCount INTEGER,
+              teamVolume REAL,
+              rank TEXT,
+              status TEXT,
+              registeredAt TEXT,
+              lastRoiClaimAt TEXT,
+              spinCredits INTEGER,
+              lastSpinAt TEXT
+            );
+          `);
+          for (const u of state.users) {
+            db.run(
+              `INSERT INTO users (
+                id, nodeId, name, email, password, walletAddress, sponsorId, activePackageId,
+                packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
+                totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
+                spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
+                registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
+              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              [
+                u.id,
+                u.nodeId,
+                u.name,
+                u.email,
+                u.password || '123456',
+                u.walletAddress || '',
+                u.sponsorId || '',
+                u.activePackageId || '',
+                u.packageActivatedAt || '',
+                u.packageExpiryDays || 100,
+                u.balance || 0,
+                u.depositBalance || 0,
+                u.upgradeBalance || 0,
+                u.totalEarned || 0,
+                u.roiEarned || 0,
+                u.levelEarned || 0,
+                u.sponsorEarned || 0,
+                u.rankEarned || 0,
+                u.boostingEarned || 0,
+                u.spinEarned || 0,
+                u.directReferralsCount || 0,
+                u.teamCount || 0,
+                u.teamVolume || 0,
+                u.rank || 'Member',
+                u.status || 'active',
+                u.registeredAt || new Date().toISOString(),
+                u.lastRoiClaimAt || new Date().toISOString(),
+                u.spinCredits || 0,
+                u.lastSpinAt || '',
+              ]
+            );
+          }
         }
-      }
 
-      // 3. Transactions
-      db.run('DELETE FROM transactions;');
-      for (const tx of state.transactions) {
-        db.run(`INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?)`, [
-          tx.id,
-          tx.userId,
-          tx.userNodeId,
-          tx.type,
-          tx.amount,
-          tx.status,
-          tx.txHash || '',
-          tx.network || '',
-          tx.notes || '',
-          tx.createdAt,
+        // 3. Transactions
+        db.run('DELETE FROM transactions;');
+        for (const tx of state.transactions) {
+          db.run(`INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?)`, [
+            tx.id,
+            tx.userId,
+            tx.userNodeId,
+            tx.type,
+            tx.amount,
+            tx.status,
+            tx.txHash || '',
+            tx.network || '',
+            tx.notes || '',
+            tx.createdAt,
+          ]);
+        }
+
+        // 4. Deposit Requests
+        db.run('DELETE FROM deposit_requests;');
+        for (const dep of state.depositRequests) {
+          db.run(`INSERT INTO deposit_requests VALUES (?,?,?,?,?,?,?,?,?,?)`, [
+            dep.id,
+            dep.userId,
+            dep.userNodeId,
+            dep.userName,
+            dep.amount,
+            dep.network,
+            dep.txHash,
+            dep.status,
+            dep.createdAt,
+            dep.adminNotes || '',
+          ]);
+        }
+
+        // 5. Withdrawal Requests
+        db.run('DELETE FROM withdrawal_requests;');
+        for (const wd of state.withdrawalRequests) {
+          db.run(`INSERT INTO withdrawal_requests VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
+            wd.id,
+            wd.userId,
+            wd.userNodeId,
+            wd.userName,
+            wd.requestedAmount,
+            wd.upgradeDeduction,
+            wd.gasFee,
+            wd.netAmount,
+            wd.targetAddress,
+            wd.network,
+            wd.status,
+            wd.createdAt,
+            wd.adminNotes || '',
+          ]);
+        }
+
+        // 6. Boosting Queue
+        db.run('DELETE FROM boosting_queue;');
+        for (const b of state.boostingQueue) {
+          db.run(`INSERT INTO boosting_queue VALUES (?,?,?,?,?,?,?,?,?,?)`, [
+            b.id,
+            b.userId,
+            b.nodeId,
+            b.userName,
+            b.packageId,
+            b.rebirthCount,
+            b.position,
+            b.maxRebirthLimit,
+            b.qualifiedAt,
+            b.status,
+          ]);
+        }
+
+        // Meta
+        db.run('INSERT OR REPLACE INTO app_meta VALUES (?, ?)', [
+          'activeUserId',
+          state.activeUserId,
         ]);
-      }
-
-      // 4. Deposit Requests
-      db.run('DELETE FROM deposit_requests;');
-      for (const dep of state.depositRequests) {
-        db.run(`INSERT INTO deposit_requests VALUES (?,?,?,?,?,?,?,?,?,?)`, [
-          dep.id,
-          dep.userId,
-          dep.userNodeId,
-          dep.userName,
-          dep.amount,
-          dep.network,
-          dep.txHash,
-          dep.status,
-          dep.createdAt,
-          dep.adminNotes || '',
+        db.run('INSERT OR REPLACE INTO app_meta VALUES (?, ?)', [
+          'lastSavedAt',
+          new Date().toISOString(),
         ]);
+
+        db.run('COMMIT;');
+
+        // Save binary SQLite database file to disk
+        const binaryArray = db.export();
+        const buffer = Buffer.from(binaryArray);
+        fs.writeFileSync(DB_FILE_SQLITE, buffer);
+      } catch (dbErr) {
+        console.error('Error during SQLite transaction in saveStore:', dbErr);
+        try {
+          db.run('ROLLBACK;');
+        } catch (_) {}
       }
-
-      // 5. Withdrawal Requests
-      db.run('DELETE FROM withdrawal_requests;');
-      for (const wd of state.withdrawalRequests) {
-        db.run(`INSERT INTO withdrawal_requests VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
-          wd.id,
-          wd.userId,
-          wd.userNodeId,
-          wd.userName,
-          wd.requestedAmount,
-          wd.upgradeDeduction,
-          wd.gasFee,
-          wd.netAmount,
-          wd.targetAddress,
-          wd.network,
-          wd.status,
-          wd.createdAt,
-          wd.adminNotes || '',
-        ]);
-      }
-
-      // 6. Boosting Queue
-      db.run('DELETE FROM boosting_queue;');
-      for (const b of state.boostingQueue) {
-        db.run(`INSERT INTO boosting_queue VALUES (?,?,?,?,?,?,?,?,?,?)`, [
-          b.id,
-          b.userId,
-          b.nodeId,
-          b.userName,
-          b.packageId,
-          b.rebirthCount,
-          b.position,
-          b.maxRebirthLimit,
-          b.qualifiedAt,
-          b.status,
-        ]);
-      }
-
-      // Meta
-      db.run('INSERT OR REPLACE INTO app_meta VALUES (?, ?)', [
-        'activeUserId',
-        state.activeUserId,
-      ]);
-      db.run('INSERT OR REPLACE INTO app_meta VALUES (?, ?)', [
-        'lastSavedAt',
-        new Date().toISOString(),
-      ]);
-
-      db.run('COMMIT;');
-
-      // Save binary SQLite database file to disk
-      const binaryArray = db.export();
-      const buffer = Buffer.from(binaryArray);
-      fs.writeFileSync(DB_FILE_SQLITE, buffer);
     }
   } catch (err) {
-    console.error('Failed to save SQLite store:', err);
+    console.error('Failed to save store:', err);
   }
 }
 
@@ -1106,7 +1202,8 @@ function loadFromSqlite() {
     // 1. Settings
     const settingsRes = db.exec('SELECT data FROM settings WHERE id = 1');
     if (settingsRes[0]?.values[0]?.[0]) {
-      state.settings = JSON.parse(settingsRes[0].values[0][0] as string);
+      const parsedSettings = JSON.parse(settingsRes[0].values[0][0] as string);
+      state.settings = { ...defaultSettings, ...parsedSettings };
     }
 
     // 2. Users
@@ -1118,6 +1215,7 @@ function loadFromSqlite() {
         cols.forEach((col, idx) => {
           u[col] = row[idx];
         });
+        if (!u.password) u.password = '123456';
         return u as User;
       });
     }
@@ -1180,6 +1278,24 @@ function loadFromSqlite() {
       state.activeUserId = metaRes[0].values[0][0] as string;
     }
 
+    // Load products, productOrders, and luckyDraw state from JSON backup if available
+    if (fs.existsSync(DB_FILE_JSON)) {
+      try {
+        const jsonData = JSON.parse(fs.readFileSync(DB_FILE_JSON, 'utf-8'));
+        if (jsonData.products && Array.isArray(jsonData.products)) {
+          state.products = jsonData.products;
+        }
+        if (jsonData.productOrders && Array.isArray(jsonData.productOrders)) {
+          state.productOrders = jsonData.productOrders;
+        }
+        if (jsonData.luckyDraw) {
+          state.luckyDraw = jsonData.luckyDraw;
+        }
+      } catch (jsonErr) {
+        console.error('JSON backup load warning in loadFromSqlite:', jsonErr);
+      }
+    }
+
     console.log(`✅ Loaded ${state.users.length} users, ${state.transactions.length} transactions from SQLite!`);
   } catch (err) {
     console.error('Failed to load from SQLite:', err);
@@ -1193,11 +1309,64 @@ function loadStoreJson() {
       const loaded = JSON.parse(data);
       if (loaded) {
         state = { ...state, ...loaded };
+        if (Array.isArray(state.users)) {
+          state.users.forEach((u) => {
+            if (!u.password) u.password = '123456';
+          });
+        }
         console.log('Successfully loaded persisted store from JSON!');
       }
     }
+    ensureLuckyDrawPrizes();
   } catch (err) {
     console.error('Failed to load JSON store:', err);
+  }
+}
+
+function ensureLuckyDrawPrizes() {
+  if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
+  if (!state.luckyDraw.pastWinners) state.luckyDraw.pastWinners = [];
+  if (state.luckyDraw.ticketPrice === undefined) state.luckyDraw.ticketPrice = 5;
+  if (state.luckyDraw.prizeAmount === undefined) state.luckyDraw.prizeAmount = 250;
+  if (state.luckyDraw.secondPrizeAmount === undefined) state.luckyDraw.secondPrizeAmount = 50;
+  if (state.luckyDraw.thirdPrizeAmount === undefined) state.luckyDraw.thirdPrizeAmount = 10;
+
+  const has2nd = state.luckyDraw.pastWinners.some(
+    (w) => w.prizeTier?.includes('2nd') || w.matchedDigits === 5
+  );
+  const has3rd = state.luckyDraw.pastWinners.some(
+    (w) => w.prizeTier?.includes('3rd') || w.matchedDigits === 4
+  );
+
+  if (!has2nd) {
+    state.luckyDraw.pastWinners.push({
+      id: 'pwin-seed-2nd',
+      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
+      ticketNumber: '772915',
+      userId: 'usr-alpha2',
+      userNodeId: 'NX-ALPHA2',
+      userName: 'Neo Matrix',
+      prizeAmount: 50,
+      prizeTier: '2nd Prize (Last 5 Digits)',
+      matchedDigits: 5,
+      winningNumber: '772910',
+      wonAt: new Date(Date.now() - 86400000).toISOString(),
+    });
+  }
+  if (!has3rd) {
+    state.luckyDraw.pastWinners.push({
+      id: 'pwin-seed-3rd',
+      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
+      ticketNumber: '772900',
+      userId: 'usr-demo',
+      userNodeId: 'NX-GML9L6',
+      userName: 'Alex Cyberpunk (Demo Account)',
+      prizeAmount: 10,
+      prizeTier: '3rd Prize (Last 4 Digits)',
+      matchedDigits: 4,
+      winningNumber: '772910',
+      wonAt: new Date(Date.now() - 86400000).toISOString(),
+    });
   }
 }
 
@@ -1456,16 +1625,16 @@ app.post('/api/user/change-password', (req: Request, res: Response) => {
   const user = state.users.find((u) => u.id === state.activeUserId);
   if (!user) return res.status(401).json({ error: 'User not logged in' });
 
-  if (!newPassword || newPassword.length < 4) {
+  if (!newPassword || newPassword.trim().length < 4) {
     return res.status(400).json({ error: 'New password must be at least 4 characters long' });
   }
 
   const existingPass = user.password || '123456';
-  if (currentPassword && currentPassword !== existingPass) {
-    return res.status(400).json({ error: 'Current password is incorrect' });
+  if (currentPassword && currentPassword.trim() !== existingPass) {
+    return res.status(400).json({ error: 'Current password is incorrect. Please check and try again.' });
   }
 
-  user.password = newPassword;
+  user.password = newPassword.trim();
   saveStore();
   return res.json({ success: true, message: 'Your password has been changed successfully!' });
 });
@@ -2001,12 +2170,17 @@ app.post('/api/withdraw', (req: Request, res: Response) => {
     });
   }
 
-  // Shopping Wallet Deduction Rule: 0% for $10 Starter Package, 30% for $20 Booster / Upgraded Package
-  const deductionPercent = isUpgraded20
-    ? (state.settings.upgradeFundDeductionPercent !== undefined ? state.settings.upgradeFundDeductionPercent : 30)
-    : 0; // 0% for $10 package
+  // Shopping Wallet Deduction Rule: Dynamic from settings.upgradeFundDeductionPercent
+  const deductionPercent = state.settings.upgradeFundDeductionPercent !== undefined
+    ? Number(state.settings.upgradeFundDeductionPercent)
+    : 30;
   const upgradeDeduction = reqAmt * (deductionPercent / 100);
-  const gasFee = 1.5;
+
+  // Dynamic Withdrawal Fee % from settings.withdrawalFeePercent
+  const feePercent = state.settings.withdrawalFeePercent !== undefined
+    ? Number(state.settings.withdrawalFeePercent)
+    : 2;
+  const gasFee = reqAmt * (feePercent / 100);
   const netAmount = Math.max(0, reqAmt - upgradeDeduction - gasFee);
 
   // Deduct requested amount from available balance
@@ -2076,12 +2250,17 @@ app.post('/api/spin', (req: Request, res: Response) => {
   user.spinCredits -= 1;
   user.lastSpinAt = new Date().toISOString();
 
-  // Weighted random pick
-  const rewards = state.settings.spinWheelRewards;
-  const totalWeight = rewards.reduce((sum, r) => sum + r.probability, 0);
-  let randomVal = Math.random() * totalWeight;
+  // Weighted random pick from dynamic spinWheelRewards
+  const rewards = (state.settings.spinWheelRewards || []).map((r) => ({
+    ...r,
+    amount: Number(r.amount) || 0,
+    probability: Number(r.probability) || 0,
+  }));
 
-  let winningReward = rewards[0];
+  const totalWeight = rewards.reduce((sum, r) => sum + r.probability, 0);
+  let randomVal = Math.random() * (totalWeight > 0 ? totalWeight : 1);
+
+  let winningReward = rewards[0] || { id: 'sp-fallback', label: 'Try Again', amount: 0, probability: 100, color: '#374151' };
   for (const r of rewards) {
     if (randomVal < r.probability) {
       winningReward = r;
@@ -2224,6 +2403,359 @@ app.post('/api/rank/claim', (req: Request, res: Response) => {
   res.json({ success: true, user, rank });
 });
 
+// 10. Lucky Draw API Endpoints
+app.get('/api/luckydraw', (req: Request, res: Response) => {
+  if (!state.luckyDraw) {
+    state.luckyDraw = initialLuckyDraw;
+  }
+  ensureLuckyDrawPrizes();
+  res.json({ success: true, luckyDraw: state.luckyDraw });
+});
+
+app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
+  const { userId, quantity, customNumbers } = req.body;
+  const qty = parseInt(quantity) || 1;
+  const user = state.users.find((u) => u.id === userId || u.id === state.activeUserId);
+
+  if (!user) return res.status(400).json({ error: 'User not found' });
+  if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
+
+  const ticketPrice = state.luckyDraw.ticketPrice ?? 5;
+  const totalCost = ticketPrice * qty;
+
+  // Validate custom numbers if supplied
+  const chosenNumbers: string[] = Array.isArray(customNumbers) ? customNumbers : [];
+  for (const num of chosenNumbers) {
+    if (num && !/^\d{6}$/.test(num)) {
+      return res.status(400).json({ error: `Invalid coupon number '${num}'. Must be exactly 6 digits (000000 to 999999).` });
+    }
+  }
+
+  // Deduct from depositBalance first, then balance
+  if (user.depositBalance >= totalCost) {
+    user.depositBalance -= totalCost;
+  } else if (user.balance >= totalCost) {
+    user.balance -= totalCost;
+  } else {
+    return res.status(400).json({
+      error: `Insufficient balance! Total cost: $${totalCost} USDT. (Available Deposit: $${user.depositBalance}, Withdrawable: $${user.balance})`,
+    });
+  }
+
+  const existingTicketNumbers = new Set(state.luckyDraw.tickets.map((t) => t.ticketNumber));
+  const newTickets: LuckyDrawTicket[] = [];
+
+  for (let i = 0; i < qty; i++) {
+    let ticketNum = chosenNumbers[i];
+    if (!ticketNum) {
+      // Auto-generate unique 6-digit number
+      let attempts = 0;
+      do {
+        ticketNum = Math.floor(100000 + Math.random() * 900000).toString();
+        attempts++;
+      } while (existingTicketNumbers.has(ticketNum) && attempts < 1000);
+    }
+
+    existingTicketNumbers.add(ticketNum);
+
+    const tkt: LuckyDrawTicket = {
+      id: `tkt-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+      ticketNumber: ticketNum,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      userName: user.name,
+      purchasedAt: new Date().toISOString(),
+    };
+    newTickets.push(tkt);
+    state.luckyDraw.tickets.push(tkt);
+  }
+
+  state.transactions.unshift({
+    id: `tx-${Date.now()}-lkd`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'product_purchase',
+    amount: totalCost,
+    status: 'completed',
+    notes: `Purchased ${qty} Lucky Draw Coupon(s) ($${ticketPrice} USDT each): ${newTickets.map((t) => '#' + t.ticketNumber).join(', ')}`,
+    createdAt: new Date().toISOString(),
+  });
+
+  saveStore();
+  res.json({ success: true, tickets: newTickets, user, luckyDraw: state.luckyDraw });
+});
+
+app.post('/api/luckydraw/admin/config', (req: Request, res: Response) => {
+  const {
+    ticketPrice,
+    prizeAmount,
+    secondPrizeAmount,
+    thirdPrizeAmount,
+    targetEndTime,
+    status,
+    forcedWinnerUserId,
+    forcedWinnerTicketNumber,
+    title,
+    description,
+  } = req.body;
+
+  if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
+
+  if (ticketPrice !== undefined && ticketPrice !== null && ticketPrice !== '' && !isNaN(Number(ticketPrice))) {
+    state.luckyDraw.ticketPrice = Math.max(0, Number(ticketPrice));
+  }
+  if (prizeAmount !== undefined && prizeAmount !== null && prizeAmount !== '' && !isNaN(Number(prizeAmount))) {
+    state.luckyDraw.prizeAmount = Math.max(0, Number(prizeAmount));
+  }
+  if (secondPrizeAmount !== undefined && secondPrizeAmount !== null && secondPrizeAmount !== '' && !isNaN(Number(secondPrizeAmount))) {
+    state.luckyDraw.secondPrizeAmount = Math.max(0, Number(secondPrizeAmount));
+  }
+  if (thirdPrizeAmount !== undefined && thirdPrizeAmount !== null && thirdPrizeAmount !== '' && !isNaN(Number(thirdPrizeAmount))) {
+    state.luckyDraw.thirdPrizeAmount = Math.max(0, Number(thirdPrizeAmount));
+  }
+  if (targetEndTime) state.luckyDraw.targetEndTime = targetEndTime;
+  if (status) state.luckyDraw.status = status;
+  if (title) state.luckyDraw.title = title;
+  if (description !== undefined) state.luckyDraw.description = description;
+
+  state.luckyDraw.forcedWinnerUserId = forcedWinnerUserId || null;
+  state.luckyDraw.forcedWinnerTicketNumber = forcedWinnerTicketNumber || null;
+
+  saveStore();
+  res.json({ success: true, luckyDraw: state.luckyDraw });
+});
+
+app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
+  if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
+
+  const { forcedWinnerUserId, forcedWinnerTicketNumber } = req.body;
+  const targetForcedUser = forcedWinnerUserId || state.luckyDraw.forcedWinnerUserId;
+  const targetForcedTicket = forcedWinnerTicketNumber || state.luckyDraw.forcedWinnerTicketNumber;
+
+  let winningNumber = '';
+
+  // 1. Determine Winning 6-digit Number
+  if (targetForcedTicket && /^\d{6}$/.test(targetForcedTicket)) {
+    winningNumber = targetForcedTicket;
+  } else if (targetForcedUser) {
+    const userTickets = state.luckyDraw.tickets.filter((t) => t.userId === targetForcedUser);
+    if (userTickets.length > 0) {
+      winningNumber = userTickets[Math.floor(Math.random() * userTickets.length)].ticketNumber;
+    }
+  }
+
+  if (!winningNumber) {
+    if (state.luckyDraw.tickets.length > 0) {
+      const randomTkt = state.luckyDraw.tickets[Math.floor(Math.random() * state.luckyDraw.tickets.length)];
+      winningNumber = randomTkt.ticketNumber;
+    } else {
+      winningNumber = Math.floor(100000 + Math.random() * 900000).toString();
+    }
+  }
+
+  // 2. Scan ALL sold tickets in current round for 1st, 2nd, and 3rd prize matches
+  const firstPrizeAmount = state.luckyDraw.prizeAmount ?? 250;
+  const secondPrizeAmount = state.luckyDraw.secondPrizeAmount ?? 50;
+  const thirdPrizeAmount = state.luckyDraw.thirdPrizeAmount ?? 10;
+
+  const last5 = winningNumber.slice(-5);
+  const last4 = winningNumber.slice(-4);
+
+  const winnersList: LuckyDrawWinner[] = [];
+  const processedTicketIds = new Set<string>();
+
+  // 1st Prize (Exact 6 digits match or winning coupon in pool)
+  let firstPrizeTickets = state.luckyDraw.tickets.filter((t) => t.ticketNumber === winningNumber);
+  if (firstPrizeTickets.length === 0 && state.luckyDraw.tickets.length > 0) {
+    firstPrizeTickets = [state.luckyDraw.tickets[0]];
+  }
+  for (const tkt of firstPrizeTickets) {
+    processedTicketIds.add(tkt.id);
+    const u = state.users.find((usr) => usr.id === tkt.userId);
+    if (u) {
+      u.balance += firstPrizeAmount;
+      u.totalEarned += firstPrizeAmount;
+      state.transactions.unshift({
+        id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-1st`,
+        userId: u.id,
+        userNodeId: u.nodeId,
+        type: 'admin_adjust',
+        amount: firstPrizeAmount,
+        status: 'completed',
+        notes: `🏆 1st Prize Winner of Lucky Draw Coupon #${tkt.ticketNumber} ($${firstPrizeAmount} USDT)`,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    winnersList.push({
+      id: `pwin-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      drawTitle: state.luckyDraw.title,
+      ticketNumber: tkt.ticketNumber,
+      userId: tkt.userId,
+      userNodeId: tkt.userNodeId,
+      userName: tkt.userName,
+      prizeAmount: firstPrizeAmount,
+      prizeTier: '1st Prize (6 Digits Match)',
+      matchedDigits: 6,
+      winningNumber,
+      wonAt: new Date().toISOString(),
+    });
+  }
+
+  // 2nd Prize (Last 5 digits match or runner-up from remaining sold tickets)
+  let secondPrizeTickets = state.luckyDraw.tickets.filter(
+    (t) => !processedTicketIds.has(t.id) && t.ticketNumber.endsWith(last5)
+  );
+  if (secondPrizeTickets.length === 0) {
+    const unproc = state.luckyDraw.tickets.filter((t) => !processedTicketIds.has(t.id));
+    if (unproc.length > 0) {
+      secondPrizeTickets = [unproc[0]];
+    }
+  }
+  for (const tkt of secondPrizeTickets) {
+    processedTicketIds.add(tkt.id);
+    const u = state.users.find((usr) => usr.id === tkt.userId);
+    if (u) {
+      u.balance += secondPrizeAmount;
+      u.totalEarned += secondPrizeAmount;
+      state.transactions.unshift({
+        id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-2nd`,
+        userId: u.id,
+        userNodeId: u.nodeId,
+        type: 'admin_adjust',
+        amount: secondPrizeAmount,
+        status: 'completed',
+        notes: `🥈 2nd Prize Winner (Matched Last 5 Digits / Runner-Up) Coupon #${tkt.ticketNumber} ($${secondPrizeAmount} USDT)`,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    winnersList.push({
+      id: `pwin-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      drawTitle: state.luckyDraw.title,
+      ticketNumber: tkt.ticketNumber,
+      userId: tkt.userId,
+      userNodeId: tkt.userNodeId,
+      userName: tkt.userName,
+      prizeAmount: secondPrizeAmount,
+      prizeTier: '2nd Prize (Last 5 Digits)',
+      matchedDigits: 5,
+      winningNumber,
+      wonAt: new Date().toISOString(),
+    });
+  }
+
+  // 3rd Prize (Last 4 digits match or runner-up from remaining sold tickets)
+  let thirdPrizeTickets = state.luckyDraw.tickets.filter(
+    (t) => !processedTicketIds.has(t.id) && t.ticketNumber.endsWith(last4)
+  );
+  if (thirdPrizeTickets.length === 0) {
+    const unproc = state.luckyDraw.tickets.filter((t) => !processedTicketIds.has(t.id));
+    if (unproc.length > 0) {
+      thirdPrizeTickets = [unproc[0]];
+    }
+  }
+  for (const tkt of thirdPrizeTickets) {
+    processedTicketIds.add(tkt.id);
+    const u = state.users.find((usr) => usr.id === tkt.userId);
+    if (u) {
+      u.balance += thirdPrizeAmount;
+      u.totalEarned += thirdPrizeAmount;
+      state.transactions.unshift({
+        id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-3rd`,
+        userId: u.id,
+        userNodeId: u.nodeId,
+        type: 'admin_adjust',
+        amount: thirdPrizeAmount,
+        status: 'completed',
+        notes: `🥉 3rd Prize Winner (Matched Last 4 Digits / Runner-Up) Coupon #${tkt.ticketNumber} ($${thirdPrizeAmount} USDT)`,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    winnersList.push({
+      id: `pwin-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      drawTitle: state.luckyDraw.title,
+      ticketNumber: tkt.ticketNumber,
+      userId: tkt.userId,
+      userNodeId: tkt.userNodeId,
+      userName: tkt.userName,
+      prizeAmount: thirdPrizeAmount,
+      prizeTier: '3rd Prize (Last 4 Digits)',
+      matchedDigits: 4,
+      winningNumber,
+      wonAt: new Date().toISOString(),
+    });
+  }
+
+  // If 0 tickets were sold in the current pool, award 1st, 2nd, and 3rd prizes to active users as demo winners
+  if (winnersList.length === 0 && state.users.length > 0) {
+    const u1 = state.users[0];
+    const u2 = state.users[1] || u1;
+    const u3 = state.users[2] || u1;
+
+    winnersList.push(
+      {
+        id: `pwin-${Date.now()}-1`,
+        drawTitle: state.luckyDraw.title,
+        ticketNumber: winningNumber,
+        userId: u1.id,
+        userNodeId: u1.nodeId,
+        userName: u1.name,
+        prizeAmount: firstPrizeAmount,
+        prizeTier: '1st Prize (6 Digits Match)',
+        matchedDigits: 6,
+        winningNumber,
+        wonAt: new Date().toISOString(),
+      },
+      {
+        id: `pwin-${Date.now()}-2`,
+        drawTitle: state.luckyDraw.title,
+        ticketNumber: (parseInt(winningNumber) > 100000 ? parseInt(winningNumber) - 1 : 888888).toString().padStart(6, '0'),
+        userId: u2.id,
+        userNodeId: u2.nodeId,
+        userName: u2.name,
+        prizeAmount: secondPrizeAmount,
+        prizeTier: '2nd Prize (Last 5 Digits)',
+        matchedDigits: 5,
+        winningNumber,
+        wonAt: new Date().toISOString(),
+      },
+      {
+        id: `pwin-${Date.now()}-3`,
+        drawTitle: state.luckyDraw.title,
+        ticketNumber: (parseInt(winningNumber) > 100000 ? parseInt(winningNumber) - 2 : 777777).toString().padStart(6, '0'),
+        userId: u3.id,
+        userNodeId: u3.nodeId,
+        userName: u3.name,
+        prizeAmount: thirdPrizeAmount,
+        prizeTier: '3rd Prize (Last 4 Digits)',
+        matchedDigits: 4,
+        winningNumber,
+        wonAt: new Date().toISOString(),
+      }
+    );
+  }
+
+  // Record Past Winners
+  if (!state.luckyDraw.pastWinners) state.luckyDraw.pastWinners = [];
+  state.luckyDraw.pastWinners.unshift(...winnersList);
+
+  // Reset for next draw round
+  state.luckyDraw.lastWinningNumber = winningNumber;
+  state.luckyDraw.tickets = [];
+  state.luckyDraw.status = 'completed';
+  state.luckyDraw.lastDrawAt = new Date().toISOString();
+  state.luckyDraw.targetEndTime = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+  state.luckyDraw.forcedWinnerUserId = null;
+  state.luckyDraw.forcedWinnerTicketNumber = null;
+
+  saveStore();
+  res.json({
+    success: true,
+    winningNumber,
+    winners: winnersList,
+    luckyDraw: state.luckyDraw,
+  });
+});
+
 // 10. Simulate Boosting Queue FIFO Payout & Rebirth
 app.post('/api/boosting/simulate', (req: Request, res: Response) => {
   if (state.boostingQueue.length === 0) {
@@ -2294,7 +2826,73 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
   const newSettings: SystemSettings = req.body;
   if (!newSettings) return res.status(400).json({ error: 'Invalid settings body' });
 
-  state.settings = newSettings;
+  const mergedSettings: SystemSettings = {
+    ...state.settings,
+    ...newSettings,
+  };
+
+  // Sanitize spin wheel rewards
+  if (Array.isArray(mergedSettings.spinWheelRewards)) {
+    mergedSettings.spinWheelRewards = mergedSettings.spinWheelRewards.map((r, i) => ({
+      ...r,
+      id: r.id || `sp-${i + 1}`,
+      label: r.label || `$${r.amount} USDT`,
+      amount: typeof r.amount === 'number' ? r.amount : parseFloat(r.amount as any) || 0,
+      probability: typeof r.probability === 'number' ? r.probability : parseFloat(r.probability as any) || 0,
+      color: r.color || '#10b981',
+    }));
+  }
+
+  // Sanitize level income percentages
+  if (Array.isArray(mergedSettings.levelIncomePercentages)) {
+    mergedSettings.levelIncomePercentages = mergedSettings.levelIncomePercentages.map((l, i) => ({
+      level: l.level || i + 1,
+      percent: typeof l.percent === 'number' ? l.percent : parseFloat(l.percent as any) || 0,
+    }));
+  }
+
+  // Sanitize packages
+  if (Array.isArray(mergedSettings.packages)) {
+    mergedSettings.packages = mergedSettings.packages.map((p) => ({
+      ...p,
+      price: typeof p.price === 'number' ? p.price : parseFloat(p.price as any) || 0,
+      dailyRoiPercent: typeof p.dailyRoiPercent === 'number' ? p.dailyRoiPercent : parseFloat(p.dailyRoiPercent as any) || 0,
+      sponsorBonusPercent: typeof p.sponsorBonusPercent === 'number' ? p.sponsorBonusPercent : parseFloat(p.sponsorBonusPercent as any) || 0,
+      totalRoiReturnPercent: typeof p.totalRoiReturnPercent === 'number' ? p.totalRoiReturnPercent : parseFloat(p.totalRoiReturnPercent as any) || 0,
+      durationDays: typeof p.durationDays === 'number' ? p.durationDays : parseInt(p.durationDays as any) || 100,
+      maxMatrixLevels: typeof p.maxMatrixLevels === 'number' ? p.maxMatrixLevels : parseInt(p.maxMatrixLevels as any) || 10,
+    }));
+  }
+
+  // Sanitize ranks
+  if (Array.isArray(mergedSettings.ranks)) {
+    mergedSettings.ranks = mergedSettings.ranks.map((rnk, i) => ({
+      ...rnk,
+      id: rnk.id || `rnk-${i + 1}`,
+      bonusUsdt: typeof rnk.bonusUsdt === 'number' ? rnk.bonusUsdt : parseFloat(rnk.bonusUsdt as any) || 0,
+      minSelfPackagePrice: typeof rnk.minSelfPackagePrice === 'number' ? rnk.minSelfPackagePrice : parseFloat(rnk.minSelfPackagePrice as any) || 0,
+      requiredDirects: typeof rnk.requiredDirects === 'number' ? rnk.requiredDirects : parseInt(rnk.requiredDirects as any) || 0,
+      requiredSamePackageCount: typeof rnk.requiredSamePackageCount === 'number' ? rnk.requiredSamePackageCount : parseInt(rnk.requiredSamePackageCount as any) || 0,
+      upToLevel: typeof rnk.upToLevel === 'number' ? rnk.upToLevel : parseInt(rnk.upToLevel as any) || 0,
+      requiredVolume: typeof rnk.requiredVolume === 'number' ? rnk.requiredVolume : parseFloat(rnk.requiredVolume as any) || 0,
+    }));
+  }
+
+  if (mergedSettings.spinWheelIntervalHours !== undefined) {
+    mergedSettings.spinWheelIntervalHours = parseInt(mergedSettings.spinWheelIntervalHours as any) || 24;
+  }
+  if (mergedSettings.spinCreditsPerReset !== undefined) {
+    mergedSettings.spinCreditsPerReset = parseInt(mergedSettings.spinCreditsPerReset as any) || 1;
+  }
+
+  if (mergedSettings.withdrawalFeePercent !== undefined) {
+    mergedSettings.withdrawalFeePercent = parseFloat(mergedSettings.withdrawalFeePercent as any) || 0;
+  }
+  if (mergedSettings.upgradeFundDeductionPercent !== undefined) {
+    mergedSettings.upgradeFundDeductionPercent = parseFloat(mergedSettings.upgradeFundDeductionPercent as any) || 0;
+  }
+
+  state.settings = mergedSettings;
   saveStore();
   res.json({ success: true, settings: state.settings });
 });

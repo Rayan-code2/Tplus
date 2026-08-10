@@ -10,6 +10,7 @@ import {
   Users,
   ChevronRight,
   ShoppingBag,
+  Ticket,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -38,6 +39,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Matrix Network',
       icon: GitFork,
       badge: `${user.directReferralsCount} Directs`,
+    },
+    {
+      id: 'luckydraw',
+      label: 'Lucky Draw',
+      icon: Ticket,
+      badge: 'Win USDT',
+      highlight: true,
     },
     {
       id: 'boosting',

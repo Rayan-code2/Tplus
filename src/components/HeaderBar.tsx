@@ -16,6 +16,8 @@ import {
   UserPlus,
   Key,
   Disc,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { User, SystemSettings } from '../types';
 
@@ -52,6 +54,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassInput, setCurrentPassInput] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
   const [passError, setPassError] = useState('');
   const [passSuccess, setPassSuccess] = useState('');
 
@@ -223,28 +227,46 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 <label className="text-xs text-slate-300 font-bold block mb-1">
                   Current Password
                 </label>
-                <input
-                  type="password"
-                  value={currentPassInput}
-                  onChange={(e) => setCurrentPassInput(e.target.value)}
-                  placeholder="Enter current password"
-                  className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 text-xs focus:outline-none focus:border-cyan-500 font-mono"
-                />
+                <div className="relative">
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    value={currentPassInput}
+                    onChange={(e) => setCurrentPassInput(e.target.value)}
+                    placeholder="Enter current password"
+                    className="w-full bg-[#050911] border border-slate-700 rounded-xl pl-3 pr-10 py-2 text-cyan-300 text-xs focus:outline-none focus:border-cyan-500 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-400 transition-colors"
+                  >
+                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="text-xs text-slate-300 font-bold block mb-1">
                   New Password
                 </label>
-                <input
-                  type="password"
-                  value={newPassInput}
-                  onChange={(e) => setNewPassInput(e.target.value)}
-                  placeholder="Enter new password (min 4 chars)"
-                  className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 text-xs focus:outline-none focus:border-cyan-500 font-mono"
-                  required
-                  minLength={4}
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    value={newPassInput}
+                    onChange={(e) => setNewPassInput(e.target.value)}
+                    placeholder="Enter new password (min 4 chars)"
+                    className="w-full bg-[#050911] border border-slate-700 rounded-xl pl-3 pr-10 py-2 text-cyan-300 text-xs focus:outline-none focus:border-cyan-500 font-mono"
+                    required
+                    minLength={4}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-400 transition-colors"
+                  >
+                    {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">

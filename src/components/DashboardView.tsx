@@ -100,42 +100,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-8 font-mono pb-12">
-      {/* QUICK MENU TABS BAR */}
-      {onSelectTab && (
-        <div className="bg-[#070e1a] border border-cyan-500/20 p-2 rounded-2xl flex items-center gap-2 overflow-x-auto text-xs shadow-[0_0_15px_rgba(0,0,0,0.4)]">
-          <button
-            onClick={() => onSelectTab('dashboard')}
-            className="px-3.5 py-2 rounded-xl bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 shrink-0"
-          >
-            📊 Dashboard
-          </button>
-          <button
-            onClick={() => onSelectTab('matrix')}
-            className="px-3.5 py-2 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:bg-slate-700/50 transition shrink-0"
-          >
-            🌳 Matrix Network
-          </button>
-          <button
-            onClick={() => onSelectTab('boosting')}
-            className="px-3.5 py-2 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:bg-slate-700/50 transition shrink-0"
-          >
-            ⚡ Gold Boosting
-          </button>
-          <button
-            onClick={() => onSelectTab('finance')}
-            className="px-3.5 py-2 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:bg-slate-700/50 transition shrink-0"
-          >
-            💳 Deposit & Withdraw
-          </button>
-          <button
-            onClick={() => onSelectTab('store')}
-            className="px-3.5 py-2 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:bg-slate-700/50 transition shrink-0"
-          >
-            🛒 TetherMart
-          </button>
-        </div>
-      )}
-
       {/* 1. TOP WALLET CARDS OVERVIEW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Deposit Wallet (Fund Balance) */}

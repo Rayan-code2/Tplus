@@ -40,6 +40,7 @@ import {
   Filter,
   Disc,
   RotateCcw,
+  AlertCircle,
 } from 'lucide-react';
 import {
   User,
@@ -638,6 +639,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Settings Editable Copy State
   const [editableSettings, setEditableSettings] = useState<SystemSettings>(settings);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [isSettingsDirty, setIsSettingsDirty] = useState(false);
+
+  useEffect(() => {
+    if (!isSettingsDirty) {
+      setEditableSettings(settings);
+    }
+  }, [settings, isSettingsDirty]);
+
+  const updateEditableSettings: typeof setEditableSettings = (value) => {
+    setIsSettingsDirty(true);
+    setEditableSettings(value);
+  };
 
   // User Balance Edit Modal / Inline
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -781,9 +794,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setSavingSettings(true);
     try {
       await onUpdateSettings(editableSettings);
+      setIsSettingsDirty(false);
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const handleDiscardSettings = () => {
+    setIsSettingsDirty(false);
+    setEditableSettings(settings);
   };
 
   const filteredUsers = users.filter(
@@ -947,14 +966,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 Configure Daily ROI rates, Max Capping %, Team Level Commissions, and Wallet Rules in real-time.
               </p>
             </div>
-            <button
-              onClick={handleSaveSettings}
-              disabled={savingSettings}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-extrabold text-xs transition shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center gap-2 shrink-0"
-            >
-              <Save className="w-4 h-4" />
-              {savingSettings ? 'Saving All Changes...' : 'Save All Settings'}
-            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              {isSettingsDirty && (
+                <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold flex items-center gap-1.5 animate-pulse">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                  Unsaved Changes
+                </span>
+              )}
+              {isSettingsDirty && (
+                <button
+                  type="button"
+                  onClick={handleDiscardSettings}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition"
+                >
+                  Discard
+                </button>
+              )}
+              <button
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-extrabold text-xs transition shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center gap-2 shrink-0"
+              >
+                <Save className="w-4 h-4" />
+                {savingSettings ? 'Saving All Changes...' : 'Save All Settings'}
+              </button>
+            </div>
           </div>
 
           {/* SECTION 1: DAILY ROI & PACKAGE CAPPING MANAGER */}

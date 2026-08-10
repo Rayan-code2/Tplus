@@ -15,6 +15,24 @@ import {
   MapPin,
   X,
   Sparkles,
+  Heart,
+  Eye,
+  LayoutGrid,
+  List,
+  Filter,
+  ArrowRight,
+  Plus,
+  Minus,
+  Trash2,
+  BadgePercent,
+  Check,
+  ShoppingBag,
+  Share2,
+  RefreshCw,
+  Gift,
+  HelpCircle,
+  ChevronDown,
+  Menu,
 } from 'lucide-react';
 import { Product, ProductOrder, User, SystemSettings } from '../types';
 
@@ -33,6 +51,13 @@ interface StoreViewProps {
   onOpenDeposit: () => void;
 }
 
+export interface CartItem {
+  product: Product;
+  quantity: number;
+  selectedSize?: string;
+  selectedColor?: string;
+}
+
 export const StoreView: React.FC<StoreViewProps> = ({
   currentUser,
   settings,
@@ -41,42 +66,130 @@ export const StoreView: React.FC<StoreViewProps> = ({
   onBuyProduct,
   onOpenDeposit,
 }) => {
+  // Navigation & View Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [sortBy, setSortBy] = useState<'featured' | 'priceLow' | 'priceHigh' | 'rating'>('featured');
-  const [activeSubTab, setActiveSubTab] = useState<'store' | 'myOrders'>('store');
+  const [sortBy, setSortBy] = useState<'featured' | 'priceLow' | 'priceHigh' | 'rating' | 'popular'>('featured');
+  const [activeSubTab, setActiveSubTab] = useState<'store' | 'myOrders' | 'wishlist'>('store');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // Checkout modal
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState<number>(1);
-  const [selectedSize, setSelectedSize] = useState<string>('');
-  const [selectedColor, setSelectedColor] = useState<string>('');
+  // Shopping Cart & Wishlist Local States
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [wishlist, setWishlist] = useState<string[]>([]);
+
+  // Hero Slider & Menu State
+  const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
+  const [productSlideIndex, setProductSlideIndex] = useState(0);
+  const [isHeroMenuOpen, setIsHeroMenuOpen] = useState(false);
+
+  // Quick View / Detail Modal
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [quickViewSize, setQuickViewSize] = useState<string>('');
+  const [quickViewColor, setQuickViewColor] = useState<string>('');
+  const [quickViewQty, setQuickViewQty] = useState<number>(1);
+  const [quickViewTab, setQuickViewTab] = useState<'overview' | 'specs' | 'reviews'>('overview');
+
+  // Checkout Modal State (Single or Cart)
+  const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
+  const [checkoutQty, setCheckoutQty] = useState<number>(1);
+  const [checkoutSize, setCheckoutSize] = useState<string>('');
+  const [checkoutColor, setCheckoutColor] = useState<string>('');
   const [shippingAddress, setShippingAddress] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState<ProductOrder | null>(null);
 
+  // Cart Bulk Checkout State
+  const [isCartCheckingOut, setIsCartCheckingOut] = useState(false);
+  const [cartCheckoutSuccess, setCartCheckoutSuccess] = useState(false);
+
+  // Auto lock scroll on open modals/drawers
   useEffect(() => {
-    if (selectedProduct) {
-      const prevHtmlOverflow = document.documentElement.style.overflow;
-      const prevBodyOverflow = document.body.style.overflow;
+    if (quickViewProduct || checkoutProduct || isCartOpen) {
+      const prevHtml = document.documentElement.style.overflow;
+      const prevBody = document.body.style.overflow;
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
-
       return () => {
-        document.documentElement.style.overflow = prevHtmlOverflow;
-        document.body.style.overflow = prevBodyOverflow;
+        document.documentElement.style.overflow = prevHtml;
+        document.body.style.overflow = prevBody;
       };
     }
-  }, [selectedProduct]);
+  }, [quickViewProduct, checkoutProduct, isCartOpen]);
 
-  const categories = ['All', 'Hardware Wallets', 'Mining Hardware', 'Crypto Security', 'Gadgets', 'DePIN Electronics', 'Apparel & Merch'];
+  // Auto Hero Slide Timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentHeroSlide((prev) => (prev + 1) % 3);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
 
-  // Filter & Sort
+  // Auto Sliding Product Images Timer (Top Compact Banner)
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    const timer = setInterval(() => {
+      setProductSlideIndex((prev) => (prev + 1) % products.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [products]);
+
+  const currentSlidingProduct = products && products.length > 0 ? products[productSlideIndex % products.length] : null;
+  const slidingInrPrice = currentSlidingProduct
+    ? currentSlidingProduct.priceInr || currentSlidingProduct.priceUsdt * (settings.rates.usdtToInr || 90)
+    : 0;
+
+  const categories = [
+    'All',
+    'Hardware Wallets',
+    'Mining Hardware',
+    'Crypto Security',
+    'Gadgets',
+    'DePIN Electronics',
+    'Apparel & Merch',
+  ];
+
+  // Hero Carousel Banners Data
+  const heroSlides = [
+    {
+      badge: 'OFFICIAL CYBER MALL • EXCLUSIVE DEALS',
+      title: 'Next-Gen DePIN & Mining Hardware',
+      subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets.',
+      discount: 'UP TO 35% OFF',
+      cta: 'Explore DePIN Rigs',
+      bgGradient: 'from-cyan-950 via-[#0c182c] to-[#050911]',
+      accentColor: 'text-cyan-400',
+      category: 'Mining Hardware',
+    },
+    {
+      badge: 'NEW APPAREL COLLECTION',
+      title: 'TetherMart Official Web3 Merch',
+      subtitle: 'Cyberpunk hoodies, embroidered polo tees & custom caps crafted with premium cotton blends.',
+      discount: 'BUY 1 GET 1 20% OFF',
+      cta: 'Shop Merch',
+      bgGradient: 'from-amber-950 via-[#1f1508] to-[#050911]',
+      accentColor: 'text-amber-400',
+      category: 'Apparel & Merch',
+    },
+    {
+      badge: 'COLD STORAGE SECURITY',
+      title: 'Military-Grade Cold Wallets',
+      subtitle: 'Keep your USDT, Bitcoin & Ethereum unhackable with Ledger, Trezor & Keystone vaults.',
+      discount: 'FREE EXPRESS AIR SHIPPING',
+      cta: 'View Cold Storage',
+      bgGradient: 'from-emerald-950 via-[#0a1e16] to-[#050911]',
+      accentColor: 'text-emerald-400',
+      category: 'Hardware Wallets',
+    },
+  ];
+
+  // Filter & Sort Logic
   const filteredProducts = products.filter((p) => {
     const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
     const matchesSearch =
       p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchTerm.toLowerCase());
+      p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -84,48 +197,105 @@ export const StoreView: React.FC<StoreViewProps> = ({
     if (sortBy === 'priceLow') return a.priceUsdt - b.priceUsdt;
     if (sortBy === 'priceHigh') return b.priceUsdt - a.priceUsdt;
     if (sortBy === 'rating') return b.rating - a.rating;
+    if (sortBy === 'popular') return b.reviewsCount - a.reviewsCount;
     return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
   });
 
   const myOrders = productOrders.filter((o) => o.userId === currentUser.id);
 
-  const handleOpenCheckout = (product: Product) => {
-    setSelectedProduct(product);
-    setQuantity(1);
-    setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : '');
-    setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0] : '');
+  // Cart Management
+  const handleAddToCart = (product: Product, size?: string, color?: string, qty: number = 1) => {
+    const finalSize = size || (product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined);
+    const finalColor = color || (product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+
+    setCartItems((prev) => {
+      const existingIdx = prev.findIndex(
+        (item) => item.product.id === product.id && item.selectedSize === finalSize && item.selectedColor === finalColor
+      );
+      if (existingIdx > -1) {
+        const updated = [...prev];
+        updated[existingIdx].quantity += qty;
+        return updated;
+      }
+      return [...prev, { product, quantity: qty, selectedSize: finalSize, selectedColor: finalColor }];
+    });
+
+    setIsCartOpen(true);
+  };
+
+  const handleUpdateCartQty = (index: number, newQty: number) => {
+    if (newQty <= 0) {
+      handleRemoveCartItem(index);
+      return;
+    }
+    setCartItems((prev) => {
+      const updated = [...prev];
+      updated[index].quantity = newQty;
+      return updated;
+    });
+  };
+
+  const handleRemoveCartItem = (index: number) => {
+    setCartItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const cartTotalUsdt = cartItems.reduce((acc, item) => acc + item.product.priceUsdt * item.quantity, 0);
+
+  // Wishlist Toggle
+  const toggleWishlist = (productId: string) => {
+    setWishlist((prev) => (prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]));
+  };
+
+  // Open Quick View Modal
+  const handleOpenQuickView = (product: Product) => {
+    setQuickViewProduct(product);
+    setQuickViewSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : '');
+    setQuickViewColor(product.colors && product.colors.length > 0 ? product.colors[0] : '');
+    setQuickViewQty(1);
+    setQuickViewTab('overview');
+  };
+
+  // Single Item Direct Buy Now Modal Open
+  const handleOpenCheckout = (product: Product, size?: string, color?: string, qty: number = 1) => {
+    setCheckoutProduct(product);
+    setCheckoutQty(qty);
+    setCheckoutSize(size || (product.sizes && product.sizes.length > 0 ? product.sizes[0] : ''));
+    setCheckoutColor(color || (product.colors && product.colors.length > 0 ? product.colors[0] : ''));
     setShippingAddress(`${currentUser.name}, Node #${currentUser.nodeId}, Web3 Delivery Address`);
     setCheckoutSuccess(null);
   };
 
+  // Single Item Purchase Confirm
   const handleConfirmPurchase = async () => {
-    if (!selectedProduct) return;
+    if (!checkoutProduct) return;
     setIsSubmitting(true);
     try {
       await onBuyProduct(
-        selectedProduct.id,
-        quantity,
+        checkoutProduct.id,
+        checkoutQty,
         shippingAddress,
-        selectedSize || undefined,
-        selectedColor || undefined
+        checkoutSize || undefined,
+        checkoutColor || undefined
       );
       setCheckoutSuccess({
-        id: `ord-temp`,
+        id: `ord-${Date.now()}`,
         userId: currentUser.id,
         userNodeId: currentUser.nodeId,
         userName: currentUser.name,
-        productId: selectedProduct.id,
-        productTitle: selectedProduct.title,
-        productImage: selectedProduct.image,
-        priceUsdt: selectedProduct.priceUsdt,
-        quantity,
-        selectedSize: selectedSize || undefined,
-        selectedColor: selectedColor || undefined,
-        totalUsdt: selectedProduct.priceUsdt * quantity,
+        productId: checkoutProduct.id,
+        productTitle: checkoutProduct.title,
+        productImage: checkoutProduct.image,
+        priceUsdt: checkoutProduct.priceUsdt,
+        quantity: checkoutQty,
+        selectedSize: checkoutSize || undefined,
+        selectedColor: checkoutColor || undefined,
+        totalUsdt: checkoutProduct.priceUsdt * checkoutQty,
         shippingAddress,
         status: 'pending',
         createdAt: new Date().toISOString(),
       });
+      // Remove from cart if present
+      setCartItems((prev) => prev.filter((i) => i.product.id !== checkoutProduct.id));
     } catch (err) {
       console.error(err);
     } finally {
@@ -133,121 +303,264 @@ export const StoreView: React.FC<StoreViewProps> = ({
     }
   };
 
+  // Cart Bulk Purchase Confirm
+  const handleConfirmCartCheckout = async () => {
+    if (cartItems.length === 0) return;
+    if (currentUser.upgradeBalance < cartTotalUsdt) return;
+
+    setIsCartCheckingOut(true);
+    const addressToUse = shippingAddress || `${currentUser.name}, Node #${currentUser.nodeId}, Web3 Delivery Address`;
+
+    try {
+      for (const item of cartItems) {
+        await onBuyProduct(
+          item.product.id,
+          item.quantity,
+          addressToUse,
+          item.selectedSize,
+          item.selectedColor
+        );
+      }
+      setCartItems([]);
+      setCartCheckoutSuccess(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCartCheckingOut(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 font-sans">
-      {/* Top Banner - TetherMart Header */}
-      <div className="bg-gradient-to-r from-[#0c192d] via-[#10203b] to-[#081222] border border-cyan-500/30 rounded-2xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(6,182,212,0.15)]">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>TETHERMART CYBER MALL • WEB3 MARKETPLACE</span>
+    <div className="space-y-4 font-sans text-slate-100 pb-12">
+      {/* 1. TOP QUICK ACTION ICON BAR & SHOPPING FUND */}
+      <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-2.5 sm:p-3.5 shadow-xl relative font-mono">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          {/* Shopping Fund Balance */}
+          <div className="bg-[#050911] border border-slate-800 rounded-xl px-3 py-1.5 flex items-center gap-2.5">
+            <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
+              Shopping Fund:
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              TetherMart Official Mall
-            </h1>
-            <p className="text-slate-300 text-xs max-w-xl">
-              Buy hardware wallets, mining rigs, gadgets & official apparel directly using your Shopping / Marketing Fund Wallet. (Main Wallet is reserved exclusively for withdrawals).
-            </p>
+            <div className="text-xs sm:text-sm font-black text-white flex items-center gap-1">
+              <span>${currentUser.upgradeBalance.toFixed(2)}</span>
+              <span className="text-[9px] text-amber-400 font-normal">USDT</span>
+            </div>
           </div>
 
-          {/* User Available Balance Pill */}
-          <div className="bg-[#050911]/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between md:justify-end gap-3 font-mono">
-            <div className="space-y-1">
-              <div className="text-[10px] text-amber-400 uppercase font-bold flex items-center gap-1">
-                <span>Shopping Fund Wallet (Mall & Marketing):</span>
-                <span className="text-white text-xs font-black">${currentUser.upgradeBalance.toFixed(2)} USDT</span>
-              </div>
-              <div className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                <span>Main Wallet (For Withdrawals Only):</span>
-                <span className="text-emerald-300 font-bold">${currentUser.balance.toFixed(2)} USDT</span>
-              </div>
-            </div>
+          {/* Small Icon Navigation Buttons (My Orders, Saved, My Cart) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-0.5 no-scrollbar w-full sm:w-auto justify-end">
+            {/* 1. My Orders Icon Button */}
             <button
               type="button"
-              onClick={onOpenDeposit}
-              className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-extrabold text-xs rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition"
+              onClick={() => setActiveSubTab(activeSubTab === 'myOrders' ? 'store' : 'myOrders')}
+              className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                activeSubTab === 'myOrders'
+                  ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                  : 'bg-[#050911] text-slate-400 hover:text-white border border-slate-800'
+              }`}
             >
-              + Deposit
+              <PackageCheck className={`w-3.5 h-3.5 ${activeSubTab === 'myOrders' ? 'text-amber-400' : 'text-slate-400'}`} />
+              <span className="text-[11px] sm:text-xs">My Orders</span>
+              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold text-[9px]">
+                {myOrders.length}
+              </span>
+            </button>
+
+            {/* 2. Saved / Wishlist Icon Button */}
+            <button
+              type="button"
+              onClick={() => setActiveSubTab(activeSubTab === 'wishlist' ? 'store' : 'wishlist')}
+              className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                activeSubTab === 'wishlist'
+                  ? 'bg-rose-500/25 text-rose-300 border border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.25)]'
+                  : 'bg-[#050911] text-slate-400 hover:text-white border border-slate-800'
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${wishlist.length > 0 ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+              <span className="text-[11px] sm:text-xs">Saved</span>
+              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-bold text-[9px]">
+                {wishlist.length}
+              </span>
+            </button>
+
+            {/* 3. My Cart Icon Button */}
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center gap-1.5 transition border border-cyan-400/30"
+            >
+              <ShoppingCart className="w-3.5 h-3.5 text-cyan-200" />
+              <span className="text-[11px] sm:text-xs">Cart</span>
+              <span className="bg-amber-400 text-black font-black text-[9px] px-1.5 py-0.2 rounded-full">
+                {cartItems.reduce((a, b) => a + b.quantity, 0)}
+              </span>
             </button>
           </div>
         </div>
-
-        {/* Sub-Tabs: Browse Store vs My Orders */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800 font-mono text-xs">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('store')}
-            className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition ${
-              activeSubTab === 'store'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
-                : 'text-slate-400 hover:text-white border border-transparent'
-            }`}
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span>Browse Products ({products.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('myOrders')}
-            className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition ${
-              activeSubTab === 'myOrders'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-                : 'text-slate-400 hover:text-white border border-transparent'
-            }`}
-          >
-            <PackageCheck className="w-4 h-4" />
-            <span>My Orders ({myOrders.length})</span>
-          </button>
-        </div>
       </div>
 
-      {/* STORE VIEW TAB */}
+      {/* 2. AMAZON-STYLE FULL-BLEED SLIDING PRODUCT IMAGE BANNER BOX */}
+      {products.length > 0 && (
+        <div className="relative w-full h-48 sm:h-64 md:h-72 lg:h-80 rounded-2xl overflow-hidden border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.18)] bg-[#050911] group">
+          {/* Sliding Product Image Background */}
+          {currentSlidingProduct && (
+            <div
+              key={currentSlidingProduct.id}
+              className="relative w-full h-full cursor-pointer transition-all duration-700 ease-in-out"
+              onClick={() => handleOpenQuickView(currentSlidingProduct)}
+            >
+              {/* Product Image full fill */}
+              <img
+                src={currentSlidingProduct.image}
+                alt={currentSlidingProduct.title}
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+              />
+
+              {/* Gradient Dark Overlays for Amazon Aesthetic */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/60 pointer-events-none" />
+
+              {/* Floating Price & Product Title Tag (Bottom Left) */}
+              <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 space-y-1 font-mono max-w-[65%] pointer-events-none">
+                <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-black/75 backdrop-blur-md rounded-lg border border-cyan-500/40 text-cyan-300 text-[10px] sm:text-xs font-bold uppercase shadow-lg">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>{currentSlidingProduct.category}</span>
+                </div>
+                <h3 className="text-sm sm:text-lg md:text-xl font-black text-white line-clamp-1 drop-shadow-md">
+                  {currentSlidingProduct.title}
+                </h3>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base sm:text-xl font-black text-emerald-400 drop-shadow">
+                    ${currentSlidingProduct.priceUsdt} USDT
+                  </span>
+                  <span className="text-xs text-slate-400 line-through hidden xs:inline">
+                    ${(currentSlidingProduct.priceUsdt * 1.25).toFixed(0)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Floating Buy Now Button (Bottom Right) */}
+              <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-20 font-mono">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenCheckout(currentSlidingProduct);
+                  }}
+                  className="px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs sm:text-sm rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.5)] flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 uppercase tracking-wider border border-amber-300/50"
+                >
+                  <span>Buy Now</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Left / Right Slide Navigation Arrow Buttons */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setProductSlideIndex((prev) => (prev - 1 + products.length) % products.length);
+            }}
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-70 group-hover:opacity-100 transition shadow-lg"
+            title="Previous Product Image"
+          >
+            ‹
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setProductSlideIndex((prev) => (prev + 1) % products.length);
+            }}
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-70 group-hover:opacity-100 transition shadow-lg"
+            title="Next Product Image"
+          >
+            ›
+          </button>
+
+          {/* Slide Dots Indicator Top Right */}
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+            {products.slice(0, 8).map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setProductSlideIndex(idx);
+                }}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  productSlideIndex % products.length === idx
+                    ? 'w-4 bg-amber-400'
+                    : 'w-1.5 bg-white/40 hover:bg-white/70'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* MAIN STORE CONTENT VIEW */}
+
+
+
+      {/* 4. MAIN STORE CONTENT VIEW */}
       {activeSubTab === 'store' && (
         <div className="space-y-6">
-          {/* Controls Bar: Search & Filters */}
-          <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-            {/* Search Input */}
-            <div className="relative w-full md:w-80">
+          {/* E-Commerce Search & Filter Toolbar */}
+          <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-4 flex flex-col lg:flex-row items-center justify-between gap-4 font-mono text-xs">
+            {/* Search Box */}
+            <div className="relative w-full lg:w-96">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search products, wallets, GPUs..."
+                placeholder="Search products, wallets, ASIC miners, apparel..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-[#050911] border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+                className="w-full bg-[#050911] border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-2 w-full md:w-auto font-mono text-xs">
-              <SlidersHorizontal className="w-4 h-4 text-slate-400" />
-              <span className="text-slate-400">Sort by:</span>
-              <select
-                value={sortBy}
-                onChange={(e: any) => setSortBy(e.target.value)}
-                className="bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-cyan-500"
-              >
-                <option value="featured">Featured First</option>
-                <option value="priceLow">Price: Low to High</option>
-                <option value="priceHigh">Price: High to Low</option>
-                <option value="rating">Highest Rated</option>
-              </select>
+            {/* Sorting & Layout Grid Options */}
+            <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3 w-full lg:w-auto">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+                <span className="text-slate-400">Sort By:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e: any) => setSortBy(e.target.value)}
+                  className="bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="featured">Featured First</option>
+                  <option value="priceLow">Price: Low to High</option>
+                  <option value="priceHigh">Price: High to Low</option>
+                  <option value="rating">Highest Rated</option>
+                  <option value="popular">Most Popular</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Category Chips Bar */}
+          {/* Category Filter Chips */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none font-mono text-xs">
             {categories.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl font-bold whitespace-nowrap border transition ${
+                className={`px-4 py-2 rounded-xl font-bold whitespace-nowrap border transition ${
                   selectedCategory === cat
-                    ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 border-cyan-400 text-white shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                    ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 border-cyan-400 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] scale-102'
                     : 'bg-[#0b1320] border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                 }`}
               >
@@ -256,125 +569,265 @@ export const StoreView: React.FC<StoreViewProps> = ({
             ))}
           </div>
 
-          {/* Product Cards Grid */}
+          {/* E-COMMERCE PRODUCTS GRID / LIST */}
           {sortedProducts.length === 0 ? (
             <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-12 text-center space-y-3 font-mono">
-              <ShoppingCart className="w-10 h-10 text-slate-600 mx-auto" />
-              <h3 className="text-base font-bold text-slate-300">No products found</h3>
-              <p className="text-xs text-slate-500">Try adjusting your search terms or category filters.</p>
+              <ShoppingBag className="w-12 h-12 text-slate-600 mx-auto" />
+              <h3 className="text-base font-bold text-slate-300">No products match your search</h3>
+              <p className="text-xs text-slate-500">Try adjusting your category filter or search keywords.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCategory('All');
+                }}
+                className="px-4 py-2 bg-slate-800 text-cyan-400 font-bold text-xs rounded-xl hover:bg-slate-700 transition"
+              >
+                Reset All Filters
+              </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-6">
               {sortedProducts.map((product) => {
                 const inrPrice = product.priceInr || product.priceUsdt * (settings.rates.usdtToInr || 90);
                 const isOutOfStock = product.stock <= 0;
+                const isSaved = wishlist.includes(product.id);
+                const originalPrice = (product.priceUsdt * 1.25).toFixed(0); // Display 20% original price strikethrough
 
                 return (
                   <div
                     key={product.id}
-                    className="bg-[#0b1320] border border-slate-800/80 hover:border-cyan-500/50 rounded-2xl overflow-hidden flex flex-col justify-between group transition duration-300 hover:shadow-[0_0_25px_rgba(6,182,212,0.15)]"
+                    className="bg-[#0b1320] border border-slate-800/80 hover:border-cyan-500/50 rounded-2xl overflow-hidden flex flex-col justify-between group transition duration-300 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] relative"
                   >
                     <div>
-                      {/* Image Container with Badge */}
-                      <div className="relative aspect-video bg-[#050911] overflow-hidden">
+                      {/* Product Image & Badges */}
+                      <div className="relative aspect-square bg-[#050911] overflow-hidden">
                         <img
                           src={product.image}
                           alt={product.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                          className="w-full h-full object-cover group-hover:scale-108 transition duration-500"
                         />
-                        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+
+                        {/* Top Left Badges */}
+                        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1 z-10">
                           {product.badge && (
-                            <span className="px-2.5 py-1 bg-amber-500/90 text-black font-mono font-black text-[10px] uppercase rounded-full shadow-lg">
+                            <span className="px-1.5 py-0.5 sm:px-2.5 sm:py-1 bg-amber-500 text-black font-mono font-black text-[8px] sm:text-[10px] uppercase rounded-md sm:rounded-lg shadow-lg">
                               {product.badge}
                             </span>
                           )}
-                          {product.featured && (
-                            <span className="px-2.5 py-1 bg-cyan-500/90 text-black font-mono font-black text-[10px] uppercase rounded-full shadow-lg">
-                              TetherMart Choice
-                            </span>
-                          )}
+                          <span className="px-1.5 py-0.5 bg-rose-600 text-white font-mono font-bold text-[8px] sm:text-[9px] uppercase rounded-md shadow-md">
+                            20% OFF
+                          </span>
                         </div>
 
-                        {/* Category Label */}
-                        <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md px-2.5 py-0.5 rounded-lg text-[10px] font-mono text-slate-300">
+                        {/* Top Right Wishlist & Quick View Overlay Buttons */}
+                        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 flex flex-col gap-1.5 z-10">
+                          <button
+                            type="button"
+                            onClick={() => toggleWishlist(product.id)}
+                            className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl backdrop-blur-md border transition ${
+                              isSaved
+                                ? 'bg-rose-500 text-white border-rose-400 shadow-lg'
+                                : 'bg-black/60 text-slate-300 border-white/10 hover:text-white hover:bg-black/80'
+                            }`}
+                            title={isSaved ? 'Remove from Saved' : 'Save to Wishlist'}
+                          >
+                            <Heart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isSaved ? 'fill-white' : ''}`} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenQuickView(product)}
+                            className="p-1.5 sm:p-2 bg-black/60 backdrop-blur-md border border-white/10 text-slate-300 rounded-lg sm:rounded-xl hover:text-cyan-300 hover:bg-black/80 transition"
+                            title="Quick View Details"
+                          >
+                            <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Category Tag Bottom Right */}
+                        <div className="absolute bottom-1.5 left-1.5 sm:bottom-2 sm:left-2 bg-black/75 backdrop-blur-md px-1.5 sm:px-2.5 py-0.5 rounded-md sm:rounded-lg text-[8px] sm:text-[10px] font-mono text-slate-300 border border-white/10 truncate max-w-[85%]">
                           {product.category}
                         </div>
                       </div>
 
-                      {/* Content Info */}
-                      <div className="p-5 space-y-3">
+                      {/* Info & Metadata */}
+                      <div className="p-2.5 sm:p-4 space-y-2">
                         {/* Rating & Stock */}
-                        <div className="flex items-center justify-between text-xs font-mono">
+                        <div className="flex items-center justify-between text-[10px] sm:text-xs font-mono">
                           <div className="flex items-center gap-1 text-amber-400">
-                            <Star className="w-3.5 h-3.5 fill-amber-400" />
+                            <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-amber-400" />
                             <span className="font-bold">{product.rating.toFixed(1)}</span>
-                            <span className="text-slate-500 text-[10px]">({product.reviewsCount})</span>
+                            <span className="text-slate-500 text-[9px] sm:text-[10px]">({product.reviewsCount})</span>
                           </div>
+
                           <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            className={`text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full ${
                               isOutOfStock
                                 ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                : product.stock <= 5
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                 : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                             }`}
                           >
-                            {isOutOfStock ? 'Out of Stock' : `${product.stock} in stock`}
+                            {isOutOfStock ? 'Out' : `${product.stock} left`}
                           </span>
                         </div>
 
                         {/* Title & Description */}
                         <div>
-                          <h3 className="font-bold text-white text-sm line-clamp-1 group-hover:text-cyan-300 transition">
+                          <h3
+                            onClick={() => handleOpenQuickView(product)}
+                            className="font-bold text-white text-xs sm:text-sm line-clamp-1 hover:text-cyan-300 cursor-pointer transition"
+                          >
                             {product.title}
                           </h3>
-                          <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                          <p className="text-[10px] sm:text-xs text-slate-400 line-clamp-2 mt-0.5 leading-relaxed hidden xs:block">
                             {product.description}
                           </p>
+                        </div>
 
-                          {/* Sizes / Colors Pills Preview (Only shown if product has sizes/colors) */}
-                          {((product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)) && (
-                            <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-                              {product.sizes && product.sizes.length > 0 && (
-                                <div className="flex items-center gap-1 bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded-md">
-                                  <span className="font-bold text-slate-400">Sizes:</span>
-                                  <span>{product.sizes.join(', ')}</span>
-                                </div>
-                              )}
-                              {product.colors && product.colors.length > 0 && (
-                                <div className="flex items-center gap-1 bg-amber-950/60 border border-amber-500/30 text-amber-300 px-2 py-0.5 rounded-md">
-                                  <span className="font-bold text-slate-400">Colors:</span>
-                                  <span>{product.colors.join(', ')}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                        {/* Variants Badges (Sizes / Colors preview) */}
+                        {((product.sizes && product.sizes.length > 0) ||
+                          (product.colors && product.colors.length > 0)) && (
+                          <div className="hidden sm:flex flex-wrap gap-1 font-mono text-[9.5px]">
+                            {product.sizes && product.sizes.length > 0 && (
+                              <span className="px-1.5 py-0.5 bg-cyan-950/80 border border-cyan-500/30 text-cyan-300 rounded">
+                                Size: {product.sizes.slice(0, 3).join(', ')}
+                                {product.sizes.length > 3 ? '+' : ''}
+                              </span>
+                            )}
+                            {product.colors && product.colors.length > 0 && (
+                              <span className="px-1.5 py-0.5 bg-amber-950/80 border border-amber-500/30 text-amber-300 rounded">
+                                Color: {product.colors.slice(0, 2).join(', ')}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Price & Action Buttons */}
+                    <div className="p-2.5 sm:p-4 pt-0 border-t border-slate-800/80 mt-1 space-y-2">
+                      <div className="flex flex-col xs:flex-row xs:items-baseline justify-between font-mono pt-1">
+                        <div>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-sm sm:text-lg font-black text-emerald-400">${product.priceUsdt}</span>
+                            <span className="text-[9px] sm:text-[10px] text-emerald-500 font-bold">USDT</span>
+                            <span className="text-[10px] sm:text-xs text-slate-500 line-through">${originalPrice}</span>
+                          </div>
+                          <div className="text-[9px] sm:text-[10px] text-slate-400">
+                            ≈ ₹{inrPrice.toLocaleString('en-IN')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* E-Commerce Dual Buttons: Add to Cart + Buy Now */}
+                      <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px] sm:text-xs">
+                        <button
+                          type="button"
+                          disabled={isOutOfStock}
+                          onClick={() => handleAddToCart(product)}
+                          className={`py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg sm:rounded-xl font-bold border flex items-center justify-center gap-1 transition ${
+                            isOutOfStock
+                              ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
+                              : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700 hover:border-cyan-500/50'
+                          }`}
+                        >
+                          <ShoppingCart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400" />
+                          <span>+ Cart</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isOutOfStock}
+                          onClick={() => handleOpenCheckout(product)}
+                          className={`py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg sm:rounded-xl font-bold flex items-center justify-center gap-1 transition ${
+                            isOutOfStock
+                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                          }`}
+                        >
+                          <span>Buy Now</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* LIST VIEW LAYOUT */
+            <div className="space-y-4">
+              {sortedProducts.map((product) => {
+                const inrPrice = product.priceInr || product.priceUsdt * (settings.rates.usdtToInr || 90);
+                const isOutOfStock = product.stock <= 0;
+                const isSaved = wishlist.includes(product.id);
+
+                return (
+                  <div
+                    key={product.id}
+                    className="bg-[#0b1320] border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-5 hover:border-cyan-500/40 transition duration-300"
+                  >
+                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                      <img
+                        src={product.image}
+                        alt={product.title}
+                        className="w-24 h-24 object-cover rounded-xl border border-slate-800 shrink-0"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">
+                            {product.category}
+                          </span>
+                          <div className="flex items-center gap-1 text-amber-400 font-mono text-xs">
+                            <Star className="w-3 h-3 fill-amber-400" />
+                            <span>{product.rating.toFixed(1)}</span>
+                          </div>
+                        </div>
+
+                        <h3 className="font-bold text-white text-base hover:text-cyan-300 cursor-pointer" onClick={() => handleOpenQuickView(product)}>
+                          {product.title}
+                        </h3>
+
+                        <p className="text-xs text-slate-400 line-clamp-1 max-w-xl">{product.description}</p>
+
+                        <div className="text-[11px] font-mono text-slate-500">
+                          Stock: <span className="text-emerald-400 font-bold">{product.stock} items</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Price & Action Button Footer */}
-                    <div className="p-5 pt-0 border-t border-slate-800/60 mt-3 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-lg font-black text-emerald-400 font-mono">
-                          ${product.priceUsdt} <span className="text-xs font-bold text-emerald-500">USDT</span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
-                          ≈ ₹{inrPrice.toLocaleString('en-IN')} INR
-                        </div>
+                    <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3 font-mono border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-800">
+                      <div className="text-right">
+                        <div className="text-lg font-black text-emerald-400">${product.priceUsdt} USDT</div>
+                        <div className="text-[10px] text-slate-400">≈ ₹{inrPrice.toLocaleString('en-IN')} INR</div>
                       </div>
 
-                      <button
-                        type="button"
-                        disabled={isOutOfStock}
-                        onClick={() => handleOpenCheckout(product)}
-                        className={`px-4 py-2.5 rounded-xl font-bold font-mono text-xs flex items-center gap-1.5 transition ${
-                          isOutOfStock
-                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)]'
-                        }`}
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        <span>Buy Now</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleWishlist(product.id)}
+                          className={`p-2 rounded-xl border ${isSaved ? 'bg-rose-500/20 border-rose-500 text-rose-300' : 'bg-[#050911] border-slate-800 text-slate-400'}`}
+                        >
+                          <Heart className={`w-4 h-4 ${isSaved ? 'fill-rose-500' : ''}`} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAddToCart(product)}
+                          className="px-3 py-2 bg-slate-900 border border-slate-700 text-slate-200 hover:border-cyan-500 rounded-xl text-xs font-bold"
+                        >
+                          + Cart
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCheckout(product)}
+                          className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-bold rounded-xl text-xs"
+                        >
+                          Buy Now
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -384,13 +837,78 @@ export const StoreView: React.FC<StoreViewProps> = ({
         </div>
       )}
 
-      {/* MY ORDERS SUB-TAB */}
+      {/* 5. WISHLIST / SAVED TAB */}
+      {activeSubTab === 'wishlist' && (
+        <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-800 font-mono">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
+                <span>My Saved Items Wishlist</span>
+              </h2>
+              <p className="text-xs text-slate-400">Products you have bookmarked for future purchases</p>
+            </div>
+            <span className="px-3 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold">
+              {wishlist.length} Saved Items
+            </span>
+          </div>
+
+          {wishlist.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 font-mono text-xs space-y-3">
+              <Heart className="w-10 h-10 text-slate-600 mx-auto" />
+              <p>Your wishlist is currently empty.</p>
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('store')}
+                className="px-4 py-2 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-xl font-bold"
+              >
+                Browse Store Products →
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {products
+                .filter((p) => wishlist.includes(p.id))
+                .map((product) => (
+                  <div key={product.id} className="bg-[#050911] border border-slate-800 rounded-xl p-3 flex gap-3">
+                    <img src={product.image} alt={product.title} className="w-16 h-16 object-cover rounded-lg shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <div className="text-xs font-bold text-white line-clamp-1">{product.title}</div>
+                      <div className="text-xs font-black text-emerald-400">${product.priceUsdt} USDT</div>
+                      <div className="flex items-center gap-2 pt-1 font-mono text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => handleAddToCart(product)}
+                          className="px-2.5 py-1 bg-cyan-500/20 text-cyan-300 rounded font-bold hover:bg-cyan-500/30"
+                        >
+                          + Add Cart
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleWishlist(product.id)}
+                          className="text-slate-500 hover:text-rose-400"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 6. MY ORDER HISTORY TAB */}
       {activeSubTab === 'myOrders' && (
         <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between font-mono pb-4 border-b border-slate-800">
             <div>
-              <h2 className="text-base font-bold text-white">My Mall Order History</h2>
-              <p className="text-xs text-slate-400">Track shipping, delivery status, and invoice receipt</p>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <PackageCheck className="w-5 h-5 text-amber-400" />
+                <span>My Mall Order History</span>
+              </h2>
+              <p className="text-xs text-slate-400">Track shipment status, node delivery addresses, and receipts</p>
             </div>
             <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-bold">
               {myOrders.length} Total Orders
@@ -410,25 +928,26 @@ export const StoreView: React.FC<StoreViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="space-y-3 font-mono">
+            <div className="space-y-4 font-mono">
               {myOrders.map((order) => (
                 <div
                   key={order.id}
                   className="bg-[#050911] border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-4">
                     <img
                       src={order.productImage}
                       alt={order.productTitle}
-                      className="w-14 h-14 object-cover rounded-lg border border-slate-800 shrink-0"
+                      className="w-16 h-16 object-cover rounded-xl border border-slate-800 shrink-0"
                     />
-                    <div>
+                    <div className="space-y-1">
                       <div className="text-xs font-bold text-white line-clamp-1">{order.productTitle}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
-                        Qty: {order.quantity} • Total: <span className="text-emerald-400 font-bold">${order.totalUsdt} USDT</span>
+                      <div className="text-[11px] text-slate-400">
+                        Qty: <b className="text-white">{order.quantity}</b> • Paid: <span className="text-emerald-400 font-bold">${order.totalUsdt} USDT</span>
                       </div>
+
                       {(order.selectedSize || order.selectedColor) && (
-                        <div className="flex items-center gap-2 mt-1 text-[10px]">
+                        <div className="flex items-center gap-2 text-[10px]">
                           {order.selectedSize && (
                             <span className="px-1.5 py-0.5 bg-cyan-950 border border-cyan-500/40 text-cyan-300 rounded">
                               Size: <b>{order.selectedSize}</b>
@@ -441,19 +960,16 @@ export const StoreView: React.FC<StoreViewProps> = ({
                           )}
                         </div>
                       )}
-                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-slate-400" />
-                        <span className="truncate max-w-[250px]">{order.shippingAddress}</span>
+
+                      <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[280px]">{order.shippingAddress}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-3 md:pt-0 border-slate-800">
-                    <div className="text-[10px] text-slate-500">
-                      <div>{new Date(order.createdAt).toLocaleDateString()}</div>
-                      <div>{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                    </div>
-
+                  {/* Order Status & Progress Bar */}
+                  <div className="flex flex-col items-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-slate-800">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
                         order.status === 'delivered'
@@ -467,6 +983,11 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     >
                       {order.status}
                     </span>
+
+                    <div className="text-[10px] text-slate-500 text-right">
+                      <div>Order Date: {new Date(order.createdAt).toLocaleDateString()}</div>
+                      <div>{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -475,232 +996,545 @@ export const StoreView: React.FC<StoreViewProps> = ({
         </div>
       )}
 
-      {/* CHECKOUT MODAL */}
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 font-mono overscroll-contain">
+      {/* 7. QUICK VIEW PRODUCT DETAIL MODAL */}
+      {quickViewProduct && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 font-sans">
           <div className="min-h-full w-full flex items-center justify-center py-6 sm:py-10">
-            <div className="bg-[#0c1524] border border-cyan-500/40 rounded-2xl w-full max-w-lg p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-[0_0_40px_rgba(6,182,212,0.2)] relative my-auto">
-            <button
-              type="button"
-              onClick={() => setSelectedProduct(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="bg-[#0c1524] border border-cyan-500/40 rounded-2xl w-full max-w-3xl p-5 sm:p-6 space-y-5 shadow-2xl relative my-auto">
+              <button
+                type="button"
+                onClick={() => setQuickViewProduct(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
-            {checkoutSuccess ? (
-              <div className="text-center py-6 space-y-4">
-                <div className="w-14 h-14 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-bounce">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Product Image */}
+                <div className="space-y-3">
+                  <div className="aspect-square bg-[#050911] border border-slate-800 rounded-2xl overflow-hidden relative">
+                    <img src={quickViewProduct.image} alt={quickViewProduct.title} className="w-full h-full object-cover" />
+                    {quickViewProduct.badge && (
+                      <span className="absolute top-3 left-3 px-2.5 py-1 bg-amber-500 text-black font-mono font-black text-[10px] uppercase rounded-lg">
+                        {quickViewProduct.badge}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Product Details & Selection */}
+                <div className="space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-cyan-400 bg-cyan-950 px-2.5 py-0.5 rounded border border-cyan-800 font-bold">
+                        {quickViewProduct.category}
+                      </span>
+                      <div className="flex items-center gap-1 text-amber-400">
+                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                        <span className="font-bold">{quickViewProduct.rating.toFixed(1)}</span>
+                        <span className="text-slate-500">({quickViewProduct.reviewsCount} reviews)</span>
+                      </div>
+                    </div>
+
+                    <h2 className="text-xl font-bold text-white tracking-tight">{quickViewProduct.title}</h2>
+
+                    <div className="font-mono">
+                      <div className="text-2xl font-black text-emerald-400">${quickViewProduct.priceUsdt} USDT</div>
+                      <div className="text-xs text-slate-400">
+                        ≈ ₹{(quickViewProduct.priceInr || quickViewProduct.priceUsdt * 90).toLocaleString('en-IN')} INR
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed">{quickViewProduct.description}</p>
+
+                    {/* Size Selector */}
+                    {quickViewProduct.sizes && quickViewProduct.sizes.length > 0 && (
+                      <div className="space-y-1.5 font-mono text-xs">
+                        <label className="text-slate-400 font-bold">Select Size:</label>
+                        <div className="flex flex-wrap gap-2">
+                          {quickViewProduct.sizes.map((sz) => (
+                            <button
+                              key={sz}
+                              type="button"
+                              onClick={() => setQuickViewSize(sz)}
+                              className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                                quickViewSize === sz
+                                  ? 'bg-cyan-500 text-black font-black'
+                                  : 'bg-slate-900 border border-slate-700 text-slate-300'
+                              }`}
+                            >
+                              {sz}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Color Selector */}
+                    {quickViewProduct.colors && quickViewProduct.colors.length > 0 && (
+                      <div className="space-y-1.5 font-mono text-xs">
+                        <label className="text-slate-400 font-bold">Select Color:</label>
+                        <div className="flex flex-wrap gap-2">
+                          {quickViewProduct.colors.map((clr) => (
+                            <button
+                              key={clr}
+                              type="button"
+                              onClick={() => setQuickViewColor(clr)}
+                              className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                                quickViewColor === clr
+                                  ? 'bg-amber-500 text-black font-black'
+                                  : 'bg-slate-900 border border-slate-700 text-slate-300'
+                              }`}
+                            >
+                              {clr}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quantity Picker */}
+                    <div className="space-y-1 font-mono text-xs">
+                      <label className="text-slate-400 font-bold">Quantity:</label>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setQuickViewQty(Math.max(1, quickViewQty - 1))}
+                          className="w-8 h-8 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                        >
+                          -
+                        </button>
+                        <span className="font-bold text-white">{quickViewQty}</span>
+                        <button
+                          type="button"
+                          onClick={() => setQuickViewQty(Math.min(quickViewProduct.stock, quickViewQty + 1))}
+                          className="w-8 h-8 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800 font-mono text-xs">
+                    <button
+                      type="button"
+                      disabled={quickViewProduct.stock <= 0}
+                      onClick={() => {
+                        handleAddToCart(quickViewProduct, quickViewSize, quickViewColor, quickViewQty);
+                        setQuickViewProduct(null);
+                      }}
+                      className="py-3 bg-slate-900 hover:bg-slate-800 border border-cyan-500/50 text-cyan-300 rounded-xl font-bold flex items-center justify-center gap-2"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      <span>Add to Cart</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={quickViewProduct.stock <= 0}
+                      onClick={() => {
+                        const prd = quickViewProduct;
+                        const sz = quickViewSize;
+                        const clr = quickViewColor;
+                        const qty = quickViewQty;
+                        setQuickViewProduct(null);
+                        handleOpenCheckout(prd, sz, clr, qty);
+                      }}
+                      className="py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-extrabold rounded-xl shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <span>Buy Now (${(quickViewProduct.priceUsdt * quickViewQty).toFixed(2)})</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. SHOPPING CART SLIDE-OVER DRAWER */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex justify-end font-mono">
+          <div className="bg-[#0c1524] border-l border-cyan-500/30 w-full max-w-md h-full flex flex-col justify-between shadow-2xl relative p-5 space-y-4">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-cyan-400" />
+                <h3 className="font-bold text-white text-sm">Shopping Cart ({cartItems.length})</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Cart Items List */}
+            {cartCheckoutSuccess ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 py-8">
+                <div className="w-16 h-16 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 rounded-full flex items-center justify-center shadow-lg animate-bounce">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-white">Order Confirmed!</h3>
-                <p className="text-xs text-slate-300">
-                  Your purchase of <span className="text-emerald-400 font-bold">{selectedProduct.title}</span> was successful! Order details have been submitted to admin for priority shipping.
+                <h4 className="text-lg font-bold text-white">Cart Order Placed!</h4>
+                <p className="text-xs text-slate-300 max-w-xs">
+                  All items in your cart have been successfully processed using your Shopping Fund Wallet.
                 </p>
-                <div className="p-3 bg-[#050911] border border-slate-800 rounded-xl text-left text-xs space-y-1">
-                  <div className="text-slate-400">Total Deducted: <span className="text-emerald-400 font-bold">${checkoutSuccess.totalUsdt} USDT</span></div>
-                  <div className="text-slate-400">Shipping Address: <span className="text-slate-200">{checkoutSuccess.shippingAddress}</span></div>
-                </div>
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedProduct(null);
+                    setCartCheckoutSuccess(false);
+                    setIsCartOpen(false);
                     setActiveSubTab('myOrders');
                   }}
-                  className="w-full py-2.5 bg-cyan-500 text-black font-extrabold text-xs rounded-xl hover:bg-cyan-400 transition"
+                  className="px-5 py-2.5 bg-cyan-500 text-black font-bold text-xs rounded-xl hover:bg-cyan-400 transition"
                 >
-                  View My Orders →
+                  View My Order History →
+                </button>
+              </div>
+            ) : cartItems.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-400 space-y-3">
+                <ShoppingBag className="w-12 h-12 text-slate-600" />
+                <p className="text-xs">Your shopping cart is empty.</p>
+                <button
+                  type="button"
+                  onClick={() => setIsCartOpen(false)}
+                  className="px-4 py-2 bg-slate-800 text-cyan-400 font-bold text-xs rounded-xl"
+                >
+                  Start Shopping
                 </button>
               </div>
             ) : (
-              <>
-                <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-                  <ShoppingCart className="w-5 h-5 text-amber-400" />
-                  <div>
-                    <h3 className="font-bold text-white text-sm">TetherMart Checkout Order</h3>
-                    <p className="text-[11px] text-slate-400">Pay directly using your node withdrawable balance</p>
-                  </div>
-                </div>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {cartItems.map((item, idx) => (
+                  <div key={idx} className="bg-[#050911] border border-slate-800 rounded-xl p-3 flex gap-3 relative">
+                    <img src={item.product.image} alt={item.product.title} className="w-16 h-16 object-cover rounded-lg shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <div className="text-xs font-bold text-white line-clamp-1">{item.product.title}</div>
+                      <div className="text-xs font-black text-emerald-400">${item.product.priceUsdt} USDT</div>
 
-                {/* Product Summary */}
-                <div className="flex gap-3 bg-[#050911] border border-slate-800 rounded-xl p-3">
-                  <img
-                    src={selectedProduct.image}
-                    alt={selectedProduct.title}
-                    className="w-16 h-16 object-cover rounded-lg border border-slate-800 shrink-0"
-                  />
-                  <div>
-                    <div className="text-xs font-bold text-white line-clamp-1">{selectedProduct.title}</div>
-                    <div className="text-xs font-black text-emerald-400 mt-1">${selectedProduct.priceUsdt} USDT</div>
-                    <div className="text-[10px] text-slate-500">In stock: {selectedProduct.stock} items</div>
-                  </div>
-                </div>
+                      {(item.selectedSize || item.selectedColor) && (
+                        <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                          {item.selectedSize && <span>Size: <b className="text-cyan-300">{item.selectedSize}</b></span>}
+                          {item.selectedColor && <span>Color: <b className="text-amber-300">{item.selectedColor}</b></span>}
+                        </div>
+                      )}
 
-                {/* SIZE SELECTOR (Only shown if product has size options like Shirts/Apparel) */}
-                {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
-                  <div className="space-y-1.5 bg-[#050911] border border-cyan-500/20 p-3 rounded-xl">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs text-cyan-300 font-bold uppercase tracking-wider">
-                        Select Size (Required)
-                      </label>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        Selected: <b className="text-white">{selectedSize || 'None'}</b>
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {selectedProduct.sizes.map((sz) => (
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateCartQty(idx, item.quantity - 1)}
+                            className="w-6 h-6 bg-slate-800 rounded text-xs font-bold"
+                          >
+                            -
+                          </button>
+                          <span className="text-xs font-bold text-white">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateCartQty(idx, item.quantity + 1)}
+                            className="w-6 h-6 bg-slate-800 rounded text-xs font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
+
                         <button
-                          key={sz}
                           type="button"
-                          onClick={() => setSelectedSize(sz)}
-                          className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition ${
-                            selectedSize === sz
-                              ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-white border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)] scale-105'
-                              : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
-                          }`}
+                          onClick={() => handleRemoveCartItem(idx)}
+                          className="text-slate-500 hover:text-red-400 p-1"
                         >
-                          {sz}
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      ))}
+                      </div>
                     </div>
                   </div>
-                )}
+                ))}
+              </div>
+            )}
 
-                {/* COLOR SELECTOR (Only shown if product has color options) */}
-                {selectedProduct.colors && selectedProduct.colors.length > 0 && (
-                  <div className="space-y-1.5 bg-[#050911] border border-amber-500/20 p-3 rounded-xl">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs text-amber-300 font-bold uppercase tracking-wider">
-                        Select Color Option
-                      </label>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        Selected: <b className="text-white">{selectedColor || 'None'}</b>
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {selectedProduct.colors.map((clr) => (
-                        <button
-                          key={clr}
-                          type="button"
-                          onClick={() => setSelectedColor(clr)}
-                          className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition ${
-                            selectedColor === clr
-                              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black border border-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.4)] scale-105'
-                              : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
-                          }`}
-                        >
-                          {clr}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Quantity input */}
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-300 font-bold">Quantity</label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-9 h-9 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold hover:bg-slate-700"
-                    >
-                      -
-                    </button>
-                    <span className="font-bold text-white text-sm px-3">{quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(Math.min(selectedProduct.stock, quantity + 1))}
-                      className="w-9 h-9 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold hover:bg-slate-700"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                {/* Shipping address input */}
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-300 font-bold">Shipping Address</label>
-                  <input
-                    type="text"
-                    value={shippingAddress}
-                    onChange={(e) => setShippingAddress(e.target.value)}
-                    placeholder="Enter full shipping address & pin code..."
-                    className="w-full bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-
-                {/* Price Breakdown */}
-                <div className="bg-[#050911]/80 border border-slate-800/80 rounded-xl p-3.5 space-y-2 text-xs">
+            {/* Cart Summary & Checkout */}
+            {!cartCheckoutSuccess && cartItems.length > 0 && (
+              <div className="pt-3 border-t border-slate-800 space-y-3">
+                <div className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-1.5 text-xs">
                   <div className="flex justify-between text-slate-400">
-                    <span>Unit Price:</span>
-                    <span>${selectedProduct.priceUsdt} USDT</span>
+                    <span>Cart Items ({cartItems.length}):</span>
+                    <span>${cartTotalUsdt.toFixed(2)} USDT</span>
                   </div>
                   <div className="flex justify-between text-slate-400">
-                    <span>Quantity:</span>
-                    <span>x{quantity}</span>
+                    <span>Shipping:</span>
+                    <span className="text-emerald-400 font-bold">FREE Express</span>
                   </div>
-                  <div className="flex justify-between text-amber-300 font-bold">
+                  <div className="flex justify-between text-amber-300 font-bold pt-1 border-t border-slate-800">
                     <span>Shopping Fund Balance:</span>
                     <span>${currentUser.upgradeBalance.toFixed(2)} USDT</span>
                   </div>
-                  <div className="flex justify-between text-slate-500 text-[10px]">
-                    <span>Main Wallet (Withdrawal Only):</span>
-                    <span>${currentUser.balance.toFixed(2)} USDT</span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-white text-sm">
+                  <div className="flex justify-between text-white font-black text-sm pt-1">
                     <span>Total Payable:</span>
-                    <span className="text-amber-400">${(selectedProduct.priceUsdt * quantity).toFixed(2)} USDT</span>
+                    <span className="text-emerald-400">${cartTotalUsdt.toFixed(2)} USDT</span>
                   </div>
                 </div>
 
-                {/* Insufficient shopping balance alert */}
-                {currentUser.upgradeBalance < selectedProduct.priceUsdt * quantity && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/40 rounded-xl text-red-300 text-xs flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold">Insufficient Shopping Fund Wallet</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedProduct(null);
-                          onOpenDeposit();
-                        }}
-                        className="font-bold underline text-emerald-400 text-[11px]"
-                      >
-                        Deposit / Top Up
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-slate-400">
-                      Mall orders are paid via Upgrade / Marketing Fund. Main Wallet (${currentUser.balance.toFixed(2)} USDT) is reserved for withdrawals.
-                    </p>
+                {currentUser.upgradeBalance < cartTotalUsdt && (
+                  <div className="p-2.5 bg-red-500/10 border border-red-500/40 rounded-xl text-red-300 text-[11px] flex justify-between items-center">
+                    <span>Insufficient Shopping Balance</span>
+                    <button type="button" onClick={onOpenDeposit} className="underline text-emerald-400 font-bold">
+                      Top Up
+                    </button>
                   </div>
                 )}
 
-                {/* Confirm Button */}
                 <button
                   type="button"
-                  disabled={isSubmitting || currentUser.upgradeBalance < selectedProduct.priceUsdt * quantity}
-                  onClick={handleConfirmPurchase}
+                  disabled={isCartCheckingOut || currentUser.upgradeBalance < cartTotalUsdt}
+                  onClick={handleConfirmCartCheckout}
                   className={`w-full py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition ${
-                    isSubmitting || currentUser.upgradeBalance < selectedProduct.priceUsdt * quantity
+                    isCartCheckingOut || currentUser.upgradeBalance < cartTotalUsdt
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                      : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black shadow-lg'
                   }`}
                 >
-                  {isSubmitting ? (
-                    <span>Processing Order...</span>
+                  {isCartCheckingOut ? (
+                    <span>Processing Cart Order...</span>
                   ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Confirm & Pay ${(selectedProduct.priceUsdt * quantity).toFixed(2)} USDT</span>
-                    </>
+                    <span>Checkout All Items (${cartTotalUsdt.toFixed(2)} USDT)</span>
                   )}
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* 9. SINGLE PRODUCT DIRECT CHECKOUT MODAL */}
+      {checkoutProduct && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 font-mono overscroll-contain">
+          <div className="min-h-full w-full flex items-center justify-center py-6 sm:py-10">
+            <div className="bg-[#0c1524] border border-cyan-500/40 rounded-2xl w-full max-w-lg p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl relative my-auto">
+              <button
+                type="button"
+                onClick={() => setCheckoutProduct(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {checkoutSuccess ? (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-14 h-14 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-lg animate-bounce">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Order Confirmed!</h3>
+                  <p className="text-xs text-slate-300">
+                    Your purchase of <span className="text-emerald-400 font-bold">{checkoutProduct.title}</span> was successful! Order details have been submitted to admin for priority dispatch.
+                  </p>
+                  <div className="p-3 bg-[#050911] border border-slate-800 rounded-xl text-left text-xs space-y-1">
+                    <div className="text-slate-400">
+                      Total Paid: <span className="text-emerald-400 font-bold">${checkoutSuccess.totalUsdt} USDT</span>
+                    </div>
+                    <div className="text-slate-400">
+                      Delivery Node: <span className="text-slate-200">{checkoutSuccess.shippingAddress}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCheckoutProduct(null);
+                      setActiveSubTab('myOrders');
+                    }}
+                    className="w-full py-2.5 bg-cyan-500 text-black font-extrabold text-xs rounded-xl hover:bg-cyan-400 transition"
+                  >
+                    View My Orders →
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                    <ShoppingCart className="w-5 h-5 text-amber-400" />
+                    <div>
+                      <h3 className="font-bold text-white text-sm">TetherMart Checkout Order</h3>
+                      <p className="text-[11px] text-slate-400">Pay directly using your node withdrawable balance</p>
+                    </div>
+                  </div>
+
+                  {/* Product Summary */}
+                  <div className="flex gap-3 bg-[#050911] border border-slate-800 rounded-xl p-3">
+                    <img
+                      src={checkoutProduct.image}
+                      alt={checkoutProduct.title}
+                      className="w-16 h-16 object-cover rounded-lg border border-slate-800 shrink-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white line-clamp-1">{checkoutProduct.title}</div>
+                      <div className="text-xs font-black text-emerald-400 mt-1">${checkoutProduct.priceUsdt} USDT</div>
+                      <div className="text-[10px] text-slate-500">In stock: {checkoutProduct.stock} items</div>
+                    </div>
+                  </div>
+
+                  {/* SIZE SELECTOR */}
+                  {checkoutProduct.sizes && checkoutProduct.sizes.length > 0 && (
+                    <div className="space-y-1.5 bg-[#050911] border border-cyan-500/20 p-3 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs text-cyan-300 font-bold uppercase tracking-wider">
+                          Select Size (Required)
+                        </label>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Selected: <b className="text-white">{checkoutSize || 'None'}</b>
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {checkoutProduct.sizes.map((sz) => (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() => setCheckoutSize(sz)}
+                            className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition ${
+                              checkoutSize === sz
+                                ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-white border border-cyan-400 shadow-md scale-105'
+                                : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'
+                            }`}
+                          >
+                            {sz}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* COLOR SELECTOR */}
+                  {checkoutProduct.colors && checkoutProduct.colors.length > 0 && (
+                    <div className="space-y-1.5 bg-[#050911] border border-amber-500/20 p-3 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs text-amber-300 font-bold uppercase tracking-wider">
+                          Select Color Option
+                        </label>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Selected: <b className="text-white">{checkoutColor || 'None'}</b>
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {checkoutProduct.colors.map((clr) => (
+                          <button
+                            key={clr}
+                            type="button"
+                            onClick={() => setCheckoutColor(clr)}
+                            className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition ${
+                              checkoutColor === clr
+                                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black border border-amber-300 shadow-md scale-105'
+                                : 'bg-slate-900 border border-slate-700 text-slate-300 hover:text-white'
+                            }`}
+                          >
+                            {clr}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quantity input */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-300 font-bold">Quantity</label>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutQty(Math.max(1, checkoutQty - 1))}
+                        className="w-9 h-9 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold hover:bg-slate-700"
+                      >
+                        -
+                      </button>
+                      <span className="font-bold text-white text-sm px-3">{checkoutQty}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutQty(Math.min(checkoutProduct.stock, checkoutQty + 1))}
+                        className="w-9 h-9 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold hover:bg-slate-700"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Shipping address input */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-300 font-bold">Shipping Address</label>
+                    <input
+                      type="text"
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      placeholder="Enter full shipping address & pin code..."
+                      className="w-full bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Price Breakdown */}
+                  <div className="bg-[#050911]/80 border border-slate-800/80 rounded-xl p-3.5 space-y-2 text-xs">
+                    <div className="flex justify-between text-slate-400">
+                      <span>Unit Price:</span>
+                      <span>${checkoutProduct.priceUsdt} USDT</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Quantity:</span>
+                      <span>x{checkoutQty}</span>
+                    </div>
+                    <div className="flex justify-between text-amber-300 font-bold">
+                      <span>Shopping Fund Balance:</span>
+                      <span>${currentUser.upgradeBalance.toFixed(2)} USDT</span>
+                    </div>
+                    <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-white text-sm">
+                      <span>Total Payable:</span>
+                      <span className="text-amber-400">${(checkoutProduct.priceUsdt * checkoutQty).toFixed(2)} USDT</span>
+                    </div>
+                  </div>
+
+                  {/* Insufficient shopping balance alert */}
+                  {currentUser.upgradeBalance < checkoutProduct.priceUsdt * checkoutQty && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/40 rounded-xl text-red-300 text-xs flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">Insufficient Shopping Fund Wallet</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCheckoutProduct(null);
+                            onOpenDeposit();
+                          }}
+                          className="font-bold underline text-emerald-400 text-[11px]"
+                        >
+                          Deposit / Top Up
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Mall orders are paid via Upgrade / Marketing Fund. Main Wallet (${currentUser.balance.toFixed(2)} USDT) is reserved for withdrawals.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Confirm Button */}
+                  <button
+                    type="button"
+                    disabled={isSubmitting || currentUser.upgradeBalance < checkoutProduct.priceUsdt * checkoutQty}
+                    onClick={handleConfirmPurchase}
+                    className={`w-full py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition ${
+                      isSubmitting || currentUser.upgradeBalance < checkoutProduct.priceUsdt * checkoutQty
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <span>Processing Order...</span>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Confirm & Pay ${(checkoutProduct.priceUsdt * checkoutQty).toFixed(2)} USDT</span>
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

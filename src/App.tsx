@@ -19,6 +19,7 @@ import { BoostingQueueView } from './components/BoostingQueueView';
 import { FinanceView } from './components/FinanceView';
 import { GamificationView } from './components/GamificationView';
 import { StoreView } from './components/StoreView';
+import { LuckyDrawView } from './components/LuckyDrawView';
 import { AdminPanel } from './components/AdminPanel';
 import { DepositModal } from './components/DepositModal';
 import { WithdrawModal } from './components/WithdrawModal';
@@ -578,6 +579,13 @@ export default function App() {
               onUpdateOrderStatus={handleUpdateOrderStatus}
               onToggleAdmin={handleToggleAdmin}
               onDeleteUser={handleDeleteUser}
+            />
+          ) : activeTab === 'luckydraw' ? (
+            <LuckyDrawView
+              currentUser={currentUser}
+              users={users}
+              onOpenDeposit={() => setIsDepositOpen(true)}
+              onRefreshState={fetchState}
             />
           ) : activeTab === 'store' ? (
             <StoreView
