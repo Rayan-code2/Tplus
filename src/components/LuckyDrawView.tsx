@@ -55,6 +55,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   const [displayDigits, setDisplayDigits] = useState<string[]>(['7', '3', '9', '2', '1', '0']);
   const [winnerAnnouncedList, setWinnerAnnouncedList] = useState<any[] | null>(null);
   const [winnerTierFilter, setWinnerTierFilter] = useState<'all' | '1st' | '2nd' | '3rd'>('all');
+  const [lastSeenRollTime, setLastSeenRollTime] = useState<number>(0);
 
   // Admin Config State
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
@@ -170,25 +171,50 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       const res = await fetch('/api/luckydraw');
       if (res.ok) {
         const data = await res.json();
-        setLuckyDraw(data.luckyDraw);
+        const ld = data.luckyDraw;
+        setLuckyDraw(ld);
+
+        // Check if admin recently triggered a live draw spin across all users
+        if (ld.rollingStartedAt && ld.rollingStartedAt > lastSeenRollTime && (Date.now() - ld.rollingStartedAt < 10000)) {
+          setLastSeenRollTime(ld.rollingStartedAt);
+          setIsRolling(true);
+          setWinnerAnnouncedList(null);
+
+          const elapsed = Date.now() - ld.rollingStartedAt;
+          const remainingSpin = Math.max(800, 3500 - elapsed);
+
+          setTimeout(() => {
+            setIsRolling(false);
+            const winNum = ld.rollingWinningNumber || ld.lastWinningNumber;
+            if (winNum) {
+              setDisplayDigits(winNum.padStart(6, '0').split(''));
+            }
+            if (ld.rollingWinners) {
+              setWinnerAnnouncedList(ld.rollingWinners);
+            }
+            if (onRefreshState) onRefreshState();
+          }, remainingSpin);
+        } else if (!isRolling && ld.lastWinningNumber) {
+          setDisplayDigits(ld.lastWinningNumber.padStart(6, '0').split(''));
+        }
 
         // Only set admin input fields once on initial load or if admin panel is closed
         if (!hasInitializedConfig) {
-          setAdminTicketPrice(data.luckyDraw.ticketPrice ?? 5);
-          setAdminPrizeAmount(data.luckyDraw.prizeAmount ?? 250);
-          setAdminSecondPrize(data.luckyDraw.secondPrizeAmount ?? 50);
-          setAdminThirdPrize(data.luckyDraw.thirdPrizeAmount ?? 10);
-          if (data.luckyDraw.forcedWinnerUserId) {
-            setForcedUserId(data.luckyDraw.forcedWinnerUserId);
+          setAdminTicketPrice(ld.ticketPrice ?? 5);
+          setAdminPrizeAmount(ld.prizeAmount ?? 250);
+          setAdminSecondPrize(ld.secondPrizeAmount ?? 50);
+          setAdminThirdPrize(ld.thirdPrizeAmount ?? 10);
+          if (ld.forcedWinnerUserId) {
+            setForcedUserId(ld.forcedWinnerUserId);
           }
-          if (data.luckyDraw.forcedWinnerTicketNumber) {
-            setForcedTicketNum(data.luckyDraw.forcedWinnerTicketNumber);
+          if (ld.forcedWinnerTicketNumber) {
+            setForcedTicketNum(ld.forcedWinnerTicketNumber);
           }
-          if (data.luckyDraw.forcedSecondWinnerUserId) {
-            setForcedSecondUserId(data.luckyDraw.forcedSecondWinnerUserId);
+          if (ld.forcedSecondWinnerUserId) {
+            setForcedSecondUserId(ld.forcedSecondWinnerUserId);
           }
-          if (data.luckyDraw.forcedSecondWinnerTicketNumber) {
-            setForcedSecondTicketNum(data.luckyDraw.forcedSecondWinnerTicketNumber);
+          if (ld.forcedSecondWinnerTicketNumber) {
+            setForcedSecondTicketNum(ld.forcedSecondWinnerTicketNumber);
           }
           setHasInitializedConfig(true);
         }
@@ -202,9 +228,9 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
   useEffect(() => {
     fetchLuckyDraw();
-    const interval = setInterval(fetchLuckyDraw, 8000);
+    const interval = setInterval(fetchLuckyDraw, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [lastSeenRollTime]);
 
   // Countdown timer logic
   useEffect(() => {
@@ -366,6 +392,10 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         }),
       });
       const data = await res.json();
+
+      if (data.luckyDraw?.rollingStartedAt) {
+        setLastSeenRollTime(data.luckyDraw.rollingStartedAt);
+      }
 
       // Keep spinning for 3.5 seconds for visual thrill
       setTimeout(() => {

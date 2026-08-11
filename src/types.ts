@@ -274,6 +274,10 @@ export interface LuckyDrawState {
   pastWinners: LuckyDrawWinner[];
   lastDrawAt?: string;
   lastWinningNumber?: string;
+  isRolling?: boolean;
+  rollingStartedAt?: number;
+  rollingWinningNumber?: string;
+  rollingWinners?: LuckyDrawWinner[];
 }
 
 export interface LevelBreakdownRow {

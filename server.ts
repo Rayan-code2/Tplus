@@ -2341,6 +2341,12 @@ app.get('/api/luckydraw', (req: Request, res: Response) => {
     state.luckyDraw = initialLuckyDraw;
   }
   ensureLuckyDrawPrizes();
+
+  if (state.luckyDraw.isRolling && state.luckyDraw.rollingStartedAt && Date.now() - state.luckyDraw.rollingStartedAt >= 4500) {
+    state.luckyDraw.isRolling = false;
+    state.luckyDraw.status = 'completed';
+  }
+
   res.json({ success: true, luckyDraw: state.luckyDraw });
 });
 
@@ -2740,7 +2746,11 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
   // Reset for next draw round
   state.luckyDraw.lastWinningNumber = winningNumber;
   state.luckyDraw.tickets = [];
-  state.luckyDraw.status = 'completed';
+  state.luckyDraw.status = 'rolling';
+  state.luckyDraw.isRolling = true;
+  state.luckyDraw.rollingStartedAt = Date.now();
+  state.luckyDraw.rollingWinningNumber = winningNumber;
+  state.luckyDraw.rollingWinners = winnersList;
   state.luckyDraw.lastDrawAt = new Date().toISOString();
   state.luckyDraw.targetEndTime = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
   state.luckyDraw.forcedWinnerUserId = null;
