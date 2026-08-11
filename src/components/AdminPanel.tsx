@@ -793,7 +793,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     try {
-      await onUpdateSettings(editableSettings);
+      const sanitizedRewards = (editableSettings.spinWheelRewards || []).map((r) => ({
+        ...r,
+        amount: typeof r.amount === 'number' ? r.amount : (parseFloat(r.amount as any) || 0),
+        probability: typeof r.probability === 'number' ? r.probability : (parseFloat(r.probability as any) || 0),
+        minLevel: typeof r.minLevel === 'number' ? r.minLevel : (parseInt(r.minLevel as any) || 0),
+      }));
+      const sanitizedLevelIncome = (editableSettings.levelIncomePercentages || []).map((l, i) => ({
+        level: l.level || i + 1,
+        percent: typeof l.percent === 'number' ? l.percent : (parseFloat(l.percent as any) || 0),
+      }));
+      const sanitizedPackages = (editableSettings.packages || []).map((p) => ({
+        ...p,
+        price: typeof p.price === 'number' ? p.price : (parseFloat(p.price as any) || 0),
+        dailyRoiPercent: typeof p.dailyRoiPercent === 'number' ? p.dailyRoiPercent : (parseFloat(p.dailyRoiPercent as any) || 0),
+        sponsorBonusPercent: typeof p.sponsorBonusPercent === 'number' ? p.sponsorBonusPercent : (parseFloat(p.sponsorBonusPercent as any) || 0),
+        totalRoiReturnPercent: typeof p.totalRoiReturnPercent === 'number' ? p.totalRoiReturnPercent : (parseFloat(p.totalRoiReturnPercent as any) || 0),
+        durationDays: typeof p.durationDays === 'number' ? p.durationDays : (parseInt(p.durationDays as any) || 100),
+        maxMatrixLevels: typeof p.maxMatrixLevels === 'number' ? p.maxMatrixLevels : (parseInt(p.maxMatrixLevels as any) || 15),
+      }));
+
+      const settingsToSave: SystemSettings = {
+        ...editableSettings,
+        spinWheelRewards: sanitizedRewards,
+        levelIncomePercentages: sanitizedLevelIncome,
+        packages: sanitizedPackages,
+        spinWheelIntervalHours: typeof editableSettings.spinWheelIntervalHours === 'number'
+          ? editableSettings.spinWheelIntervalHours
+          : (parseInt(editableSettings.spinWheelIntervalHours as any) || 24),
+        spinCreditsPerReset: typeof editableSettings.spinCreditsPerReset === 'number'
+          ? editableSettings.spinCreditsPerReset
+          : (parseInt(editableSettings.spinCreditsPerReset as any) || 1),
+      };
+      await onUpdateSettings(settingsToSave);
       setIsSettingsDirty(false);
     } finally {
       setSavingSettings(false);
@@ -1024,6 +1056,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     ...editableSettings,
                     packages: [...editableSettings.packages, newPkg],
                   });
+                  setIsSettingsDirty(true);
                 }}
                 className="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5"
               >
@@ -1066,6 +1099,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           ...editableSettings,
                           packages: editableSettings.packages.filter((p) => p.id !== pkg.id),
                         });
+                        setIsSettingsDirty(true);
                       }}
                       className="text-slate-500 hover:text-red-400 transition"
                       title="Delete Package"
@@ -1082,8 +1116,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         value={pkg.name}
                         onChange={(e) => {
                           const updated = [...editableSettings.packages];
-                          updated[idx].name = e.target.value;
+                          updated[idx] = { ...updated[idx], name: e.target.value };
                           setEditableSettings({ ...editableSettings, packages: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-1.5 text-white mt-1 font-bold"
                       />
@@ -1092,13 +1127,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-[10px] text-slate-400 uppercase font-bold">Price ($ USDT)</label>
                       <input
                         type="number"
-                        value={pkg.price}
+                        step="any"
+                        value={pkg.price === undefined || pkg.price === null ? '' : pkg.price}
                         onChange={(e) => {
+                          const val = e.target.value;
                           const updated = [...editableSettings.packages];
-                          updated[idx].price = parseFloat(e.target.value) || 0;
+                          updated[idx] = { ...updated[idx], price: val as any };
                           setEditableSettings({ ...editableSettings, packages: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-1.5 text-emerald-400 mt-1 font-bold"
+                        placeholder="0"
                       />
                     </div>
 
@@ -1106,14 +1145,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-[10px] text-emerald-400 uppercase font-extrabold">Daily ROI (%)</label>
                       <input
                         type="number"
-                        step="0.1"
-                        value={pkg.dailyRoiPercent}
+                        step="any"
+                        value={pkg.dailyRoiPercent === undefined || pkg.dailyRoiPercent === null ? '' : pkg.dailyRoiPercent}
                         onChange={(e) => {
+                          const val = e.target.value;
                           const updated = [...editableSettings.packages];
-                          updated[idx].dailyRoiPercent = parseFloat(e.target.value) || 0;
+                          updated[idx] = { ...updated[idx], dailyRoiPercent: val as any };
                           setEditableSettings({ ...editableSettings, packages: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-emerald-500/50 rounded-lg p-1.5 text-emerald-300 mt-1 font-extrabold"
+                        placeholder="0"
                       />
                     </div>
 
@@ -1123,14 +1165,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </label>
                       <input
                         type="number"
-                        step="0.1"
-                        value={pkg.sponsorBonusPercent !== undefined ? pkg.sponsorBonusPercent : 10}
+                        step="any"
+                        value={pkg.sponsorBonusPercent === undefined || pkg.sponsorBonusPercent === null ? '' : pkg.sponsorBonusPercent}
                         onChange={(e) => {
+                          const val = e.target.value;
                           const updated = [...editableSettings.packages];
-                          updated[idx].sponsorBonusPercent = parseFloat(e.target.value) || 0;
+                          updated[idx] = { ...updated[idx], sponsorBonusPercent: val as any };
                           setEditableSettings({ ...editableSettings, packages: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-cyan-500/50 rounded-lg p-1.5 text-cyan-300 mt-1 font-extrabold"
+                        placeholder="0"
                       />
                     </div>
 
@@ -1138,13 +1183,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-[10px] text-amber-400 uppercase font-extrabold">Max Capping / Return (%)</label>
                       <input
                         type="number"
-                        value={pkg.totalRoiReturnPercent}
+                        step="any"
+                        value={pkg.totalRoiReturnPercent === undefined || pkg.totalRoiReturnPercent === null ? '' : pkg.totalRoiReturnPercent}
                         onChange={(e) => {
+                          const val = e.target.value;
                           const updated = [...editableSettings.packages];
-                          updated[idx].totalRoiReturnPercent = parseFloat(e.target.value) || 0;
+                          updated[idx] = { ...updated[idx], totalRoiReturnPercent: val as any };
                           setEditableSettings({ ...editableSettings, packages: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-amber-500/50 rounded-lg p-1.5 text-amber-300 mt-1 font-extrabold"
+                        placeholder="0"
                       />
                     </div>
 
@@ -1152,13 +1201,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-[10px] text-slate-400 uppercase font-bold">Duration (Days)</label>
                       <input
                         type="number"
-                        value={pkg.durationDays}
+                        step="1"
+                        value={pkg.durationDays === undefined || pkg.durationDays === null ? '' : pkg.durationDays}
                         onChange={(e) => {
+                          const val = e.target.value;
                           const updated = [...editableSettings.packages];
-                          updated[idx].durationDays = parseInt(e.target.value) || 0;
+                          updated[idx] = { ...updated[idx], durationDays: val as any };
                           setEditableSettings({ ...editableSettings, packages: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-1.5 text-cyan-300 mt-1 font-bold"
+                        placeholder="100"
                       />
                     </div>
 
@@ -1166,13 +1219,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-[10px] text-slate-400 uppercase font-bold">Max Matrix Levels</label>
                       <input
                         type="number"
-                        value={pkg.maxMatrixLevels}
+                        step="1"
+                        value={pkg.maxMatrixLevels === undefined || pkg.maxMatrixLevels === null ? '' : pkg.maxMatrixLevels}
                         onChange={(e) => {
+                          const val = e.target.value;
                           const updated = [...editableSettings.packages];
-                          updated[idx].maxMatrixLevels = parseInt(e.target.value) || 0;
+                          updated[idx] = { ...updated[idx], maxMatrixLevels: val as any };
                           setEditableSettings({ ...editableSettings, packages: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-1.5 text-purple-300 mt-1 font-bold"
+                        placeholder="15"
                       />
                     </div>
 
@@ -1218,14 +1275,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const nextLevelNum = editableSettings.levelIncomePercentages.length + 1;
+                  const nextLevelNum = (editableSettings.levelIncomePercentages || []).length + 1;
                   setEditableSettings({
                     ...editableSettings,
                     levelIncomePercentages: [
-                      ...editableSettings.levelIncomePercentages,
+                      ...(editableSettings.levelIncomePercentages || []),
                       { level: nextLevelNum, percent: 1 },
                     ],
                   });
+                  setIsSettingsDirty(true);
                 }}
                 className="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5"
               >
@@ -1235,18 +1293,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-3 text-xs">
-              {editableSettings.levelIncomePercentages.map((lvl, idx) => (
+              {(editableSettings.levelIncomePercentages || []).map((lvl, idx) => (
                 <div
                   key={lvl.level}
                   className="bg-[#050911] border border-slate-800 rounded-xl p-3 text-center space-y-2 relative group"
                 >
                   <div className="flex justify-between items-center text-[10px] text-amber-400 font-bold uppercase">
                     <span>Lvl {lvl.level}</span>
-                    {editableSettings.levelIncomePercentages.length > 1 && (
+                    {(editableSettings.levelIncomePercentages || []).length > 1 && (
                       <button
                         type="button"
                         onClick={() => {
-                          const filtered = editableSettings.levelIncomePercentages.filter(
+                          const filtered = (editableSettings.levelIncomePercentages || []).filter(
                             (_, i) => i !== idx
                           );
                           // re-index levels
@@ -1258,6 +1316,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             ...editableSettings,
                             levelIncomePercentages: reindexed,
                           });
+                          setIsSettingsDirty(true);
                         }}
                         className="text-slate-600 hover:text-red-400"
                       >
@@ -1268,17 +1327,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="relative">
                     <input
                       type="number"
-                      step="0.5"
-                      value={lvl.percent}
+                      step="any"
+                      min="0"
+                      value={lvl.percent === undefined || lvl.percent === null ? '' : lvl.percent}
                       onChange={(e) => {
-                        const updated = [...editableSettings.levelIncomePercentages];
-                        updated[idx].percent = parseFloat(e.target.value) || 0;
+                        const val = e.target.value;
+                        const updated = [...(editableSettings.levelIncomePercentages || [])];
+                        updated[idx] = { ...updated[idx], percent: val as any };
                         setEditableSettings({
                           ...editableSettings,
                           levelIncomePercentages: updated,
                         });
+                        setIsSettingsDirty(true);
                       }}
                       className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-1.5 text-center text-cyan-300 font-extrabold text-sm focus:outline-none focus:border-amber-400"
+                      placeholder="0"
                     />
                     <span className="text-[10px] text-slate-500 absolute right-2 top-2">%</span>
                   </div>
@@ -1493,6 +1556,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       { id: 'sp-8', label: 'Extra Spin', amount: 0, probability: 5, color: '#6366f1' },
                     ];
                     setEditableSettings({ ...editableSettings, spinWheelRewards: default8 });
+                    setIsSettingsDirty(true);
                   }}
                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700"
                 >
@@ -1515,6 +1579,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       ...editableSettings,
                       spinWheelRewards: [...currentRewards, newReward],
                     });
+                    setIsSettingsDirty(true);
                   }}
                   className="px-3.5 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-[0_0_10px_rgba(168,85,247,0.2)]"
                 >
@@ -1536,12 +1601,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     min="1"
                     step="1"
                     value={editableSettings.spinWheelIntervalHours !== undefined ? editableSettings.spinWheelIntervalHours : 24}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setEditableSettings({
                         ...editableSettings,
                         spinWheelIntervalHours: parseInt(e.target.value) || 24,
-                      })
-                    }
+                      });
+                      setIsSettingsDirty(true);
+                    }}
                     className="w-full bg-[#0d1726] border border-purple-500/30 rounded-xl px-3 py-2 text-purple-300 font-extrabold text-xs focus:outline-none focus:border-purple-400"
                   />
                   <span className="text-xs text-slate-400 shrink-0">Hours</span>
@@ -1561,12 +1627,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     min="1"
                     step="1"
                     value={editableSettings.spinCreditsPerReset !== undefined ? editableSettings.spinCreditsPerReset : 1}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setEditableSettings({
                         ...editableSettings,
                         spinCreditsPerReset: parseInt(e.target.value) || 1,
-                      })
-                    }
+                      });
+                      setIsSettingsDirty(true);
+                    }}
                     className="w-full bg-[#0d1726] border border-purple-500/30 rounded-xl px-3 py-2 text-purple-300 font-extrabold text-xs focus:outline-none focus:border-purple-400"
                   />
                   <span className="text-xs text-slate-400 shrink-0">Spins</span>
@@ -1630,6 +1697,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           ...editableSettings,
                           spinWheelRewards: updated,
                         });
+                        setIsSettingsDirty(true);
                       }}
                       className="text-slate-600 hover:text-red-400 transition"
                       title="Delete Slice"
@@ -1645,51 +1713,79 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={reward.label}
+                        value={reward.label ?? ''}
                         onChange={(e) => {
                           const updated = [...(editableSettings.spinWheelRewards || [])];
-                          updated[idx].label = e.target.value;
+                          updated[idx] = { ...updated[idx], label: e.target.value };
                           setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-bold focus:outline-none focus:border-purple-400"
                         placeholder="e.g. $5.00 USDT or Try Again"
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5">
                       <div>
-                        <label className="text-[10px] text-emerald-400 uppercase font-bold block mb-1">
-                          Amount ($ USDT)
+                        <label className="text-[9px] text-emerald-400 uppercase font-bold block mb-1 truncate" title="Prize Amount ($ USDT)">
+                          Amount ($)
                         </label>
                         <input
                           type="number"
-                          step="0.1"
+                          step="any"
                           min="0"
-                          value={reward.amount}
+                          value={reward.amount === undefined || reward.amount === null ? '' : reward.amount}
                           onChange={(e) => {
+                            const val = e.target.value;
                             const updated = [...(editableSettings.spinWheelRewards || [])];
-                            updated[idx].amount = parseFloat(e.target.value) || 0;
+                            updated[idx] = { ...updated[idx], amount: val as any };
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                            setIsSettingsDirty(true);
                           }}
-                          className="w-full bg-[#0d1726] border border-emerald-500/30 rounded-lg px-2 py-1.5 text-emerald-300 font-extrabold focus:outline-none focus:border-emerald-400"
+                          className="w-full bg-[#0d1726] border border-emerald-500/30 rounded-lg px-1.5 py-1.5 text-emerald-300 font-extrabold focus:outline-none focus:border-emerald-400 text-xs"
+                          placeholder="0.00"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[10px] text-amber-400 uppercase font-bold block mb-1">
-                          Chance / Weight (%)
+                        <label className="text-[9px] text-amber-400 uppercase font-bold block mb-1 truncate" title="Chance / Weight (%)">
+                          Chance (%)
                         </label>
                         <input
                           type="number"
-                          step="0.5"
+                          step="any"
                           min="0"
-                          value={reward.probability}
+                          value={reward.probability === undefined || reward.probability === null ? '' : reward.probability}
                           onChange={(e) => {
+                            const val = e.target.value;
                             const updated = [...(editableSettings.spinWheelRewards || [])];
-                            updated[idx].probability = parseFloat(e.target.value) || 0;
+                            updated[idx] = { ...updated[idx], probability: val as any };
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                            setIsSettingsDirty(true);
                           }}
-                          className="w-full bg-[#0d1726] border border-amber-500/30 rounded-lg px-2 py-1.5 text-amber-300 font-extrabold focus:outline-none focus:border-amber-400"
+                          className="w-full bg-[#0d1726] border border-amber-500/30 rounded-lg px-1.5 py-1.5 text-amber-300 font-extrabold focus:outline-none focus:border-amber-400 text-xs"
+                          placeholder="0"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[9px] text-cyan-400 uppercase font-bold block mb-1 truncate" title="Min Level / Rank Required (0 = All Levels)">
+                          Min Lvl
+                        </label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={reward.minLevel === undefined || reward.minLevel === null ? '' : reward.minLevel}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const updated = [...(editableSettings.spinWheelRewards || [])];
+                            updated[idx] = { ...updated[idx], minLevel: val as any };
+                            setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                            setIsSettingsDirty(true);
+                          }}
+                          className="w-full bg-[#0d1726] border border-cyan-500/30 rounded-lg px-1.5 py-1.5 text-cyan-300 font-extrabold focus:outline-none focus:border-cyan-400 text-xs"
+                          placeholder="0"
                         />
                       </div>
                     </div>
@@ -1704,7 +1800,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           value={reward.color || '#10b981'}
                           onChange={(e) => {
                             const updated = [...(editableSettings.spinWheelRewards || [])];
-                            updated[idx].color = e.target.value;
+                            updated[idx] = { ...updated[idx], color: e.target.value };
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
                           }}
                           className="w-8 h-8 rounded-lg border border-slate-700 bg-[#0d1726] cursor-pointer p-0.5"
@@ -1714,7 +1810,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           value={reward.color || '#10b981'}
                           onChange={(e) => {
                             const updated = [...(editableSettings.spinWheelRewards || [])];
-                            updated[idx].color = e.target.value;
+                            updated[idx] = { ...updated[idx], color: e.target.value };
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
                           }}
                           className="w-full bg-[#0d1726] border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 font-mono uppercase text-[10px]"

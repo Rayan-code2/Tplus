@@ -187,6 +187,7 @@ export interface SpinReward {
   amount: number;
   probability: number;
   color: string;
+  minLevel?: number;
 }
 
 export interface SystemSettings {
@@ -237,6 +238,7 @@ export interface LuckyDrawTicket {
   userNodeId: string;
   userName: string;
   purchasedAt: string;
+  price?: number;
 }
 
 export interface LuckyDrawWinner {
@@ -265,6 +267,9 @@ export interface LuckyDrawState {
   status: 'active' | 'rolling' | 'completed';
   forcedWinnerUserId?: string | null;
   forcedWinnerTicketNumber?: string | null;
+  forcedSecondWinnerUserId?: string | null;
+  forcedSecondWinnerTicketNumber?: string | null;
+  reservedSeriesLast5?: string | null;
   tickets: LuckyDrawTicket[];
   pastWinners: LuckyDrawWinner[];
   lastDrawAt?: string;

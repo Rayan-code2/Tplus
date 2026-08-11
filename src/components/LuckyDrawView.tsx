@@ -16,6 +16,10 @@ import {
   Play,
   Gift,
   Search,
+  Download,
+  FileSpreadsheet,
+  ListFilter,
+  Trash2,
 } from 'lucide-react';
 import { User, LuckyDrawState } from '../types';
 
@@ -56,14 +60,108 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [forcedUserId, setForcedUserId] = useState<string>('');
   const [forcedTicketNum, setForcedTicketNum] = useState<string>('');
+  const [forcedSecondUserId, setForcedSecondUserId] = useState<string>('');
+  const [forcedSecondTicketNum, setForcedSecondTicketNum] = useState<string>('');
+  const [previewLast5Input, setPreviewLast5Input] = useState<string>('');
+  const [assignTargetUsers, setAssignTargetUsers] = useState<Record<string, string>>({});
+
   const [adminTicketPrice, setAdminTicketPrice] = useState<number | string>(5);
   const [adminPrizeAmount, setAdminPrizeAmount] = useState<number | string>(250);
   const [adminSecondPrize, setAdminSecondPrize] = useState<number | string>(50);
   const [adminThirdPrize, setAdminThirdPrize] = useState<number | string>(10);
   const [adminCountdownMins, setAdminCountdownMins] = useState<number>(60);
   const [adminSearchUser, setAdminSearchUser] = useState('');
+  const [adminCouponSearch, setAdminCouponSearch] = useState('');
+  const [showActiveCouponsList, setShowActiveCouponsList] = useState(false);
   const [adminMsg, setAdminMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [hasInitializedConfig, setHasInitializedConfig] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  // CSV Export Active Coupons
+  const downloadActiveCouponsCSV = () => {
+    const tickets = luckyDraw?.tickets || [];
+    if (tickets.length === 0) {
+      alert('No active coupons found in the current pool.');
+      return;
+    }
+    const headers = ['Ticket Number', 'User Node ID', 'User Name', 'User ID', 'Price (USDT)', 'Purchased At'];
+    const csvRows = [
+      headers.join(','),
+      ...tickets.map((t) =>
+        [
+          `"${t.ticketNumber}"`,
+          `"${t.userNodeId || ''}"`,
+          `"${(t.userName || '').replace(/"/g, '""')}"`,
+          `"${t.userId}"`,
+          t.price ?? 5,
+          `"${t.purchasedAt || ''}"`,
+        ].join(',')
+      ),
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `LuckyDraw_ActiveCoupons_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // CSV Export Past Winner Results
+  const downloadPastResultsCSV = () => {
+    const past = luckyDraw?.pastWinners || [];
+    if (past.length === 0) {
+      alert('No past winner results found to export.');
+      return;
+    }
+    const headers = ['Draw Title', 'Winning Ticket Number', 'Prize Tier', 'Prize Amount (USDT)', 'Winner Name', 'Winner Node ID', 'Winner User ID', 'Draw Date'];
+    const csvRows = [
+      headers.join(','),
+      ...past.map((w) => {
+        const ticketNo = w.ticketNumber || (w as any).winningTicketNumber || (w as any).winningNumber || '';
+        const winnerName = w.userName || (w as any).winnerUserName || (w as any).winnerName || 'User';
+        const node = w.userNodeId || (w as any).winnerUserNodeId || '';
+        const uid = w.userId || (w as any).winnerUserId || '';
+        const date = (w as any).wonAt || (w as any).drawDate || '';
+        return [
+          `"${(w.drawTitle || 'Lucky Draw').replace(/"/g, '""')}"`,
+          `"${ticketNo}"`,
+          `"${(w.prizeTier || '1st Prize').replace(/"/g, '""')}"`,
+          w.prizeAmount ?? 0,
+          `"${winnerName.replace(/"/g, '""')}"`,
+          `"${node}"`,
+          `"${uid}"`,
+          `"${date}"`,
+        ].join(',');
+      }),
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `LuckyDraw_PastResults_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleClearPastHistory = async () => {
+    try {
+      const res = await fetch('/api/luckydraw/admin/clear-history', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setLuckyDraw((prev) => (prev ? { ...prev, pastWinners: [] } : null));
+        setAdminMsg({ text: '🎉 Past winner history cleared successfully!', type: 'success' });
+        fetchLuckyDraw();
+        if (onRefreshState) onRefreshState();
+      } else {
+        setAdminMsg({ text: data.error || 'Failed to clear history.', type: 'error' });
+      }
+    } catch (err: any) {
+      setAdminMsg({ text: 'Error clearing past winner history: ' + err.message, type: 'error' });
+    }
+  };
 
   // Fetch Lucky Draw State
   const fetchLuckyDraw = async () => {
@@ -85,6 +183,12 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           }
           if (data.luckyDraw.forcedWinnerTicketNumber) {
             setForcedTicketNum(data.luckyDraw.forcedWinnerTicketNumber);
+          }
+          if (data.luckyDraw.forcedSecondWinnerUserId) {
+            setForcedSecondUserId(data.luckyDraw.forcedSecondWinnerUserId);
+          }
+          if (data.luckyDraw.forcedSecondWinnerTicketNumber) {
+            setForcedSecondTicketNum(data.luckyDraw.forcedSecondWinnerTicketNumber);
           }
           setHasInitializedConfig(true);
         }
@@ -219,6 +323,8 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           status: 'active',
           forcedWinnerUserId: forcedUserId || null,
           forcedWinnerTicketNumber: forcedTicketNum || null,
+          forcedSecondWinnerUserId: forcedSecondUserId || null,
+          forcedSecondWinnerTicketNumber: forcedSecondTicketNum || null,
         }),
       });
       const data = await res.json();
@@ -251,6 +357,12 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         body: JSON.stringify({
           forcedWinnerUserId: forcedUserId || null,
           forcedWinnerTicketNumber: forcedTicketNum || null,
+          forcedSecondWinnerUserId: forcedSecondUserId || null,
+          forcedSecondWinnerTicketNumber: forcedSecondTicketNum || null,
+          ticketPrice: adminTicketPrice === '' ? 5 : Number(adminTicketPrice),
+          prizeAmount: adminPrizeAmount === '' ? 250 : Number(adminPrizeAmount),
+          secondPrizeAmount: adminSecondPrize === '' ? 50 : Number(adminSecondPrize),
+          thirdPrizeAmount: adminThirdPrize === '' ? 10 : Number(adminThirdPrize),
         }),
       });
       const data = await res.json();
@@ -274,6 +386,34 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
     }
   };
 
+  // Admin Assign / Gift Reserved Ticket Handler
+  const handleAdminAssignTicket = async (ticketNumber: string) => {
+    const targetUserId = assignTargetUsers[ticketNumber];
+    const targetUser = users.find((u) => u.id === targetUserId);
+    if (!targetUserId) {
+      setAdminMsg({ text: `Please select a user to assign coupon #${ticketNumber}`, type: 'error' });
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/luckydraw/admin/assign-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: targetUserId, ticketNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setAdminMsg({ text: data.error || 'Failed to assign ticket', type: 'error' });
+      } else {
+        setAdminMsg({ text: `🎉 Success! Coupon #${ticketNumber} has been assigned to ${targetUser?.name || 'user'}!`, type: 'success' });
+        fetchLuckyDraw();
+        if (onRefreshState) onRefreshState();
+      }
+    } catch (err: any) {
+      setAdminMsg({ text: 'Error assigning ticket: ' + err.message, type: 'error' });
+    }
+  };
+
   const userTickets = luckyDraw?.tickets?.filter((t) => t.userId === currentUser.id) || [];
   const filteredAdminUsers = users.filter((u) =>
     u.name.toLowerCase().includes(adminSearchUser.toLowerCase()) ||
@@ -281,6 +421,56 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   );
 
   const selectedWinnerUser = users.find((u) => u.id === forcedUserId);
+
+  // Derive active 1st prize winning coupon number if specified
+  const active1stPrizeCouponNum = (() => {
+    if (forcedTicketNum && /^\d{6}$/.test(forcedTicketNum.trim())) {
+      return forcedTicketNum.trim();
+    }
+    if (forcedUserId) {
+      const uTicket = luckyDraw?.tickets?.find((t) => t.userId === forcedUserId);
+      if (uTicket) return uTicket.ticketNumber;
+    }
+    if (previewLast5Input && /^\d{6}$/.test(previewLast5Input.trim())) {
+      return previewLast5Input.trim();
+    }
+    return '';
+  })();
+
+  // Effective last 5 digits for 2nd prize matching & Admin Reserved Series
+  const targetLast5Digits = (() => {
+    if (luckyDraw?.reservedSeriesLast5 && /^\d{5}$/.test(luckyDraw.reservedSeriesLast5.trim())) {
+      return luckyDraw.reservedSeriesLast5.trim();
+    }
+    if (active1stPrizeCouponNum.length === 6) {
+      return active1stPrizeCouponNum.slice(-5);
+    }
+    if (previewLast5Input && /^\d{1,5}$/.test(previewLast5Input.trim())) {
+      return previewLast5Input.trim().padStart(5, '0');
+    }
+    return '';
+  })();
+
+  // Build list of all 10 reserved ticket numbers in family series ending with targetLast5Digits (023456 to 923456)
+  const secondPrizeCandidatesList = (() => {
+    if (!targetLast5Digits || targetLast5Digits.length !== 5) return [];
+
+    const prefixes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+    return prefixes.map((prefix) => {
+      const candidateNum = prefix + targetLast5Digits;
+      // find any tickets in current lucky draw matching this coupon number
+      const matchingTickets = (luckyDraw?.tickets || []).filter((t) => t.ticketNumber === candidateNum);
+      const is1stPrizeNum = active1stPrizeCouponNum === candidateNum || forcedTicketNum === candidateNum;
+      return {
+        couponNumber: candidateNum,
+        prefixDigit: prefix,
+        is1stPrizeNum,
+        matchingTickets, // list of tickets sold for this exact coupon number
+      };
+    });
+  })();
+
 
   return (
     <div className="space-y-6 font-mono text-slate-100 pb-16">
@@ -639,18 +829,74 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       {/* 4. PAST WINNERS HALL OF FAME */}
       <div className="bg-[#0a1120] border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-3 gap-3">
-          <div className="flex items-center gap-2 text-sm font-bold text-white">
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <span>Lucky Draw Past Champions</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm font-bold text-white">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-amber-400" />
+              <span>Lucky Draw Past Champions</span>
+            </div>
             {luckyDraw?.lastWinningNumber && (
-              <span className="text-xs text-cyan-300 font-mono ml-2">
+              <span className="text-xs text-cyan-300 font-mono">
                 (Last Winning #: <strong className="text-amber-400">#{luckyDraw.lastWinningNumber}</strong>)
               </span>
             )}
           </div>
 
-          {/* Prize Category Filter Tabs */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={downloadPastResultsCSV}
+              className="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              title="Export all past winner records to Excel / CSV"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Export Results (CSV)</span>
+            </button>
+
+            {(currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!showClearConfirm) {
+                    setShowClearConfirm(true);
+                    setTimeout(() => setShowClearConfirm(false), 5000);
+                  } else {
+                    setShowClearConfirm(false);
+                    handleClearPastHistory();
+                  }
+                }}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                  showClearConfirm
+                    ? 'bg-rose-600 text-white border-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.5)] animate-pulse'
+                    : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40'
+                }`}
+                title="Clear past demo/test winners history"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>{showClearConfirm ? '⚠️ Click again to Confirm Clear!' : 'Clear History'}</span>
+              </button>
+            )}
+
+            {adminMsg && (
+          <div
+            className={`p-3 rounded-xl text-xs font-bold border flex items-center justify-between ${
+              adminMsg.type === 'success'
+                ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                : 'bg-rose-950/90 border-rose-500/60 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+            }`}
+          >
+            <span>{adminMsg.text}</span>
+            <button
+              type="button"
+              onClick={() => setAdminMsg(null)}
+              className="text-slate-400 hover:text-white font-mono text-xs px-1.5 py-0.5 rounded bg-slate-800/50"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Prize Category Filter Tabs */}
+            <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"
               onClick={() => setWinnerTierFilter('all')}
@@ -697,6 +943,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
             </button>
           </div>
         </div>
+      </div>
 
         {(() => {
           const past = luckyDraw?.pastWinners || [];
@@ -817,61 +1064,415 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
           {isAdminPanelOpen && (
             <div className="space-y-5 pt-2">
-              {/* Select / Rig Winner */}
-              <div className="bg-[#05050f] border border-rose-500/30 rounded-2xl p-4 space-y-3">
-                <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-amber-400" />
-                  <span>Choose / Select Next Draw Winner (Rigged Mode)</span>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Select any user from the list below or specify exact winning coupon number. When you click "Trigger Draw", the electric roller stops on this coupon and evaluates 1st, 2nd, and 3rd prizes!
-                </p>
+              {/* Active Coupons Tracking & CSV Export Card */}
+              <div className="bg-[#050814] border border-cyan-500/30 rounded-2xl p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-cyan-200">Active Pool Sold Coupons ({luckyDraw?.tickets?.length || 0})</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setShowActiveCouponsList(!showActiveCouponsList)}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <ListFilter className="w-3.5 h-3.5 text-cyan-300" />
+                      <span>{showActiveCouponsList ? 'Hide Coupons Table' : 'View Sold Coupons'}</span>
+                    </button>
 
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      placeholder="Search user by name or Node ID..."
-                      value={adminSearchUser}
-                      onChange={(e) => setAdminSearchUser(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-[#0a0a18] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
-                    />
+                    <button
+                      type="button"
+                      onClick={downloadActiveCouponsCSV}
+                      className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                    >
+                      <Download className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Download Active Coupons (CSV)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {showActiveCouponsList && (
+                  <div className="space-y-3 pt-1">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        placeholder="Filter active coupons by Ticket #, Name or Node ID..."
+                        value={adminCouponSearch}
+                        onChange={(e) => setAdminCouponSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-[#0a0f1d] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto border border-slate-800 rounded-xl bg-[#030610]">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead className="bg-slate-900/90 text-slate-400 font-bold sticky top-0 border-b border-slate-800">
+                          <tr>
+                            <th className="p-2 pl-3">Ticket #</th>
+                            <th className="p-2">User / Node ID</th>
+                            <th className="p-2">Price</th>
+                            <th className="p-2 text-center">Assign Prize</th>
+                            <th className="p-2 pr-3 text-right">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {(() => {
+                            const tkts = luckyDraw?.tickets || [];
+                            const filteredTkts = tkts.filter(
+                              (t) =>
+                                t.ticketNumber.includes(adminCouponSearch) ||
+                                (t.userName || '').toLowerCase().includes(adminCouponSearch.toLowerCase()) ||
+                                (t.userNodeId || '').toLowerCase().includes(adminCouponSearch.toLowerCase())
+                            );
+                            if (filteredTkts.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={5} className="p-4 text-center text-slate-500 text-xs">
+                                    No matching active coupons found in current pool.
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            return filteredTkts.map((tkt, idx) => {
+                              const is1st = forcedTicketNum === tkt.ticketNumber || (forcedUserId === tkt.userId && !forcedTicketNum);
+                              const is2nd = forcedSecondTicketNum === tkt.ticketNumber || (forcedSecondUserId === tkt.userId && !forcedSecondTicketNum);
+
+                              return (
+                                <tr key={tkt.id || idx} className="hover:bg-slate-800/40 transition">
+                                  <td className="p-2 pl-3 font-mono font-bold text-amber-300">
+                                    #{tkt.ticketNumber}
+                                    {is1st && <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold border border-amber-500/40">🥇 1st</span>}
+                                    {is2nd && <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[9px] font-bold border border-purple-500/40">🥈 2nd</span>}
+                                  </td>
+                                  <td className="p-2">
+                                    <div className="font-bold text-white">{tkt.userName || 'User'}</div>
+                                    <div className="text-[10px] text-slate-400">#{tkt.userNodeId || tkt.userId}</div>
+                                  </td>
+                                  <td className="p-2 text-cyan-300 font-bold">${tkt.price ?? 5} USDT</td>
+                                  <td className="p-2 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setForcedTicketNum(tkt.ticketNumber);
+                                          setForcedUserId(tkt.userId);
+                                        }}
+                                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
+                                          is1st
+                                            ? 'bg-amber-500 text-black border-amber-400'
+                                            : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
+                                        }`}
+                                      >
+                                        🥇 1st
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setForcedSecondTicketNum(tkt.ticketNumber);
+                                          setForcedSecondUserId(tkt.userId);
+                                        }}
+                                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
+                                          is2nd
+                                            ? 'bg-purple-500 text-white border-purple-400'
+                                            : 'bg-purple-500/10 text-purple-300 border-purple-500/30 hover:bg-purple-500/20'
+                                        }`}
+                                      >
+                                        🥈 2nd
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="p-2 pr-3 text-right text-[10px] text-slate-400">
+                                    {tkt.purchasedAt ? new Date(tkt.purchasedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Select / Rig Winner Controls (1st & 2nd Prize Selection) */}
+              <div className="bg-[#05050f] border border-amber-500/30 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-amber-400" />
+                    <span>Choose / Select 1st & 2nd Prize Winners (Admin Panel)</span>
+                  </div>
+                  {(forcedUserId || forcedTicketNum || forcedSecondUserId || forcedSecondTicketNum) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForcedUserId('');
+                        setForcedTicketNum('');
+                        setForcedSecondUserId('');
+                        setForcedSecondTicketNum('');
+                      }}
+                      className="text-[10px] text-rose-400 hover:underline cursor-pointer font-bold"
+                    >
+                      Clear Selection (Reset to Random)
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search user by name, Node ID or email..."
+                    value={adminSearchUser}
+                    onChange={(e) => setAdminSearchUser(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 bg-[#0a0a18] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* 🥇 1st Prize Winner Selection */}
+                  <div className="bg-[#080d1a] border border-amber-500/40 rounded-xl p-3 space-y-2">
+                    <div className="text-xs font-bold text-amber-400 flex items-center justify-between">
+                      <span>🥇 1st Prize Winner ($ {adminPrizeAmount || 250})</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Match 6 Digits</span>
+                    </div>
+
+                    <select
+                      value={forcedUserId}
+                      onChange={(e) => setForcedUserId(e.target.value)}
+                      className="w-full p-2 bg-[#040712] border border-slate-700 rounded-xl text-xs text-amber-300 font-bold focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="">-- Random Pick (No Forced 1st Winner) --</option>
+                      {filteredAdminUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          #{u.nodeId} - {u.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div>
+                      <label className="text-[10px] text-slate-400">Or specify exact Coupon Number (6 Digits):</label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="e.g. 839210"
+                        value={forcedTicketNum}
+                        onChange={(e) => setForcedTicketNum(e.target.value)}
+                        className="w-full mt-1 p-2 bg-[#040712] border border-slate-800 rounded-xl text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono tracking-widest font-bold"
+                      />
+                    </div>
                   </div>
 
-                  <select
-                    value={forcedUserId}
-                    onChange={(e) => setForcedUserId(e.target.value)}
-                    className="w-full p-2.5 bg-[#0a0a18] border border-slate-700 rounded-xl text-xs text-amber-300 font-bold focus:outline-none focus:border-rose-500"
-                  >
-                    <option value="">-- No Forced Winner (Random Pick) --</option>
-                    {filteredAdminUsers.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        #{u.nodeId} - {u.name} ({u.email})
-                      </option>
-                    ))}
-                  </select>
+                  {/* 🥈 2nd Prize Winner Selection */}
+                  <div className="bg-[#0d081c] border border-purple-500/40 rounded-xl p-3 space-y-2">
+                    <div className="text-xs font-bold text-purple-300 flex items-center justify-between">
+                      <span>🥈 2nd Prize Winner ($ {adminSecondPrize || 50})</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Runner-Up / Last 5</span>
+                    </div>
 
-                  {selectedWinnerUser && (
-                    <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span>
-                        Selected Winner: <strong className="text-white">{selectedWinnerUser.name}</strong> (#{selectedWinnerUser.nodeId})
-                      </span>
+                    <select
+                      value={forcedSecondUserId}
+                      onChange={(e) => setForcedSecondUserId(e.target.value)}
+                      className="w-full p-2 bg-[#060412] border border-slate-700 rounded-xl text-xs text-purple-300 font-bold focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="">-- Automatic Runner-Up (Random / Match) --</option>
+                      {filteredAdminUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          #{u.nodeId} - {u.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div>
+                      <label className="text-[10px] text-slate-400">Or specify exact 2nd Prize Coupon Number:</label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="e.g. 139210"
+                        value={forcedSecondTicketNum}
+                        onChange={(e) => setForcedSecondTicketNum(e.target.value)}
+                        className="w-full mt-1 p-2 bg-[#060412] border border-slate-800 rounded-xl text-xs text-purple-300 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-mono tracking-widest font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🎯 Identified 2nd Prize Candidates & Admin 10-Ticket Series Control */}
+                <div className="bg-[#060814] border border-purple-500/40 rounded-2xl p-4 space-y-3 shadow-[0_0_20px_rgba(168,85,247,0.12)]">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                      <div className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        <span>🔒 Admin Reserved 10-Ticket Series Control & 2nd Prize Candidates</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        All 10 coupons ending with <strong className="text-purple-300 font-mono font-bold">{targetLast5Digits ? `...${targetLast5Digits}` : '...23456'}</strong> are strictly locked under Admin Control. Users cannot pick them manually or receive them via random draw. Admin can gift/assign them to any user below!
+                      </p>
+                    </div>
+
+                    {/* Inspector Input */}
+                    <div className="flex items-center gap-2 shrink-0 bg-[#0a0f24] p-1.5 rounded-xl border border-slate-800">
+                      <span className="text-[10px] text-slate-400 font-bold">Lock Last 5 Digits:</span>
+                      <input
+                        type="text"
+                        maxLength={5}
+                        placeholder="e.g. 23456"
+                        value={previewLast5Input}
+                        onChange={(e) => setPreviewLast5Input(e.target.value)}
+                        className="w-24 p-1 bg-[#040714] border border-slate-700 rounded-lg text-xs font-mono font-bold text-purple-300 placeholder-slate-600 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  {!targetLast5Digits ? (
+                    <div className="p-4 text-center text-slate-400 text-xs bg-[#03050c] rounded-xl border border-slate-800/80">
+                      💡 Set a 1st Prize coupon number (e.g. <strong>123456</strong>) or enter 5 digits above to lock all 10 candidate coupons under strict Admin Control!
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-300 font-bold px-1 gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="w-4 h-4 text-amber-400" />
+                          <span>
+                            Locked Series: <strong className="text-amber-300 font-mono text-xs">0{targetLast5Digits} - 9{targetLast5Digits}</strong>
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-purple-300 font-normal">
+                          🛡️ Protected from user picking! Admin Control Active.
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-1">
+                        {secondPrizeCandidatesList.map((cand) => {
+                          const isSold = cand.matchingTickets.length > 0;
+                          const soldTicket = isSold ? cand.matchingTickets[0] : null;
+                          const isSelected1st = cand.is1stPrizeNum;
+                          const isSelected2nd = forcedSecondTicketNum === cand.couponNumber || (soldTicket && forcedSecondUserId === soldTicket.userId);
+                          const currentAssignUser = assignTargetUsers[cand.couponNumber] || (soldTicket ? soldTicket.userId : '');
+
+                          return (
+                            <div
+                              key={cand.couponNumber}
+                              className={`p-3 rounded-xl border transition flex flex-col justify-between gap-2.5 ${
+                                isSelected1st
+                                  ? 'bg-amber-950/60 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
+                                  : isSelected2nd
+                                  ? 'bg-purple-950/80 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                                  : isSold
+                                  ? 'bg-[#0b1026] border-purple-500/40 hover:border-purple-400'
+                                  : 'bg-[#03050f] border-slate-800'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-mono font-black text-sm text-amber-300 tracking-wider">
+                                    #{cand.couponNumber}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    {isSelected1st && (
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500 text-black">
+                                        🥇 1st Prize
+                                      </span>
+                                    )}
+                                    {isSelected2nd && (
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500 text-white">
+                                        🥈 2nd Prize
+                                      </span>
+                                    )}
+                                    {isSold ? (
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        ASSIGNED 🎫
+                                      </span>
+                                    ) : (
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30">
+                                        ADMIN HOLD 🔒
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="mt-1.5 text-[11px]">
+                                  {isSold && soldTicket ? (
+                                    <div className="bg-[#050814] p-1.5 rounded-lg border border-slate-800">
+                                      <div className="font-bold text-white truncate">{soldTicket.userName || 'User'}</div>
+                                      <div className="text-[10px] text-slate-400">Node ID: #{soldTicket.userNodeId || soldTicket.userId}</div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-[10px] text-amber-400/80 italic bg-amber-500/5 p-1.5 rounded-lg border border-amber-500/20">
+                                      Unassigned (Held in Admin Control)
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Action controls for Admin */}
+                              <div className="space-y-1.5 pt-1 border-t border-slate-800/80">
+                                {/* Winner assignment buttons */}
+                                <div className="grid grid-cols-2 gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setForcedTicketNum(cand.couponNumber);
+                                      if (soldTicket) setForcedUserId(soldTicket.userId);
+                                    }}
+                                    className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer border text-center ${
+                                      isSelected1st
+                                        ? 'bg-amber-500 text-black border-amber-300'
+                                        : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border-amber-500/30'
+                                    }`}
+                                  >
+                                    🥇 1st Winner
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setForcedSecondTicketNum(cand.couponNumber);
+                                      if (soldTicket) setForcedSecondUserId(soldTicket.userId);
+                                    }}
+                                    className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer border text-center ${
+                                      isSelected2nd
+                                        ? 'bg-purple-500 text-white border-purple-300'
+                                        : 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border-purple-500/30'
+                                    }`}
+                                  >
+                                    🥈 2nd Winner
+                                  </button>
+                                </div>
+
+                                {/* Assign / Gift Ticket Selector */}
+                                <div className="space-y-1 pt-1">
+                                  <div className="text-[9px] text-slate-400 font-bold">Gift/Assign to User:</div>
+                                  <div className="flex items-center gap-1">
+                                    <select
+                                      value={currentAssignUser}
+                                      onChange={(e) => setAssignTargetUsers((prev) => ({ ...prev, [cand.couponNumber]: e.target.value }))}
+                                      className="w-full p-1 bg-[#040612] border border-slate-700 rounded-lg text-[10px] text-white focus:outline-none focus:border-amber-500"
+                                    >
+                                      <option value="">-- Select Target User --</option>
+                                      {users.map((u) => (
+                                        <option key={u.id} value={u.id}>
+                                          #{u.nodeId} - {u.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAdminAssignTicket(cand.couponNumber)}
+                                      className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-black font-black text-[10px] rounded-lg cursor-pointer shrink-0 transition"
+                                      title="Assign/Gift this ticket to selected user"
+                                    >
+                                      🎁 Assign
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
-
-                  <div className="pt-1">
-                    <label className="text-[11px] text-slate-400">Or specify exact winning Coupon Number (6 Digits):</label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      placeholder="e.g. 839210"
-                      value={forcedTicketNum}
-                      onChange={(e) => setForcedTicketNum(e.target.value)}
-                      className="w-full mt-1 p-2 bg-[#0a0a18] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-rose-500 font-mono tracking-widest"
-                    />
-                  </div>
                 </div>
               </div>
 

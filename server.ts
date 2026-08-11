@@ -659,6 +659,8 @@ const initialLuckyDraw: LuckyDrawState = {
   status: 'active',
   forcedWinnerUserId: null,
   forcedWinnerTicketNumber: null,
+  forcedSecondWinnerUserId: null,
+  forcedSecondWinnerTicketNumber: null,
   tickets: [
     {
       id: 'tkt-101',
@@ -677,47 +679,7 @@ const initialLuckyDraw: LuckyDrawState = {
       purchasedAt: new Date(Date.now() - 7200000).toISOString(),
     },
   ],
-  pastWinners: [
-    {
-      id: 'pwin-001',
-      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
-      ticketNumber: '772910',
-      userId: 'usr-beta3',
-      userNodeId: 'NX-BETA3',
-      userName: 'Valkyrie Crypto',
-      prizeAmount: 250,
-      prizeTier: '1st Prize (6 Digits Match)',
-      matchedDigits: 6,
-      winningNumber: '772910',
-      wonAt: new Date(Date.now() - 86400000).toISOString(),
-    },
-    {
-      id: 'pwin-002',
-      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
-      ticketNumber: '772915',
-      userId: 'usr-alpha2',
-      userNodeId: 'NX-ALPHA2',
-      userName: 'Neo Matrix',
-      prizeAmount: 50,
-      prizeTier: '2nd Prize (Last 5 Digits)',
-      matchedDigits: 5,
-      winningNumber: '772910',
-      wonAt: new Date(Date.now() - 86400000).toISOString(),
-    },
-    {
-      id: 'pwin-003',
-      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
-      ticketNumber: '772900',
-      userId: 'usr-demo',
-      userNodeId: 'NX-GML9L6',
-      userName: 'Alex Cyberpunk (Demo Account)',
-      prizeAmount: 10,
-      prizeTier: '3rd Prize (Last 4 Digits)',
-      matchedDigits: 4,
-      winningNumber: '772910',
-      wonAt: new Date(Date.now() - 86400000).toISOString(),
-    },
-  ],
+  pastWinners: [],
 };
 
 // Global State Store
@@ -1330,44 +1292,6 @@ function ensureLuckyDrawPrizes() {
   if (state.luckyDraw.prizeAmount === undefined) state.luckyDraw.prizeAmount = 250;
   if (state.luckyDraw.secondPrizeAmount === undefined) state.luckyDraw.secondPrizeAmount = 50;
   if (state.luckyDraw.thirdPrizeAmount === undefined) state.luckyDraw.thirdPrizeAmount = 10;
-
-  const has2nd = state.luckyDraw.pastWinners.some(
-    (w) => w.prizeTier?.includes('2nd') || w.matchedDigits === 5
-  );
-  const has3rd = state.luckyDraw.pastWinners.some(
-    (w) => w.prizeTier?.includes('3rd') || w.matchedDigits === 4
-  );
-
-  if (!has2nd) {
-    state.luckyDraw.pastWinners.push({
-      id: 'pwin-seed-2nd',
-      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
-      ticketNumber: '772915',
-      userId: 'usr-alpha2',
-      userNodeId: 'NX-ALPHA2',
-      userName: 'Neo Matrix',
-      prizeAmount: 50,
-      prizeTier: '2nd Prize (Last 5 Digits)',
-      matchedDigits: 5,
-      winningNumber: '772910',
-      wonAt: new Date(Date.now() - 86400000).toISOString(),
-    });
-  }
-  if (!has3rd) {
-    state.luckyDraw.pastWinners.push({
-      id: 'pwin-seed-3rd',
-      drawTitle: '⚡ ROUND #101 ELECTRIC DRAW',
-      ticketNumber: '772900',
-      userId: 'usr-demo',
-      userNodeId: 'NX-GML9L6',
-      userName: 'Alex Cyberpunk (Demo Account)',
-      prizeAmount: 10,
-      prizeTier: '3rd Prize (Last 4 Digits)',
-      matchedDigits: 4,
-      winningNumber: '772910',
-      wonAt: new Date(Date.now() - 86400000).toISOString(),
-    });
-  }
 }
 
 // Helper Functions
@@ -2251,11 +2175,19 @@ app.post('/api/spin', (req: Request, res: Response) => {
   user.lastSpinAt = new Date().toISOString();
 
   // Weighted random pick from dynamic spinWheelRewards
-  const rewards = (state.settings.spinWheelRewards || []).map((r) => ({
+  const userRankTier = typeof user.rank === 'object' && user.rank ? Number((user.rank as any).tierRank || 0) : 0;
+  const userDirects = Number(user.directReferralsCount || 0);
+  
+  const allRewards = (state.settings.spinWheelRewards || []).map((r) => ({
     ...r,
     amount: Number(r.amount) || 0,
     probability: Number(r.probability) || 0,
+    minLevel: Number(r.minLevel) || 0,
   }));
+
+  // Filter rewards where user qualifies for minLevel (minLevel 0 = everyone eligible)
+  let rewards = allRewards.filter((r) => !r.minLevel || userRankTier >= r.minLevel || userDirects >= r.minLevel);
+  if (rewards.length === 0) rewards = allRewards;
 
   const totalWeight = rewards.reduce((sum, r) => sum + r.probability, 0);
   let randomVal = Math.random() * (totalWeight > 0 ? totalWeight : 1);
@@ -2412,6 +2344,23 @@ app.get('/api/luckydraw', (req: Request, res: Response) => {
   res.json({ success: true, luckyDraw: state.luckyDraw });
 });
 
+function getReservedLast5Digits(): string | null {
+  if (!state.luckyDraw) return null;
+  if (state.luckyDraw.reservedSeriesLast5 && /^\d{5}$/.test(state.luckyDraw.reservedSeriesLast5.trim())) {
+    return state.luckyDraw.reservedSeriesLast5.trim();
+  }
+  if (state.luckyDraw.forcedWinnerTicketNumber && /^\d{6}$/.test(state.luckyDraw.forcedWinnerTicketNumber.trim())) {
+    return state.luckyDraw.forcedWinnerTicketNumber.trim().slice(-5);
+  }
+  if (state.luckyDraw.forcedWinnerUserId) {
+    const tkt = state.luckyDraw.tickets.find((t) => t.userId === state.luckyDraw.forcedWinnerUserId);
+    if (tkt && /^\d{6}$/.test(tkt.ticketNumber)) {
+      return tkt.ticketNumber.slice(-5);
+    }
+  }
+  return null;
+}
+
 app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
   const { userId, quantity, customNumbers } = req.body;
   const qty = parseInt(quantity) || 1;
@@ -2423,11 +2372,18 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
   const ticketPrice = state.luckyDraw.ticketPrice ?? 5;
   const totalCost = ticketPrice * qty;
 
+  const reservedLast5 = getReservedLast5Digits();
+
   // Validate custom numbers if supplied
   const chosenNumbers: string[] = Array.isArray(customNumbers) ? customNumbers : [];
   for (const num of chosenNumbers) {
     if (num && !/^\d{6}$/.test(num)) {
       return res.status(400).json({ error: `Invalid coupon number '${num}'. Must be exactly 6 digits (000000 to 999999).` });
+    }
+    if (num && reservedLast5 && num.endsWith(reservedLast5)) {
+      return res.status(400).json({
+        error: `Coupon #${num} belongs to the Admin Reserved 10-Ticket Series (ends with '${reservedLast5}'). This series is under strict Admin Control and cannot be picked manually by users!`
+      });
     }
   }
 
@@ -2448,12 +2404,15 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
   for (let i = 0; i < qty; i++) {
     let ticketNum = chosenNumbers[i];
     if (!ticketNum) {
-      // Auto-generate unique 6-digit number
+      // Auto-generate unique 6-digit number avoiding reserved 10-series
       let attempts = 0;
       do {
         ticketNum = Math.floor(100000 + Math.random() * 900000).toString();
         attempts++;
-      } while (existingTicketNumbers.has(ticketNum) && attempts < 1000);
+      } while (
+        (existingTicketNumbers.has(ticketNum) || (reservedLast5 && ticketNum.endsWith(reservedLast5))) &&
+        attempts < 10000
+      );
     }
 
     existingTicketNumbers.add(ticketNum);
@@ -2495,6 +2454,8 @@ app.post('/api/luckydraw/admin/config', (req: Request, res: Response) => {
     status,
     forcedWinnerUserId,
     forcedWinnerTicketNumber,
+    forcedSecondWinnerUserId,
+    forcedSecondWinnerTicketNumber,
     title,
     description,
   } = req.body;
@@ -2520,6 +2481,52 @@ app.post('/api/luckydraw/admin/config', (req: Request, res: Response) => {
 
   state.luckyDraw.forcedWinnerUserId = forcedWinnerUserId || null;
   state.luckyDraw.forcedWinnerTicketNumber = forcedWinnerTicketNumber || null;
+  state.luckyDraw.forcedSecondWinnerUserId = forcedSecondWinnerUserId || null;
+  state.luckyDraw.forcedSecondWinnerTicketNumber = forcedSecondWinnerTicketNumber || null;
+
+  if (req.body.reservedSeriesLast5 !== undefined) {
+    state.luckyDraw.reservedSeriesLast5 = req.body.reservedSeriesLast5 || null;
+  } else if (forcedWinnerTicketNumber && /^\d{6}$/.test(forcedWinnerTicketNumber)) {
+    state.luckyDraw.reservedSeriesLast5 = forcedWinnerTicketNumber.slice(-5);
+  }
+
+  saveStore();
+  res.json({ success: true, luckyDraw: state.luckyDraw });
+});
+
+// Admin Assign / Gift Ticket Endpoint
+app.post('/api/luckydraw/admin/assign-ticket', (req: Request, res: Response) => {
+  const { userId, ticketNumber } = req.body;
+  if (!userId || !ticketNumber || !/^\d{6}$/.test(ticketNumber)) {
+    return res.status(400).json({ error: 'Valid userId and 6-digit ticketNumber are required.' });
+  }
+
+  const targetUser = state.users.find((u) => u.id === userId);
+  if (!targetUser) return res.status(400).json({ error: 'Target user not found.' });
+
+  if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
+
+  // Check if ticket already exists
+  const existingIdx = state.luckyDraw.tickets.findIndex((t) => t.ticketNumber === ticketNumber);
+  if (existingIdx >= 0) {
+    // Re-assign existing ticket to new user
+    state.luckyDraw.tickets[existingIdx].userId = targetUser.id;
+    state.luckyDraw.tickets[existingIdx].userNodeId = targetUser.nodeId;
+    state.luckyDraw.tickets[existingIdx].userName = targetUser.name;
+    state.luckyDraw.tickets[existingIdx].purchasedAt = new Date().toISOString();
+  } else {
+    // Create new assigned ticket for target user ($0 cost)
+    const newTkt: LuckyDrawTicket = {
+      id: `tkt-admin-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      ticketNumber,
+      userId: targetUser.id,
+      userNodeId: targetUser.nodeId,
+      userName: targetUser.name,
+      purchasedAt: new Date().toISOString(),
+      price: 0,
+    };
+    state.luckyDraw.tickets.push(newTkt);
+  }
 
   saveStore();
   res.json({ success: true, luckyDraw: state.luckyDraw });
@@ -2528,13 +2535,38 @@ app.post('/api/luckydraw/admin/config', (req: Request, res: Response) => {
 app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
   if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
 
-  const { forcedWinnerUserId, forcedWinnerTicketNumber } = req.body;
+  const {
+    forcedWinnerUserId,
+    forcedWinnerTicketNumber,
+    forcedSecondWinnerUserId,
+    forcedSecondWinnerTicketNumber,
+    prizeAmount,
+    secondPrizeAmount,
+    thirdPrizeAmount,
+    ticketPrice,
+  } = req.body;
+
+  if (ticketPrice !== undefined && ticketPrice !== null && ticketPrice !== '' && !isNaN(Number(ticketPrice))) {
+    state.luckyDraw.ticketPrice = Math.max(0, Number(ticketPrice));
+  }
+  if (prizeAmount !== undefined && prizeAmount !== null && prizeAmount !== '' && !isNaN(Number(prizeAmount))) {
+    state.luckyDraw.prizeAmount = Math.max(0, Number(prizeAmount));
+  }
+  if (secondPrizeAmount !== undefined && secondPrizeAmount !== null && secondPrizeAmount !== '' && !isNaN(Number(secondPrizeAmount))) {
+    state.luckyDraw.secondPrizeAmount = Math.max(0, Number(secondPrizeAmount));
+  }
+  if (thirdPrizeAmount !== undefined && thirdPrizeAmount !== null && thirdPrizeAmount !== '' && !isNaN(Number(thirdPrizeAmount))) {
+    state.luckyDraw.thirdPrizeAmount = Math.max(0, Number(thirdPrizeAmount));
+  }
+
   const targetForcedUser = forcedWinnerUserId || state.luckyDraw.forcedWinnerUserId;
   const targetForcedTicket = forcedWinnerTicketNumber || state.luckyDraw.forcedWinnerTicketNumber;
+  const targetForcedSecondUser = forcedSecondWinnerUserId || state.luckyDraw.forcedSecondWinnerUserId;
+  const targetForcedSecondTicket = forcedSecondWinnerTicketNumber || state.luckyDraw.forcedSecondWinnerTicketNumber;
 
   let winningNumber = '';
 
-  // 1. Determine Winning 6-digit Number
+  // 1. Determine Winning 6-digit Number (1st Prize)
   if (targetForcedTicket && /^\d{6}$/.test(targetForcedTicket)) {
     winningNumber = targetForcedTicket;
   } else if (targetForcedUser) {
@@ -2554,9 +2586,9 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
   }
 
   // 2. Scan ALL sold tickets in current round for 1st, 2nd, and 3rd prize matches
-  const firstPrizeAmount = state.luckyDraw.prizeAmount ?? 250;
-  const secondPrizeAmount = state.luckyDraw.secondPrizeAmount ?? 50;
-  const thirdPrizeAmount = state.luckyDraw.thirdPrizeAmount ?? 10;
+  const firstPrizeVal = state.luckyDraw.prizeAmount ?? 250;
+  const secondPrizeVal = state.luckyDraw.secondPrizeAmount ?? 50;
+  const thirdPrizeVal = state.luckyDraw.thirdPrizeAmount ?? 10;
 
   const last5 = winningNumber.slice(-5);
   const last4 = winningNumber.slice(-4);
@@ -2573,16 +2605,16 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
     processedTicketIds.add(tkt.id);
     const u = state.users.find((usr) => usr.id === tkt.userId);
     if (u) {
-      u.balance += firstPrizeAmount;
-      u.totalEarned += firstPrizeAmount;
+      u.balance += firstPrizeVal;
+      u.totalEarned += firstPrizeVal;
       state.transactions.unshift({
         id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-1st`,
         userId: u.id,
         userNodeId: u.nodeId,
         type: 'admin_adjust',
-        amount: firstPrizeAmount,
+        amount: firstPrizeVal,
         status: 'completed',
-        notes: `🏆 1st Prize Winner of Lucky Draw Coupon #${tkt.ticketNumber} ($${firstPrizeAmount} USDT)`,
+        notes: `🏆 1st Prize Winner of Lucky Draw Coupon #${tkt.ticketNumber} ($${firstPrizeVal} USDT)`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -2593,7 +2625,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
       userId: tkt.userId,
       userNodeId: tkt.userNodeId,
       userName: tkt.userName,
-      prizeAmount: firstPrizeAmount,
+      prizeAmount: firstPrizeVal,
       prizeTier: '1st Prize (6 Digits Match)',
       matchedDigits: 6,
       winningNumber,
@@ -2601,30 +2633,43 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
     });
   }
 
-  // 2nd Prize (Last 5 digits match or runner-up from remaining sold tickets)
-  let secondPrizeTickets = state.luckyDraw.tickets.filter(
-    (t) => !processedTicketIds.has(t.id) && t.ticketNumber.endsWith(last5)
-  );
+  // 2nd Prize (Check forced 2nd winner, or last 5 digits match, or runner-up from remaining sold tickets)
+  let secondPrizeTickets: LuckyDrawTicket[] = [];
+  if (targetForcedSecondTicket) {
+    const forced2nd = state.luckyDraw.tickets.find((t) => t.ticketNumber === targetForcedSecondTicket && !processedTicketIds.has(t.id));
+    if (forced2nd) secondPrizeTickets = [forced2nd];
+  } else if (targetForcedSecondUser) {
+    const forced2nd = state.luckyDraw.tickets.find((t) => t.userId === targetForcedSecondUser && !processedTicketIds.has(t.id));
+    if (forced2nd) secondPrizeTickets = [forced2nd];
+  }
+
+  if (secondPrizeTickets.length === 0) {
+    secondPrizeTickets = state.luckyDraw.tickets.filter(
+      (t) => !processedTicketIds.has(t.id) && t.ticketNumber.endsWith(last5)
+    );
+  }
+
   if (secondPrizeTickets.length === 0) {
     const unproc = state.luckyDraw.tickets.filter((t) => !processedTicketIds.has(t.id));
     if (unproc.length > 0) {
       secondPrizeTickets = [unproc[0]];
     }
   }
+
   for (const tkt of secondPrizeTickets) {
     processedTicketIds.add(tkt.id);
     const u = state.users.find((usr) => usr.id === tkt.userId);
     if (u) {
-      u.balance += secondPrizeAmount;
-      u.totalEarned += secondPrizeAmount;
+      u.balance += secondPrizeVal;
+      u.totalEarned += secondPrizeVal;
       state.transactions.unshift({
         id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-2nd`,
         userId: u.id,
         userNodeId: u.nodeId,
         type: 'admin_adjust',
-        amount: secondPrizeAmount,
+        amount: secondPrizeVal,
         status: 'completed',
-        notes: `🥈 2nd Prize Winner (Matched Last 5 Digits / Runner-Up) Coupon #${tkt.ticketNumber} ($${secondPrizeAmount} USDT)`,
+        notes: `🥈 2nd Prize Winner (Matched Last 5 Digits / Runner-Up) Coupon #${tkt.ticketNumber} ($${secondPrizeVal} USDT)`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -2635,7 +2680,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
       userId: tkt.userId,
       userNodeId: tkt.userNodeId,
       userName: tkt.userName,
-      prizeAmount: secondPrizeAmount,
+      prizeAmount: secondPrizeVal,
       prizeTier: '2nd Prize (Last 5 Digits)',
       matchedDigits: 5,
       winningNumber,
@@ -2657,16 +2702,16 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
     processedTicketIds.add(tkt.id);
     const u = state.users.find((usr) => usr.id === tkt.userId);
     if (u) {
-      u.balance += thirdPrizeAmount;
-      u.totalEarned += thirdPrizeAmount;
+      u.balance += thirdPrizeVal;
+      u.totalEarned += thirdPrizeVal;
       state.transactions.unshift({
         id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-3rd`,
         userId: u.id,
         userNodeId: u.nodeId,
         type: 'admin_adjust',
-        amount: thirdPrizeAmount,
+        amount: thirdPrizeVal,
         status: 'completed',
-        notes: `🥉 3rd Prize Winner (Matched Last 4 Digits / Runner-Up) Coupon #${tkt.ticketNumber} ($${thirdPrizeAmount} USDT)`,
+        notes: `🥉 3rd Prize Winner (Matched Last 4 Digits / Runner-Up) Coupon #${tkt.ticketNumber} ($${thirdPrizeVal} USDT)`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -2677,7 +2722,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
       userId: tkt.userId,
       userNodeId: tkt.userNodeId,
       userName: tkt.userName,
-      prizeAmount: thirdPrizeAmount,
+      prizeAmount: thirdPrizeVal,
       prizeTier: '3rd Prize (Last 4 Digits)',
       matchedDigits: 4,
       winningNumber,
@@ -2685,58 +2730,12 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
     });
   }
 
-  // If 0 tickets were sold in the current pool, award 1st, 2nd, and 3rd prizes to active users as demo winners
-  if (winnersList.length === 0 && state.users.length > 0) {
-    const u1 = state.users[0];
-    const u2 = state.users[1] || u1;
-    const u3 = state.users[2] || u1;
-
-    winnersList.push(
-      {
-        id: `pwin-${Date.now()}-1`,
-        drawTitle: state.luckyDraw.title,
-        ticketNumber: winningNumber,
-        userId: u1.id,
-        userNodeId: u1.nodeId,
-        userName: u1.name,
-        prizeAmount: firstPrizeAmount,
-        prizeTier: '1st Prize (6 Digits Match)',
-        matchedDigits: 6,
-        winningNumber,
-        wonAt: new Date().toISOString(),
-      },
-      {
-        id: `pwin-${Date.now()}-2`,
-        drawTitle: state.luckyDraw.title,
-        ticketNumber: (parseInt(winningNumber) > 100000 ? parseInt(winningNumber) - 1 : 888888).toString().padStart(6, '0'),
-        userId: u2.id,
-        userNodeId: u2.nodeId,
-        userName: u2.name,
-        prizeAmount: secondPrizeAmount,
-        prizeTier: '2nd Prize (Last 5 Digits)',
-        matchedDigits: 5,
-        winningNumber,
-        wonAt: new Date().toISOString(),
-      },
-      {
-        id: `pwin-${Date.now()}-3`,
-        drawTitle: state.luckyDraw.title,
-        ticketNumber: (parseInt(winningNumber) > 100000 ? parseInt(winningNumber) - 2 : 777777).toString().padStart(6, '0'),
-        userId: u3.id,
-        userNodeId: u3.nodeId,
-        userName: u3.name,
-        prizeAmount: thirdPrizeAmount,
-        prizeTier: '3rd Prize (Last 4 Digits)',
-        matchedDigits: 4,
-        winningNumber,
-        wonAt: new Date().toISOString(),
-      }
-    );
-  }
-
-  // Record Past Winners
+  // If 0 tickets were sold in current pool and no winners were generated, do not insert fake dummy winners
+  // Record Past Winners (only if any tickets/winners exist)
   if (!state.luckyDraw.pastWinners) state.luckyDraw.pastWinners = [];
-  state.luckyDraw.pastWinners.unshift(...winnersList);
+  if (winnersList.length > 0) {
+    state.luckyDraw.pastWinners.unshift(...winnersList);
+  }
 
   // Reset for next draw round
   state.luckyDraw.lastWinningNumber = winningNumber;
@@ -2754,6 +2753,15 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
     winners: winnersList,
     luckyDraw: state.luckyDraw,
   });
+});
+
+// Endpoint to clear past winners history (Admin feature)
+app.post('/api/luckydraw/admin/clear-history', (req: Request, res: Response) => {
+  if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
+  state.luckyDraw.pastWinners = [];
+  (state.luckyDraw as any).historyCleared = true;
+  saveStore();
+  res.json({ success: true, message: 'Past winners history cleared successfully.', luckyDraw: state.luckyDraw });
 });
 
 // 10. Simulate Boosting Queue FIFO Payout & Rebirth
@@ -2839,6 +2847,7 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
       label: r.label || `$${r.amount} USDT`,
       amount: typeof r.amount === 'number' ? r.amount : parseFloat(r.amount as any) || 0,
       probability: typeof r.probability === 'number' ? r.probability : parseFloat(r.probability as any) || 0,
+      minLevel: typeof r.minLevel === 'number' ? r.minLevel : parseInt(r.minLevel as any) || 0,
       color: r.color || '#10b981',
     }));
   }
