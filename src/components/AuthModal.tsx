@@ -82,6 +82,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         throw new Error(data.error || 'Login failed');
       }
 
+      if (data.user?.id) {
+        localStorage.setItem('tp_user_id', data.user.id);
+      }
+
       showToast(`Welcome back! Logged in as #${data.user.nodeId} (${data.user.name})`, 'success');
       onLoginSuccess();
       onClose();
@@ -120,6 +124,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Registration failed');
+      }
+
+      if (data.user?.id) {
+        localStorage.setItem('tp_user_id', data.user.id);
       }
 
       showToast(`Account Created Successfully! Your Node ID is #${data.user.nodeId}`, 'success');

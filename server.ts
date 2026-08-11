@@ -1360,17 +1360,27 @@ function updateTeamVolumeAndCounts() {
   });
 }
 
+// Helper to get active user for request (supports header 'x-user-id' for browser session isolation)
+function getUserFromReq(req: Request): User | undefined {
+  const reqUserId = (req.headers['x-user-id'] as string) || (req.query.userId as string);
+  if (reqUserId) {
+    const found = state.users.find((u) => u.id === reqUserId || u.nodeId.toLowerCase() === reqUserId.toLowerCase());
+    if (found) return found;
+  }
+  return state.users.find((u) => u.id === state.activeUserId) || state.users[2] || state.users[0];
+}
+
 // API ROUTES
 
 // 1. Get Full Application State or Current User Context
 app.get('/api/state', (req: Request, res: Response) => {
   updateTeamVolumeAndCounts();
-  const currentUser = state.users.find((u) => u.id === state.activeUserId) || state.users[2];
+  const currentUser = getUserFromReq(req) || state.users[2] || state.users[0];
   res.json({
     currentUser,
     users: state.users,
     settings: state.settings,
-    transactions: state.transactions.filter((t) => t.userId === currentUser.id || req.query.admin === 'true'),
+    transactions: state.transactions.filter((t) => t.userId === currentUser?.id || req.query.admin === 'true'),
     depositRequests: state.depositRequests,
     withdrawalRequests: state.withdrawalRequests,
     boostingQueue: state.boostingQueue,
@@ -1546,7 +1556,7 @@ app.post('/api/auth/reset-password', (req: Request, res: Response) => {
 // Change Password for Logged-In User
 app.post('/api/user/change-password', (req: Request, res: Response) => {
   const { currentPassword, newPassword } = req.body;
-  const user = state.users.find((u) => u.id === state.activeUserId);
+  const user = getUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'User not logged in' });
 
   if (!newPassword || newPassword.trim().length < 4) {
@@ -1706,7 +1716,7 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
 // 4. Buy / Upgrade Package & Distribute Sponsor Bonus + Matrix Level Income
 app.post('/api/packages/buy', (req: Request, res: Response) => {
   const { packageId } = req.body;
-  const user = state.users.find((u) => u.id === state.activeUserId);
+  const user = getUserFromReq(req);
   const pkg = state.settings.packages.find((p) => p.id === packageId);
 
   if (!user || !pkg) {
@@ -1886,7 +1896,7 @@ app.post('/api/packages/buy', (req: Request, res: Response) => {
 
 // 5. Claim Node Yield ROI
 app.post('/api/roi/claim', (req: Request, res: Response) => {
-  const user = state.users.find((u) => u.id === state.activeUserId);
+  const user = getUserFromReq(req);
   if (!user || !user.activePackageId) {
     return res.status(400).json({ error: 'No active package to claim ROI' });
   }
@@ -1955,7 +1965,7 @@ app.post('/api/roi/claim', (req: Request, res: Response) => {
 // 6. Submit Deposit Request
 app.post('/api/deposit', (req: Request, res: Response) => {
   const { amount, network, txHash } = req.body;
-  const user = state.users.find((u) => u.id === state.activeUserId);
+  const user = getUserFromReq(req);
 
   if (!user) return res.status(400).json({ error: 'User not logged in' });
   if (!amount || amount < 10) return res.status(400).json({ error: 'Minimum deposit is $10 USDT' });
@@ -1983,7 +1993,7 @@ app.post('/api/deposit', (req: Request, res: Response) => {
 // 7. Request Withdrawal with 20% Upgrade Deduction Rule
 app.post('/api/withdraw', (req: Request, res: Response) => {
   const { amount, targetAddress, network } = req.body;
-  const user = state.users.find((u) => u.id === state.activeUserId);
+  const user = getUserFromReq(req);
 
   if (!user) return res.status(400).json({ error: 'User not logged in' });
 
@@ -2150,7 +2160,7 @@ app.post('/api/withdraw', (req: Request, res: Response) => {
 
 // 8. Spin Wheel Game
 app.post('/api/spin', (req: Request, res: Response) => {
-  const user = state.users.find((u) => u.id === state.activeUserId);
+  const user = getUserFromReq(req);
   if (!user) return res.status(400).json({ error: 'User not logged in' });
 
   // Auto-recharge free spins if interval time has passed
@@ -2302,7 +2312,7 @@ function checkRankQualification(user: User, rank: RankConfig) {
 // 9. Claim Rank Bonus
 app.post('/api/rank/claim', (req: Request, res: Response) => {
   const { rankId } = req.body;
-  const user = state.users.find((u) => u.id === state.activeUserId);
+  const user = getUserFromReq(req);
   const rank = state.settings.ranks.find((r) => r.id === rankId);
 
   if (!user || !rank) return res.status(400).json({ error: 'Invalid user or rank' });
@@ -3657,7 +3667,7 @@ app.post('/api/admin/sqlite-query', (req: Request, res: Response) => {
 // 1. User Buy Product Endpoint
 app.post('/api/products/buy', (req: Request, res: Response) => {
   const { productId, quantity = 1, shippingAddress = 'User Default Address', selectedSize, selectedColor } = req.body;
-  const user = state.users.find((u) => u.id === state.activeUserId);
+  const user = getUserFromReq(req);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   const product = (state.products || []).find((p) => p.id === productId);

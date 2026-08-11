@@ -56,12 +56,22 @@ export default function App() {
   };
 
   // Fetch Full App State from Backend Server
+  const getStoredUserId = () => localStorage.getItem('tp_user_id') || '';
+
   const fetchState = async () => {
     try {
-      const res = await fetch('/api/state?admin=true');
+      const storedId = getStoredUserId();
+      const res = await fetch('/api/state?admin=true', {
+        headers: {
+          'x-user-id': storedId,
+        },
+      });
       if (res.ok) {
         const data = await res.json();
         setCurrentUser(data.currentUser);
+        if (data.currentUser?.id && !localStorage.getItem('tp_user_id')) {
+          localStorage.setItem('tp_user_id', data.currentUser.id);
+        }
         setUsers(data.users);
         setSettings(data.settings);
         setTransactions(data.transactions);
@@ -87,9 +97,10 @@ export default function App() {
     const u = users.find((x) => x.id === userId);
     if (u) {
       try {
+        localStorage.setItem('tp_user_id', u.id);
         await fetch('/api/auth/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-user-id': u.id },
           body: JSON.stringify({ nodeId: u.nodeId }),
         });
         await fetchState();
@@ -458,11 +469,13 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('tp_user_id');
       await fetch('/api/auth/logout', { method: 'POST' });
       setCurrentUser(null);
       setIsAuthPage(true);
       showToast('Logged out of Node Session', 'success');
     } catch (err) {
+      localStorage.removeItem('tp_user_id');
       setIsAuthPage(true);
     }
   };
