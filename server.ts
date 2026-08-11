@@ -1362,12 +1362,16 @@ function updateTeamVolumeAndCounts() {
 
 // Helper to get active user for request (supports header 'x-user-id' for browser session isolation)
 function getUserFromReq(req: Request): User | undefined {
-  const reqUserId = (req.headers['x-user-id'] as string) || (req.query.userId as string);
-  if (reqUserId) {
+  const reqUserId = (req.headers['x-user-id'] as string) || (req.query.userId as string) || (req.body && req.body.userId);
+  if (reqUserId && reqUserId.trim() !== '') {
     const found = state.users.find((u) => u.id === reqUserId || u.nodeId.toLowerCase() === reqUserId.toLowerCase());
     if (found) return found;
   }
-  return state.users.find((u) => u.id === state.activeUserId) || state.users[2] || state.users[0];
+  // Fallback to activeUserId ONLY if x-user-id header was not sent at all
+  if (!('x-user-id' in req.headers) && state.activeUserId) {
+    return state.users.find((u) => u.id === state.activeUserId);
+  }
+  return undefined;
 }
 
 // API ROUTES
@@ -1375,12 +1379,12 @@ function getUserFromReq(req: Request): User | undefined {
 // 1. Get Full Application State or Current User Context
 app.get('/api/state', (req: Request, res: Response) => {
   updateTeamVolumeAndCounts();
-  const currentUser = getUserFromReq(req) || state.users[2] || state.users[0];
+  const currentUser = getUserFromReq(req);
   res.json({
-    currentUser,
+    currentUser: currentUser || null,
     users: state.users,
     settings: state.settings,
-    transactions: state.transactions.filter((t) => t.userId === currentUser?.id || req.query.admin === 'true'),
+    transactions: state.transactions.filter((t) => currentUser && (t.userId === currentUser.id || req.query.admin === 'true')),
     depositRequests: state.depositRequests,
     withdrawalRequests: state.withdrawalRequests,
     boostingQueue: state.boostingQueue,
@@ -1410,15 +1414,11 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
     }
   }
 
-  state.activeUserId = user.id;
-  saveStore();
   res.json({ success: true, user });
 });
 
 // Logout endpoint
 app.post('/api/auth/logout', (req: Request, res: Response) => {
-  state.activeUserId = '';
-  saveStore();
   res.json({ success: true });
 });
 
@@ -1649,7 +1649,6 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
   };
 
   state.users.push(newUser);
-  state.activeUserId = newUser.id;
 
   // Increment sponsor count
   sponsor.directReferralsCount += 1;
