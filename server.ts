@@ -20,6 +20,11 @@ import {
   LuckyDrawState,
   LuckyDrawTicket,
   LuckyDrawWinner,
+  ColorPredictionState,
+  ColorPredictionBet,
+  ColorPredictionResult,
+  AviatorState,
+  AviatorBet,
 } from './src/types';
 
 const app = express();
@@ -682,6 +687,34 @@ const initialLuckyDraw: LuckyDrawState = {
   pastWinners: [],
 };
 
+const initialColorPrediction: ColorPredictionState = {
+  currentPeriodId: `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}1001`,
+  periodDurationSeconds: 60,
+  startTime: Date.now(),
+  forcedNextNumber: null,
+  adminMode: 'lowest_payout',
+  bets: [],
+  history: [
+    { periodId: `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}1000`, number: 7, color: 'green', size: 'big', completedAt: new Date(Date.now() - 60000).toISOString() },
+    { periodId: `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}0999`, number: 2, color: 'red', size: 'small', completedAt: new Date(Date.now() - 120000).toISOString() },
+    { periodId: `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}0998`, number: 0, color: 'violet-red', size: 'small', completedAt: new Date(Date.now() - 180000).toISOString() },
+    { periodId: `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}0997`, number: 5, color: 'violet-green', size: 'big', completedAt: new Date(Date.now() - 240000).toISOString() },
+    { periodId: `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}0996`, number: 9, color: 'green', size: 'big', completedAt: new Date(Date.now() - 300000).toISOString() }
+  ],
+};
+
+const initialAviator: AviatorState = {
+  currentRoundId: `AV-${Date.now()}`,
+  status: 'waiting',
+  currentMultiplier: 1.00,
+  targetCrashMultiplier: 2.15,
+  startTime: Date.now(),
+  bets: [],
+  history: [1.45, 2.10, 5.80, 1.12, 18.50, 2.05, 1.08, 4.30, 3.12, 1.95],
+  forcedNextCrash: null,
+  adminMode: 'lowest_payout',
+};
+
 // Global State Store
 let state = {
   settings: defaultSettings,
@@ -693,6 +726,8 @@ let state = {
   products: initialProducts,
   productOrders: initialOrders,
   luckyDraw: initialLuckyDraw,
+  colorPrediction: initialColorPrediction,
+  aviator: initialAviator,
   activeUserId: 'usr-demo',
 };
 
@@ -1253,10 +1288,14 @@ function loadFromSqlite() {
         if (jsonData.luckyDraw) {
           state.luckyDraw = jsonData.luckyDraw;
         }
+        if (jsonData.colorPrediction) {
+          state.colorPrediction = jsonData.colorPrediction;
+        }
       } catch (jsonErr) {
         console.error('JSON backup load warning in loadFromSqlite:', jsonErr);
       }
     }
+    ensureColorPredictionState();
 
     console.log(`✅ Loaded ${state.users.length} users, ${state.transactions.length} transactions from SQLite!`);
   } catch (err) {
@@ -1280,10 +1319,270 @@ function loadStoreJson() {
       }
     }
     ensureLuckyDrawPrizes();
+    ensureColorPredictionState();
   } catch (err) {
     console.error('Failed to load JSON store:', err);
   }
 }
+
+function ensureColorPredictionState() {
+  if (!state.colorPrediction) {
+    state.colorPrediction = initialColorPrediction;
+  }
+  if (!state.colorPrediction.bets) state.colorPrediction.bets = [];
+  if (!state.colorPrediction.history) state.colorPrediction.history = [];
+  if (!state.colorPrediction.startTime) state.colorPrediction.startTime = Date.now();
+  if (!state.colorPrediction.periodDurationSeconds) state.colorPrediction.periodDurationSeconds = 60;
+  if (!state.colorPrediction.adminMode) state.colorPrediction.adminMode = 'lowest_payout';
+  if (!state.colorPrediction.currentPeriodId) {
+    state.colorPrediction.currentPeriodId = `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}1001`;
+  }
+}
+
+function calculatePayoutForNumber(candidateNum: number, activeBets: ColorPredictionBet[]): number {
+  let totalPayout = 0;
+  activeBets.forEach((bet) => {
+    let multiplier = 0;
+    const sel = bet.selection;
+    if (sel === 'green') {
+      if ([1, 3, 7, 9].includes(candidateNum)) multiplier = 2;
+      else if (candidateNum === 5) multiplier = 1.5;
+    } else if (sel === 'red') {
+      if ([2, 4, 6, 8].includes(candidateNum)) multiplier = 2;
+      else if (candidateNum === 0) multiplier = 1.5;
+    } else if (sel === 'violet') {
+      if (candidateNum === 0 || candidateNum === 5) multiplier = 4.5;
+    } else if (sel === 'big') {
+      if (candidateNum >= 5) multiplier = 2;
+    } else if (sel === 'small') {
+      if (candidateNum < 5) multiplier = 2;
+    } else if (sel === bet.selection && !isNaN(Number(sel))) {
+      if (Number(sel) === candidateNum) multiplier = 9;
+    }
+    if (multiplier > 0) {
+      totalPayout += bet.totalBet * multiplier;
+    }
+  });
+  return totalPayout;
+}
+
+function resolveColorPredictionPeriod() {
+  ensureColorPredictionState();
+  const cp = state.colorPrediction;
+  const currentPeriod = cp.currentPeriodId;
+  const activeBets = cp.bets.filter((b) => b.periodId === currentPeriod && b.status === 'pending');
+
+  // 1. Pick result number based on active mode
+  let winningNum: number;
+
+  if (cp.forcedNextNumber !== null && cp.forcedNextNumber >= 0 && cp.forcedNextNumber <= 9) {
+    // Manual forced override took precedence
+    winningNum = cp.forcedNextNumber;
+    cp.forcedNextNumber = null;
+  } else if (cp.adminMode === 'lowest_payout') {
+    // Automatic Risk Management mode: Pick number 0-9 with lowest total payout liability
+    let lowestPayout = Infinity;
+    let candidates: number[] = [];
+
+    for (let num = 0; num <= 9; num++) {
+      const payout = calculatePayoutForNumber(num, activeBets);
+      if (payout < lowestPayout) {
+        lowestPayout = payout;
+        candidates = [num];
+      } else if (payout === lowestPayout) {
+        candidates.push(num);
+      }
+    }
+
+    if (candidates.length > 0) {
+      winningNum = candidates[Math.floor(Math.random() * candidates.length)];
+    } else {
+      winningNum = Math.floor(Math.random() * 10);
+    }
+  } else {
+    // Standard random mode
+    winningNum = Math.floor(Math.random() * 10);
+  }
+
+  // 2. Determine color and size
+  let colorVal: 'green' | 'red' | 'violet-green' | 'violet-red';
+  if (winningNum === 0) colorVal = 'violet-red';
+  else if (winningNum === 5) colorVal = 'violet-green';
+  else if ([1, 3, 7, 9].includes(winningNum)) colorVal = 'green';
+  else colorVal = 'red';
+
+  const sizeVal: 'big' | 'small' = winningNum >= 5 ? 'big' : 'small';
+
+  // 3. Settle all pending bets for currentPeriod
+  activeBets.forEach((bet) => {
+    let multiplier = 0;
+    const sel = bet.selection;
+
+    if (sel === 'green') {
+      if ([1, 3, 7, 9].includes(winningNum)) multiplier = 2;
+      else if (winningNum === 5) multiplier = 1.5;
+    } else if (sel === 'red') {
+      if ([2, 4, 6, 8].includes(winningNum)) multiplier = 2;
+      else if (winningNum === 0) multiplier = 1.5;
+    } else if (sel === 'violet') {
+      if (winningNum === 0 || winningNum === 5) multiplier = 4.5;
+    } else if (sel === 'big') {
+      if (sizeVal === 'big') multiplier = 2;
+    } else if (sel === 'small') {
+      if (sizeVal === 'small') multiplier = 2;
+    } else if (sel === bet.selection && !isNaN(Number(sel))) {
+      if (Number(sel) === winningNum) multiplier = 9;
+    }
+
+    if (multiplier > 0) {
+      const payout = bet.totalBet * multiplier;
+      bet.status = 'won';
+      bet.payout = payout;
+
+      // Credit user wallet balance
+      const user = state.users.find((u) => u.id === bet.userId);
+      if (user) {
+        user.balance = (user.balance || 0) + payout;
+        user.totalEarned = (user.totalEarned || 0) + payout;
+
+        // Record Transaction
+        state.transactions.unshift({
+          id: `tx-cpwin-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          userId: user.id,
+          userNodeId: user.nodeId,
+          type: 'color_prediction_win',
+          amount: payout,
+          status: 'completed',
+          notes: `Win Go 1m Win - Period #${currentPeriod} Result: ${winningNum}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } else {
+      bet.status = 'lost';
+      bet.payout = 0;
+    }
+  });
+
+  // 4. Add to history
+  cp.history.unshift({
+    periodId: currentPeriod,
+    number: winningNum,
+    color: colorVal,
+    size: sizeVal,
+    completedAt: new Date().toISOString(),
+  });
+  if (cp.history.length > 100) cp.history = cp.history.slice(0, 100);
+
+  // 5. Generate next period ID and reset timer
+  const prevSeq = parseInt(currentPeriod.slice(-4)) || 1000;
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  cp.currentPeriodId = `${dateStr}${prevSeq + 1}`;
+  cp.startTime = Date.now();
+
+  saveStore();
+}
+
+// Timer Loop for Color Prediction Rounds
+setInterval(() => {
+  ensureColorPredictionState();
+  const cp = state.colorPrediction;
+  const elapsedSeconds = Math.floor((Date.now() - cp.startTime) / 1000);
+  if (elapsedSeconds >= cp.periodDurationSeconds) {
+    resolveColorPredictionPeriod();
+  }
+}, 1000);
+
+function ensureAviatorState() {
+  if (!state.aviator) state.aviator = initialAviator;
+  if (!state.aviator.bets) state.aviator.bets = [];
+  if (!state.aviator.history) state.aviator.history = [1.45, 2.10, 5.80, 1.12, 18.50, 2.05];
+  if (!state.aviator.adminMode) state.aviator.adminMode = 'lowest_payout';
+  if (!state.aviator.currentRoundId) state.aviator.currentRoundId = `AV-${Date.now()}`;
+  if (!state.aviator.status) state.aviator.status = 'waiting';
+  if (!state.aviator.currentMultiplier) state.aviator.currentMultiplier = 1.00;
+  if (!state.aviator.targetCrashMultiplier) state.aviator.targetCrashMultiplier = 2.15;
+}
+
+function tickAviatorGame() {
+  ensureAviatorState();
+  const av = state.aviator;
+  const now = Date.now();
+  const elapsedSec = (now - av.startTime) / 1000;
+
+  if (av.status === 'waiting') {
+    if (elapsedSec >= 5) {
+      av.status = 'flying';
+      av.startTime = now;
+      av.currentMultiplier = 1.00;
+
+      if (av.forcedNextCrash !== null && av.forcedNextCrash >= 1.0) {
+        av.targetCrashMultiplier = av.forcedNextCrash;
+        av.forcedNextCrash = null;
+      } else if (av.adminMode === 'lowest_payout') {
+        const totalStakes = av.bets.filter((b) => b.status === 'pending').reduce((sum, b) => sum + b.amount, 0);
+        if (totalStakes > 50) {
+          av.targetCrashMultiplier = Number((1.05 + Math.random() * 0.45).toFixed(2));
+        } else if (totalStakes > 0) {
+          av.targetCrashMultiplier = Number((1.12 + Math.random() * 1.20).toFixed(2));
+        } else {
+          av.targetCrashMultiplier = Number((1.20 + Math.random() * 8.00).toFixed(2));
+        }
+      } else {
+        const rand = Math.random();
+        if (rand < 0.15) av.targetCrashMultiplier = Number((1.01 + Math.random() * 0.15).toFixed(2));
+        else if (rand < 0.70) av.targetCrashMultiplier = Number((1.16 + Math.random() * 2.00).toFixed(2));
+        else if (rand < 0.90) av.targetCrashMultiplier = Number((3.16 + Math.random() * 5.00).toFixed(2));
+        else av.targetCrashMultiplier = Number((8.16 + Math.random() * 25.00).toFixed(2));
+      }
+    }
+  } else if (av.status === 'flying') {
+    const mult = Number((1.00 + Math.pow(elapsedSec / 2.5, 1.8)).toFixed(2));
+    av.currentMultiplier = mult;
+
+    av.bets.forEach((bet) => {
+      const autoM = (bet as any).autoCashout;
+      if (bet.status === 'pending' && autoM && mult >= autoM && mult <= av.targetCrashMultiplier) {
+        bet.cashedOut = true;
+        bet.cashoutMultiplier = autoM;
+        bet.payout = Number((bet.amount * autoM).toFixed(2));
+        bet.status = 'cashed_out';
+
+        const usr = state.users.find((u) => u.id === bet.userId);
+        if (usr) {
+          usr.balance += bet.payout;
+          usr.totalEarned += (bet.payout - bet.amount);
+        }
+      }
+    });
+
+    if (mult >= av.targetCrashMultiplier) {
+      av.status = 'crashed';
+      av.currentMultiplier = av.targetCrashMultiplier;
+      av.startTime = now;
+
+      av.history.unshift(av.targetCrashMultiplier);
+      if (av.history.length > 20) av.history.pop();
+
+      av.bets.forEach((bet) => {
+        if (bet.status === 'pending') {
+          bet.status = 'crashed';
+        }
+      });
+      saveStore();
+    }
+  } else if (av.status === 'crashed') {
+    if (elapsedSec >= 4) {
+      av.status = 'waiting';
+      av.currentRoundId = `AV-${now}`;
+      av.currentMultiplier = 1.00;
+      av.startTime = now;
+      av.bets = [];
+      saveStore();
+    }
+  }
+}
+
+setInterval(tickAviatorGame, 300);
 
 function ensureLuckyDrawPrizes() {
   if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
@@ -1363,15 +1662,16 @@ function updateTeamVolumeAndCounts() {
 // Helper to get active user for request (supports header 'x-user-id' for browser session isolation)
 function getUserFromReq(req: Request): User | undefined {
   const reqUserId = (req.headers['x-user-id'] as string) || (req.query.userId as string) || (req.body && req.body.userId);
-  if (reqUserId && reqUserId.trim() !== '') {
+  if (reqUserId && reqUserId.trim() !== '' && reqUserId !== 'undefined' && reqUserId !== 'null') {
     const found = state.users.find((u) => u.id === reqUserId || u.nodeId.toLowerCase() === reqUserId.toLowerCase());
     if (found) return found;
   }
-  // Fallback to activeUserId ONLY if x-user-id header was not sent at all
-  if (!('x-user-id' in req.headers) && state.activeUserId) {
-    return state.users.find((u) => u.id === state.activeUserId);
+  // Fallback to activeUserId or demo user if user not found or header was empty
+  if (state.activeUserId) {
+    const active = state.users.find((u) => u.id === state.activeUserId);
+    if (active) return active;
   }
-  return undefined;
+  return state.users[0];
 }
 
 // API ROUTES
@@ -2781,6 +3081,352 @@ app.post('/api/luckydraw/admin/clear-history', (req: Request, res: Response) => 
   (state.luckyDraw as any).historyCleared = true;
   saveStore();
   res.json({ success: true, message: 'Past winners history cleared successfully.', luckyDraw: state.luckyDraw });
+});
+
+// 11. Color Prediction API Endpoints
+app.get('/api/color-prediction', (req: Request, res: Response) => {
+  ensureColorPredictionState();
+  const cp = state.colorPrediction;
+  const elapsed = Math.floor((Date.now() - cp.startTime) / 1000);
+  const remainingSeconds = Math.max(0, cp.periodDurationSeconds - elapsed);
+  const currentUser = getUserFromReq(req);
+  const userBets = currentUser ? cp.bets.filter((b) => b.userId === currentUser.id).slice(0, 30) : [];
+
+  res.json({
+    success: true,
+    currentPeriodId: cp.currentPeriodId,
+    periodDurationSeconds: cp.periodDurationSeconds,
+    remainingSeconds,
+    isFreeze: remainingSeconds <= 5,
+    history: cp.history.slice(0, 50),
+    myBets: userBets,
+  });
+});
+
+app.post('/api/color-prediction/bet', (req: Request, res: Response) => {
+  ensureColorPredictionState();
+  const cp = state.colorPrediction;
+  const user = getUserFromReq(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized. Please login to place a bet.' });
+  }
+
+  const elapsed = Math.floor((Date.now() - cp.startTime) / 1000);
+  const remainingSeconds = Math.max(0, cp.periodDurationSeconds - elapsed);
+
+  if (remainingSeconds <= 5) {
+    return res.status(400).json({ error: 'Betting is frozen for the last 5 seconds of the round.' });
+  }
+
+  const { selection, amount, contractCount } = req.body;
+  const betAmt = Number(amount) || 1;
+  const count = Math.max(1, Math.floor(Number(contractCount) || 1));
+  const totalBet = betAmt * count;
+
+  if (isNaN(totalBet) || totalBet <= 0) {
+    return res.status(400).json({ error: 'Invalid bet amount.' });
+  }
+
+  if ((user.balance || 0) < totalBet) {
+    return res.status(400).json({ error: `Insufficient balance ($${user.balance.toFixed(2)} available). Please deposit USDT.` });
+  }
+
+  // Deduct balance
+  user.balance -= totalBet;
+
+  const newBet: ColorPredictionBet = {
+    id: `bet-cp-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    userId: user.id,
+    userName: user.name,
+    userNodeId: user.nodeId,
+    periodId: cp.currentPeriodId,
+    selection,
+    amount: betAmt,
+    contractCount: count,
+    totalBet,
+    payout: 0,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+
+  cp.bets.unshift(newBet);
+
+  // Record Transaction
+  state.transactions.unshift({
+    id: `tx-cpbet-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'color_prediction_bet',
+    amount: totalBet,
+    status: 'completed',
+    notes: `Win Go 1m Bet - Period #${cp.currentPeriodId} on [${String(selection).toUpperCase()}]`,
+    createdAt: new Date().toISOString(),
+  });
+
+  saveStore();
+
+  res.json({
+    success: true,
+    message: `Bet placed successfully on ${String(selection).toUpperCase()} for $${totalBet.toFixed(2)}`,
+    bet: newBet,
+    user,
+  });
+});
+
+app.get('/api/admin/color-prediction/stats', (req: Request, res: Response) => {
+  ensureColorPredictionState();
+  const cp = state.colorPrediction;
+  const currentBets = cp.bets.filter((b) => b.periodId === cp.currentPeriodId && b.status === 'pending');
+
+  const numberPayoutProjections = Array.from({ length: 10 }, (_, num) => ({
+    number: num,
+    projectedPayout: calculatePayoutForNumber(num, currentBets),
+  }));
+
+  const lowestPayoutObj = [...numberPayoutProjections].sort((a, b) => a.projectedPayout - b.projectedPayout)[0];
+
+  const stats = {
+    totalStakes: currentBets.reduce((acc, b) => acc + b.totalBet, 0),
+    greenStakes: currentBets.filter((b) => b.selection === 'green').reduce((acc, b) => acc + b.totalBet, 0),
+    redStakes: currentBets.filter((b) => b.selection === 'red').reduce((acc, b) => acc + b.totalBet, 0),
+    violetStakes: currentBets.filter((b) => b.selection === 'violet').reduce((acc, b) => acc + b.totalBet, 0),
+    bigStakes: currentBets.filter((b) => b.selection === 'big').reduce((acc, b) => acc + b.totalBet, 0),
+    smallStakes: currentBets.filter((b) => b.selection === 'small').reduce((acc, b) => acc + b.totalBet, 0),
+    forcedNextNumber: cp.forcedNextNumber,
+    adminMode: cp.adminMode || 'lowest_payout',
+    projectedLowestNumber: lowestPayoutObj ? lowestPayoutObj.number : 0,
+    projectedLowestPayout: lowestPayoutObj ? lowestPayoutObj.projectedPayout : 0,
+    numberPayoutProjections,
+    betsCount: currentBets.length,
+    activeBets: currentBets,
+  };
+
+  res.json({ success: true, stats });
+});
+
+app.post('/api/admin/color-prediction/mode', (req: Request, res: Response) => {
+  ensureColorPredictionState();
+  const cp = state.colorPrediction;
+  const { mode } = req.body;
+
+  if (!['lowest_payout', 'random', 'manual'].includes(mode)) {
+    return res.status(400).json({ error: 'Invalid mode. Must be lowest_payout, random, or manual' });
+  }
+
+  cp.adminMode = mode;
+  if (mode !== 'manual') {
+    cp.forcedNextNumber = null;
+  }
+  saveStore();
+
+  res.json({
+    success: true,
+    message: `Risk mode set to ${mode.toUpperCase()}`,
+    adminMode: cp.adminMode,
+  });
+});
+
+app.post('/api/admin/color-prediction/force-result', (req: Request, res: Response) => {
+  ensureColorPredictionState();
+  const cp = state.colorPrediction;
+  const { number } = req.body;
+
+  if (number === null || number === undefined || number === '') {
+    cp.forcedNextNumber = null;
+    return res.json({ success: true, message: 'Cleared forced result.', adminMode: cp.adminMode });
+  }
+
+  const num = Number(number);
+  if (isNaN(num) || num < 0 || num > 9) {
+    return res.status(400).json({ error: 'Number must be between 0 and 9.' });
+  }
+
+  cp.forcedNextNumber = num;
+  cp.adminMode = 'manual';
+  saveStore();
+
+  res.json({ success: true, message: `Next round outcome forced to number ${num}.`, adminMode: cp.adminMode });
+});
+
+// AVIATOR CRASH GAME ROUTES
+app.get('/api/aviator', (req: Request, res: Response) => {
+  ensureAviatorState();
+  const user = getUserFromReq(req);
+  const av = state.aviator;
+  const myBet = user ? av.bets.find((b) => b.userId === user.id) || null : null;
+
+  res.json({
+    success: true,
+    state: av,
+    myBet,
+  });
+});
+
+app.post('/api/aviator/bet', (req: Request, res: Response) => {
+  ensureAviatorState();
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not authenticated' });
+
+  const av = state.aviator;
+  if (av.status !== 'waiting' && (av.status !== 'flying' || av.currentMultiplier > 1.15)) {
+    return res.status(400).json({ error: 'Betting is closed for this round. Please wait for next round.' });
+  }
+
+  const existingBet = av.bets.find((b) => b.userId === user.id);
+  if (existingBet) {
+    return res.status(400).json({ error: 'You have already placed a bet in this round!' });
+  }
+
+  const { amount, autoCashout } = req.body;
+  const numAmount = Number(amount);
+  if (isNaN(numAmount) || numAmount <= 0) {
+    return res.status(400).json({ error: 'Invalid bet amount' });
+  }
+
+  if ((user.balance || 0) < numAmount) {
+    return res.status(400).json({ error: 'Insufficient wallet balance' });
+  }
+
+  user.balance -= numAmount;
+
+  const newBet: AviatorBet = {
+    id: `bet-av-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userName: user.name,
+    userNodeId: user.nodeId,
+    roundId: av.currentRoundId,
+    amount: numAmount,
+    cashedOut: false,
+    cashoutMultiplier: null,
+    payout: 0,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+
+  if (autoCashout && Number(autoCashout) >= 1.1) {
+    (newBet as any).autoCashout = Number(autoCashout);
+  }
+
+  av.bets.push(newBet);
+
+  state.transactions.unshift({
+    id: `tx-av-${Date.now()}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'aviator_bet',
+    amount: numAmount,
+    notes: `Aviator Bet (${av.currentRoundId})`,
+    status: 'completed',
+    createdAt: new Date().toISOString(),
+  });
+
+  saveStore();
+
+  res.json({
+    success: true,
+    message: `Bet $${numAmount.toFixed(2)} USDT placed on Aviator!`,
+    bet: newBet,
+    user,
+  });
+});
+
+app.post('/api/aviator/cashout', (req: Request, res: Response) => {
+  ensureAviatorState();
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not authenticated' });
+
+  const av = state.aviator;
+  if (av.status !== 'flying') {
+    return res.status(400).json({ error: 'Cannot cash out right now' });
+  }
+
+  const bet = av.bets.find((b) => b.userId === user.id && b.status === 'pending');
+  if (!bet) {
+    return res.status(400).json({ error: 'No active bet found to cash out' });
+  }
+
+  const multiplier = av.currentMultiplier;
+  const payout = Number((bet.amount * multiplier).toFixed(2));
+
+  bet.cashedOut = true;
+  bet.cashoutMultiplier = multiplier;
+  bet.payout = payout;
+  bet.status = 'cashed_out';
+
+  user.balance += payout;
+  user.totalEarned += Math.max(0, payout - bet.amount);
+
+  state.transactions.unshift({
+    id: `tx-av-win-${Date.now()}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'aviator_win',
+    amount: payout,
+    notes: `Aviator Cashout @ ${multiplier}x (${av.currentRoundId})`,
+    status: 'completed',
+    createdAt: new Date().toISOString(),
+  });
+
+  saveStore();
+
+  res.json({
+    success: true,
+    message: `Cashed out at ${multiplier}x! Won $${payout.toFixed(2)} USDT`,
+    payout,
+    multiplier,
+    user,
+  });
+});
+
+app.get('/api/admin/aviator/stats', (req: Request, res: Response) => {
+  ensureAviatorState();
+  const av = state.aviator;
+  const activeBets = av.bets.filter((b) => b.status === 'pending');
+  const totalStakes = av.bets.reduce((sum, b) => sum + b.amount, 0);
+
+  res.json({
+    success: true,
+    stats: {
+      totalStakes,
+      activeBetsCount: activeBets.length,
+      currentMultiplier: av.currentMultiplier,
+      targetCrashMultiplier: av.targetCrashMultiplier,
+      status: av.status,
+      adminMode: av.adminMode,
+      forcedNextCrash: av.forcedNextCrash,
+      bets: av.bets,
+    },
+  });
+});
+
+app.post('/api/admin/aviator/mode', (req: Request, res: Response) => {
+  ensureAviatorState();
+  const av = state.aviator;
+  const { mode } = req.body;
+  if (!['lowest_payout', 'random', 'manual'].includes(mode)) {
+    return res.status(400).json({ error: 'Invalid mode' });
+  }
+  av.adminMode = mode;
+  saveStore();
+  res.json({ success: true, message: `Aviator Risk Mode set to ${mode.toUpperCase()}`, mode: av.adminMode });
+});
+
+app.post('/api/admin/aviator/force-crash', (req: Request, res: Response) => {
+  ensureAviatorState();
+  const av = state.aviator;
+  const { multiplier } = req.body;
+  if (multiplier === null || multiplier === undefined || multiplier === '') {
+    av.forcedNextCrash = null;
+    return res.json({ success: true, message: 'Cleared Aviator forced crash multiplier' });
+  }
+  const mult = Number(multiplier);
+  if (isNaN(mult) || mult < 1.0) {
+    return res.status(400).json({ error: 'Multiplier must be >= 1.00' });
+  }
+  av.forcedNextCrash = mult;
+  av.adminMode = 'manual';
+  saveStore();
+  res.json({ success: true, message: `Next round crash forced to ${mult}x` });
 });
 
 // 10. Simulate Boosting Queue FIFO Payout & Rebirth

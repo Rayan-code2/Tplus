@@ -11,6 +11,8 @@ import {
   ChevronRight,
   ShoppingBag,
   Ticket,
+  Dices,
+  Plane,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -45,6 +47,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Lucky Draw',
       icon: Ticket,
       badge: 'Win USDT',
+      highlight: true,
+    },
+    {
+      id: 'colorprediction',
+      label: 'Color Prediction',
+      icon: Dices,
+      badge: 'Win Go 9x',
+      highlight: true,
+    },
+    {
+      id: 'aviator',
+      label: 'Aviator Crash',
+      icon: Plane,
+      badge: '100X HOT',
       highlight: true,
     },
     {

@@ -20,6 +20,8 @@ import { FinanceView } from './components/FinanceView';
 import { GamificationView } from './components/GamificationView';
 import { StoreView } from './components/StoreView';
 import { LuckyDrawView } from './components/LuckyDrawView';
+import { ColorPredictionView } from './components/ColorPredictionView';
+import { AviatorView } from './components/AviatorView';
 import { AdminPanel } from './components/AdminPanel';
 import { DepositModal } from './components/DepositModal';
 import { WithdrawModal } from './components/WithdrawModal';
@@ -599,6 +601,18 @@ export default function App() {
               users={users}
               onOpenDeposit={() => setIsDepositOpen(true)}
               onRefreshState={fetchState}
+            />
+          ) : activeTab === 'colorprediction' ? (
+            <ColorPredictionView
+              user={currentUser}
+              onRefreshUser={fetchState}
+              showToast={showToast}
+            />
+          ) : activeTab === 'aviator' ? (
+            <AviatorView
+              user={currentUser}
+              onRefreshUser={fetchState}
+              showToast={showToast}
             />
           ) : activeTab === 'store' ? (
             <StoreView

@@ -41,6 +41,10 @@ import {
   Disc,
   RotateCcw,
   AlertCircle,
+  Dices,
+  Bot,
+  Shuffle,
+  Plane,
 } from 'lucide-react';
 import {
   User,
@@ -105,8 +109,109 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onDeleteUser,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports'
+    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'aviator_game'
   >('settings');
+
+  const [colorStats, setColorStats] = useState<any>(null);
+  const [aviatorStats, setAviatorStats] = useState<any>(null);
+
+  const fetchAviatorStats = async () => {
+    try {
+      const res = await fetch('/api/admin/aviator/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setAviatorStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Failed to fetch aviator stats:', err);
+    }
+  };
+
+  const handleSetAviatorMode = async (mode: 'lowest_payout' | 'random' | 'manual') => {
+    try {
+      const res = await fetch('/api/admin/aviator/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchAviatorStats();
+      }
+    } catch (err) {
+      alert('Error setting aviator mode');
+    }
+  };
+
+  const handleForceAviatorCrash = async (multiplier: string | null) => {
+    try {
+      const res = await fetch('/api/admin/aviator/force-crash', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ multiplier }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchAviatorStats();
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      alert('Error setting force crash');
+    }
+  };
+
+  const fetchColorStats = async () => {
+    try {
+      const res = await fetch('/api/admin/color-prediction/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setColorStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Failed to fetch color stats:', err);
+    }
+  };
+
+  const handleForceColorResult = async (num: string | null) => {
+    try {
+      const res = await fetch('/api/admin/color-prediction/force-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: num }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchColorStats();
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      alert('Error setting force result');
+    }
+  };
+
+  const handleSetColorPredictionMode = async (mode: 'lowest_payout' | 'random' | 'manual') => {
+    try {
+      const res = await fetch('/api/admin/color-prediction/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchColorStats();
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      alert('Error setting mode');
+    }
+  };
 
   // Date-Wise Report State & Helpers
   const getTodayString = () => {
@@ -981,6 +1086,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         >
           <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
           Date-Wise Report (PDF)
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('color_prediction');
+            fetchColorStats();
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+            activeTab === 'color_prediction'
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Dices className="w-4 h-4 text-cyan-400" />
+          Color Prediction Control
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('aviator_game');
+            fetchAviatorStats();
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+            activeTab === 'aviator_game'
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Plane className="w-4 h-4 text-rose-400" />
+          Aviator Crash Control
         </button>
       </div>
 
@@ -4428,6 +4561,339 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 11: COLOR PREDICTION CONTROL */}
+      {activeTab === 'color_prediction' && (
+        <div className="bg-[#0b1424] border border-slate-800 p-6 rounded-2xl space-y-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Dices className="w-5 h-5 text-cyan-400" />
+                Color Prediction Live Control & Risk Manager
+              </h3>
+              <p className="text-xs text-slate-400">
+                Monitor current live period bets and force the outcome number (0-9) for the next round.
+              </p>
+            </div>
+            <button
+              onClick={fetchColorStats}
+              className="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 border border-slate-700"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh Live Stakes
+            </button>
+          </div>
+
+          {/* Live Stakes Overview Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
+            <div className="bg-[#070d18] border border-cyan-500/30 p-4 rounded-xl space-y-1">
+              <div className="text-slate-400 font-sans">Total Live Stakes</div>
+              <div className="text-2xl font-black text-cyan-300">${colorStats?.totalStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">{colorStats?.betsCount || 0} active bets placed</div>
+            </div>
+
+            <div className="bg-[#070d18] border border-emerald-500/30 p-4 rounded-xl space-y-1">
+              <div className="text-emerald-400 font-bold font-sans">Green Stakes (2x)</div>
+              <div className="text-xl font-bold text-white">${colorStats?.greenStakes?.toFixed(2) || '0.00'}</div>
+            </div>
+
+            <div className="bg-[#070d18] border border-rose-500/30 p-4 rounded-xl space-y-1">
+              <div className="text-rose-400 font-bold font-sans">Red Stakes (2x)</div>
+              <div className="text-xl font-bold text-white">${colorStats?.redStakes?.toFixed(2) || '0.00'}</div>
+            </div>
+
+            <div className="bg-[#070d18] border border-purple-500/30 p-4 rounded-xl space-y-1">
+              <div className="text-purple-400 font-bold font-sans">Violet Stakes (4.5x)</div>
+              <div className="text-xl font-bold text-white">${colorStats?.violetStakes?.toFixed(2) || '0.00'}</div>
+            </div>
+          </div>
+
+          {/* Mode Switcher Cards: Automatic Lowest Payout vs Manual vs Random */}
+          <div className="bg-[#070d18] border border-cyan-500/30 p-5 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <div className="text-sm font-bold text-cyan-300 flex items-center gap-2">
+                  <Bot className="w-4 h-4 text-cyan-400" />
+                  Color Prediction Risk & Winner Mode Control
+                </div>
+                <p className="text-xs text-slate-400 font-sans mt-0.5">
+                  Choose how winning numbers (0-9) are selected when each 1-minute period ends.
+                </p>
+              </div>
+              <div className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider">
+                Active Mode: {colorStats?.adminMode || 'LOWEST_PAYOUT'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Option 1: Automatic Lowest Payout */}
+              <button
+                type="button"
+                onClick={() => handleSetColorPredictionMode('lowest_payout')}
+                className={`p-4 rounded-xl text-left border transition relative flex flex-col justify-between space-y-2 ${
+                  colorStats?.adminMode === 'lowest_payout'
+                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" />
+                    Automatic Mode (Lowest Bet Wins)
+                  </div>
+                  {colorStats?.adminMode === 'lowest_payout' && (
+                    <span className="text-[10px] bg-emerald-500 text-black font-black px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
+                </div>
+                <p className="text-xs font-sans leading-relaxed text-slate-300">
+                  System checks all active bets at round expiry and automatically selects the number (0-9) that results in the <b>LOWEST total payout</b> (Max System Profit).
+                </p>
+              </button>
+
+              {/* Option 2: Standard Random */}
+              <button
+                type="button"
+                onClick={() => handleSetColorPredictionMode('random')}
+                className={`p-4 rounded-xl text-left border transition relative flex flex-col justify-between space-y-2 ${
+                  colorStats?.adminMode === 'random' && colorStats?.forcedNextNumber === null
+                    ? 'bg-blue-500/10 border-blue-500 text-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-blue-400 flex items-center gap-1.5">
+                    <Shuffle className="w-4 h-4" />
+                    Standard Random Mode
+                  </div>
+                  {colorStats?.adminMode === 'random' && colorStats?.forcedNextNumber === null && (
+                    <span className="text-[10px] bg-blue-500 text-white font-black px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
+                </div>
+                <p className="text-xs font-sans leading-relaxed text-slate-300">
+                  Standard 100% random mathematical draw between numbers 0 and 9 regardless of bet amounts.
+                </p>
+              </button>
+
+              {/* Option 3: Manual Override */}
+              <button
+                type="button"
+                onClick={() => handleSetColorPredictionMode('manual')}
+                className={`p-4 rounded-xl text-left border transition relative flex flex-col justify-between space-y-2 ${
+                  colorStats?.adminMode === 'manual' || colorStats?.forcedNextNumber !== null
+                    ? 'bg-amber-500/10 border-amber-500 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                    <Shield className="w-4 h-4" />
+                    Manual Forced Result Mode
+                  </div>
+                  {(colorStats?.adminMode === 'manual' || colorStats?.forcedNextNumber !== null) && (
+                    <span className="text-[10px] bg-amber-500 text-black font-black px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
+                </div>
+                <p className="text-xs font-sans leading-relaxed text-slate-300">
+                  Admin manually picks a specific number (0-9) to force win for the next round.
+                </p>
+              </button>
+            </div>
+
+            {/* Live Projected Auto Outcome Box */}
+            {colorStats?.numberPayoutProjections && (
+              <div className="bg-[#0b1426] border border-emerald-500/30 p-3.5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold">
+                    #{colorStats.projectedLowestNumber}
+                  </div>
+                  <div>
+                    <div className="font-bold text-emerald-300">
+                      Auto-System Predicted Winner for Live Round: Number #{colorStats.projectedLowestNumber}
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-sans">
+                      Estimated System Payout Liability: <span className="text-white font-bold">${colorStats.projectedLowestPayout?.toFixed(2)}</span>
+                      {' '}(Retains ${((colorStats.totalStakes || 0) - (colorStats.projectedLowestPayout || 0)).toFixed(2)} system profit)
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  {colorStats.adminMode === 'lowest_payout' ? (
+                    <span className="text-emerald-400 font-bold">🤖 Auto Mode will declare #{colorStats.projectedLowestNumber} when round ends</span>
+                  ) : (
+                    <span className="text-amber-400">Switch to Automatic Mode above to enable this auto-profit selection</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Admin Force Outcome Controller */}
+          <div className="bg-[#070d18] border border-amber-500/30 p-5 rounded-2xl space-y-3">
+            <div className="text-sm font-bold text-amber-300 flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Force Next Round Winning Number (Manual Override)
+            </div>
+            <p className="text-xs text-slate-400 font-sans">
+              Select any number (0 to 9) to force as the winning result for the next period. Click Clear Override to return to Automatic Mode.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => handleForceColorResult(String(n))}
+                  className={`w-11 h-11 rounded-xl font-black text-sm border transition ${
+                    colorStats?.forcedNextNumber === n
+                      ? 'bg-amber-500 text-black border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.6)]'
+                      : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleForceColorResult(null);
+                  handleSetColorPredictionMode('lowest_payout');
+                }}
+                className="px-4 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold hover:bg-emerald-500/30"
+              >
+                Reset to Automatic Mode
+              </button>
+            </div>
+
+            {colorStats?.forcedNextNumber !== null && colorStats?.forcedNextNumber !== undefined && (
+              <div className="text-xs text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                Next round result is currently FORCED to number #{colorStats.forcedNextNumber}!
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: AVIATOR CRASH CONTROL */}
+      {activeTab === 'aviator_game' && (
+        <div className="space-y-6 font-mono">
+          <div className="bg-[#0b1424] border border-rose-500/30 rounded-2xl p-5 flex items-center justify-between shadow-lg">
+            <div>
+              <h2 className="text-lg font-bold text-rose-300 flex items-center gap-2">
+                <Plane className="w-5 h-5 text-rose-400" />
+                Aviator Crash Risk & Target Multiplier Control
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Configure risk management, forced crash points, and view live active bets for Aviator.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={fetchAviatorStats}
+              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold border border-slate-700 flex items-center gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
+              <div className="text-xs text-slate-400">Total Stakes in Round</div>
+              <div className="text-2xl font-black text-rose-400">${aviatorStats?.totalStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">{aviatorStats?.activeBetsCount || 0} active bets</div>
+            </div>
+            <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
+              <div className="text-xs text-slate-400">Current Multiplier</div>
+              <div className="text-2xl font-black text-amber-400">{aviatorStats?.currentMultiplier?.toFixed(2) || '1.00'}x</div>
+              <div className="text-[10px] text-slate-500">Status: {aviatorStats?.status?.toUpperCase()}</div>
+            </div>
+            <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
+              <div className="text-xs text-slate-400">Target Crash Point</div>
+              <div className="text-2xl font-black text-cyan-400">{aviatorStats?.targetCrashMultiplier?.toFixed(2) || '1.00'}x</div>
+              <div className="text-[10px] text-slate-500">Mode: {aviatorStats?.adminMode?.toUpperCase()}</div>
+            </div>
+          </div>
+
+          {/* Mode Selector */}
+          <div className="bg-[#070d18] border border-rose-500/30 p-5 rounded-2xl space-y-4">
+            <div className="text-sm font-bold text-rose-300">Choose Risk Control Mode</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => handleSetAviatorMode('lowest_payout')}
+                className={`p-4 rounded-xl text-left border transition ${
+                  aviatorStats?.adminMode === 'lowest_payout'
+                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-200'
+                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`}
+              >
+                <div className="font-bold text-sm text-emerald-400">Automatic (Lowest Payout)</div>
+                <p className="text-xs text-slate-300 mt-1">Crashes early when high stakes are placed to protect platform liquidity.</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSetAviatorMode('random')}
+                className={`p-4 rounded-xl text-left border transition ${
+                  aviatorStats?.adminMode === 'random'
+                    ? 'bg-blue-500/10 border-blue-500 text-blue-200'
+                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`}
+              >
+                <div className="font-bold text-sm text-blue-400">Standard Random</div>
+                <p className="text-xs text-slate-300 mt-1">Standard random crash distribution (1.01x to 25x+).</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSetAviatorMode('manual')}
+                className={`p-4 rounded-xl text-left border transition ${
+                  aviatorStats?.adminMode === 'manual'
+                    ? 'bg-amber-500/10 border-amber-500 text-amber-200'
+                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`}
+              >
+                <div className="font-bold text-sm text-amber-400">Manual Forced Crash</div>
+                <p className="text-xs text-slate-300 mt-1">Admin manually specifies exact multiplier before crash.</p>
+              </button>
+            </div>
+          </div>
+
+          {/* Forced Crash Input */}
+          <div className="bg-[#070d18] border border-amber-500/30 p-5 rounded-2xl space-y-3">
+            <div className="text-sm font-bold text-amber-300">Force Next Round Crash Multiplier</div>
+            <div className="flex items-center gap-2 max-w-md">
+              <input
+                type="number"
+                step="0.1"
+                min="1.0"
+                placeholder="e.g. 1.20 or 5.50"
+                id="aviator-force-input"
+                className="w-full bg-[#0d1626] border border-slate-700 rounded-xl px-4 py-2 text-white font-bold text-sm focus:outline-none focus:border-amber-400"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('aviator-force-input') as HTMLInputElement;
+                  if (el) handleForceAviatorCrash(el.value);
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-500 text-black font-bold text-xs shrink-0 hover:bg-amber-400"
+              >
+                Force Crash
+              </button>
+              <button
+                type="button"
+                onClick={() => handleForceAviatorCrash(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold text-xs shrink-0"
+              >
+                Clear
+              </button>
+            </div>
           </div>
         </div>
       )}

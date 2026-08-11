@@ -238,10 +238,10 @@
       "activePackageId": "pkg-1000",
       "packageActivatedAt": "2026-06-27T15:56:23.737Z",
       "packageExpiryDays": 100,
-      "balance": 14546,
+      "balance": 14549,
       "depositBalance": 0,
       "upgradeBalance": 1200,
-      "totalEarned": 49211,
+      "totalEarned": 49227,
       "roiEarned": 3000,
       "levelEarned": 18500,
       "sponsorEarned": 8401,
@@ -256,7 +256,8 @@
       "registeredAt": "2026-04-28T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T14:56:23.737Z",
       "spinCredits": 5,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false
     },
     {
       "id": "usr-cyber1",
@@ -287,7 +288,8 @@
       "registeredAt": "2026-05-28T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T13:56:23.737Z",
       "spinCredits": 3,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false
     },
     {
       "id": "usr-demo",
@@ -300,10 +302,10 @@
       "activePackageId": "pkg-100",
       "packageActivatedAt": "2026-07-17T15:56:23.737Z",
       "packageExpiryDays": 100,
-      "balance": 735.5,
+      "balance": 734,
       "depositBalance": 0,
       "upgradeBalance": 110,
-      "totalEarned": 1490,
+      "totalEarned": 1494.5,
       "roiEarned": 220,
       "levelEarned": 420,
       "sponsorEarned": 350,
@@ -318,7 +320,8 @@
       "registeredAt": "2026-07-02T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T11:56:23.737Z",
       "spinCredits": 2,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false
     },
     {
       "id": "usr-alpha2",
@@ -349,7 +352,8 @@
       "registeredAt": "2026-07-07T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T10:56:23.737Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false
     },
     {
       "id": "usr-beta3",
@@ -380,7 +384,8 @@
       "registeredAt": "2026-07-15T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T10:23:03.737Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false
     },
     {
       "id": "usr-gamma4",
@@ -411,7 +416,8 @@
       "registeredAt": "2026-07-19T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T12:36:23.737Z",
       "spinCredits": 2,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false
     },
     {
       "id": "usr-omega6",
@@ -442,7 +448,8 @@
       "registeredAt": "2026-07-22T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T14:56:23.737Z",
       "spinCredits": 4,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": false
     },
     {
       "id": "usr-1785537091494",
@@ -473,7 +480,8 @@
       "registeredAt": "2026-07-31T22:31:31.494Z",
       "lastRoiClaimAt": "2026-07-31T22:31:31.494Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true
     },
     {
       "id": "usr-1785537410379",
@@ -504,7 +512,8 @@
       "registeredAt": "2026-07-31T22:36:50.379Z",
       "lastRoiClaimAt": "2026-07-31T22:36:50.379Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true
     },
     {
       "id": "usr-1785537482252",
@@ -535,7 +544,8 @@
       "registeredAt": "2026-07-31T22:38:02.252Z",
       "lastRoiClaimAt": "2026-07-31T22:38:02.252Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true
     },
     {
       "id": "usr-1785537563063",
@@ -566,7 +576,8 @@
       "registeredAt": "2026-07-31T22:39:23.063Z",
       "lastRoiClaimAt": "2026-07-31T22:39:23.063Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true
     },
     {
       "id": "usr-1785537990692",
@@ -597,7 +608,8 @@
       "registeredAt": "2026-07-31T22:46:30.692Z",
       "lastRoiClaimAt": "2026-07-31T22:46:30.692Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true
     },
     {
       "id": "usr-1785538090422",
@@ -628,10 +640,141 @@
       "registeredAt": "2026-07-31T22:48:10.422Z",
       "lastRoiClaimAt": "2026-07-31T22:48:10.422Z",
       "spinCredits": 1,
-      "lastSpinAt": ""
+      "lastSpinAt": "",
+      "isUpgraded": true
     }
   ],
   "transactions": [
+    {
+      "id": "tx-cpwin-1786457901891-75",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_win",
+      "amount": 10,
+      "status": "completed",
+      "notes": "Win Go 1m Win - Period #202608111028 Result: 4",
+      "createdAt": "2026-08-11T14:18:21.891Z"
+    },
+    {
+      "id": "tx-cpbet-1786457894255-775",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 2,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111028 on [GREEN]",
+      "createdAt": "2026-08-11T14:18:14.255Z"
+    },
+    {
+      "id": "tx-cpbet-1786457887588-193",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111028 on [RED]",
+      "createdAt": "2026-08-11T14:18:07.588Z"
+    },
+    {
+      "id": "tx-cpbet-1786457846385-781",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111028 on [VIOLET]",
+      "createdAt": "2026-08-11T14:17:26.385Z"
+    },
+    {
+      "id": "tx-cpwin-1786457721742-585",
+      "userId": "usr-demo",
+      "userNodeId": "NX-GML9L6",
+      "type": "color_prediction_win",
+      "amount": 4.5,
+      "status": "completed",
+      "notes": "Win Go 1m Win - Period #202608111025 Result: 5",
+      "createdAt": "2026-08-11T14:15:21.742Z"
+    },
+    {
+      "id": "tx-cpbet-1786457706824-82",
+      "userId": "usr-demo",
+      "userNodeId": "NX-GML9L6",
+      "type": "color_prediction_bet",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111025 on [RED]",
+      "createdAt": "2026-08-11T14:15:06.824Z"
+    },
+    {
+      "id": "tx-cpbet-1786457673678-385",
+      "userId": "usr-demo",
+      "userNodeId": "NX-GML9L6",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111025 on [VIOLET]",
+      "createdAt": "2026-08-11T14:14:33.678Z"
+    },
+    {
+      "id": "tx-cpbet-1786457541621-236",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111023 on [VIOLET]",
+      "createdAt": "2026-08-11T14:12:21.621Z"
+    },
+    {
+      "id": "tx-cpwin-1786457241009-867",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_win",
+      "amount": 4,
+      "status": "completed",
+      "notes": "Win Go 1m Win - Period #202608111017 Result: 6",
+      "createdAt": "2026-08-11T14:07:21.009Z"
+    },
+    {
+      "id": "tx-cpwin-1786457241009-179",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_win",
+      "amount": 2,
+      "status": "completed",
+      "notes": "Win Go 1m Win - Period #202608111017 Result: 6",
+      "createdAt": "2026-08-11T14:07:21.009Z"
+    },
+    {
+      "id": "tx-cpbet-1786457221693-309",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111017 on [BIG]",
+      "createdAt": "2026-08-11T14:07:01.693Z"
+    },
+    {
+      "id": "tx-cpbet-1786457185196-607",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 2,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111017 on [BIG]",
+      "createdAt": "2026-08-11T14:06:25.196Z"
+    },
+    {
+      "id": "tx-cpbet-1786457011377-439",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608111014 on [GREEN]",
+      "createdAt": "2026-08-11T14:03:31.377Z"
+    },
     {
       "id": "tx-1786427237632-f72z-2nd",
       "userId": "usr-root",
@@ -1481,6 +1624,472 @@
     "lastWinningNumber": "156789",
     "lastDrawAt": "2026-08-11T05:47:17.632Z",
     "historyCleared": true
+  },
+  "colorPrediction": {
+    "currentPeriodId": "202608111043",
+    "periodDurationSeconds": 60,
+    "startTime": 1786458742992,
+    "forcedNextNumber": null,
+    "bets": [
+      {
+        "id": "bet-cp-1786457894255-8557",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608111028",
+        "selection": "green",
+        "amount": 1,
+        "contractCount": 2,
+        "totalBet": 2,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-11T14:18:14.255Z"
+      },
+      {
+        "id": "bet-cp-1786457887588-4440",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608111028",
+        "selection": "red",
+        "amount": 5,
+        "contractCount": 1,
+        "totalBet": 5,
+        "payout": 10,
+        "status": "won",
+        "createdAt": "2026-08-11T14:18:07.588Z"
+      },
+      {
+        "id": "bet-cp-1786457846385-6124",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608111028",
+        "selection": "violet",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-11T14:17:26.385Z"
+      },
+      {
+        "id": "bet-cp-1786457706824-7207",
+        "userId": "usr-demo",
+        "userName": "Alex Cyberpunk (Demo Account)",
+        "userNodeId": "NX-GML9L6",
+        "periodId": "202608111025",
+        "selection": "red",
+        "amount": 5,
+        "contractCount": 1,
+        "totalBet": 5,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-11T14:15:06.824Z"
+      },
+      {
+        "id": "bet-cp-1786457673677-1735",
+        "userId": "usr-demo",
+        "userName": "Alex Cyberpunk (Demo Account)",
+        "userNodeId": "NX-GML9L6",
+        "periodId": "202608111025",
+        "selection": "violet",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 4.5,
+        "status": "won",
+        "createdAt": "2026-08-11T14:14:33.678Z"
+      },
+      {
+        "id": "bet-cp-1786457541621-6137",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608111023",
+        "selection": "violet",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-11T14:12:21.621Z"
+      },
+      {
+        "id": "bet-cp-1786457221693-5558",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608111017",
+        "selection": "big",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 2,
+        "status": "won",
+        "createdAt": "2026-08-11T14:07:01.693Z"
+      },
+      {
+        "id": "bet-cp-1786457185196-4455",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608111017",
+        "selection": "big",
+        "amount": 1,
+        "contractCount": 2,
+        "totalBet": 2,
+        "payout": 4,
+        "status": "won",
+        "createdAt": "2026-08-11T14:06:25.196Z"
+      },
+      {
+        "id": "bet-cp-1786457011377-7506",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608111014",
+        "selection": "green",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-11T14:03:31.377Z"
+      }
+    ],
+    "history": [
+      {
+        "periodId": "202608111042",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T14:32:22.992Z"
+      },
+      {
+        "periodId": "202608111041",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-11T14:31:22.940Z"
+      },
+      {
+        "periodId": "202608111040",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:30:22.889Z"
+      },
+      {
+        "periodId": "202608111039",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T14:29:22.836Z"
+      },
+      {
+        "periodId": "202608111038",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:28:22.781Z"
+      },
+      {
+        "periodId": "202608111037",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-11T14:27:22.731Z"
+      },
+      {
+        "periodId": "202608111036",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:26:22.691Z"
+      },
+      {
+        "periodId": "202608111035",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-11T14:25:22.648Z"
+      },
+      {
+        "periodId": "202608111034",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:24:22.181Z"
+      },
+      {
+        "periodId": "202608111033",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T14:23:22.137Z"
+      },
+      {
+        "periodId": "202608111032",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-11T14:22:22.090Z"
+      },
+      {
+        "periodId": "202608111031",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:21:22.039Z"
+      },
+      {
+        "periodId": "202608111030",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:20:21.983Z"
+      },
+      {
+        "periodId": "202608111029",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:19:21.943Z"
+      },
+      {
+        "periodId": "202608111028",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:18:21.891Z"
+      },
+      {
+        "periodId": "202608111027",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:17:21.838Z"
+      },
+      {
+        "periodId": "202608111026",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T14:16:21.791Z"
+      },
+      {
+        "periodId": "202608111025",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-11T14:15:21.742Z"
+      },
+      {
+        "periodId": "202608111024",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-11T14:14:21.323Z"
+      },
+      {
+        "periodId": "202608111023",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:13:21.275Z"
+      },
+      {
+        "periodId": "202608111022",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-11T14:12:21.233Z"
+      },
+      {
+        "periodId": "202608111021",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T14:11:21.192Z"
+      },
+      {
+        "periodId": "202608111020",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-11T14:10:21.155Z"
+      },
+      {
+        "periodId": "202608111019",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:09:21.100Z"
+      },
+      {
+        "periodId": "202608111018",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:08:21.057Z"
+      },
+      {
+        "periodId": "202608111017",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T14:07:21.009Z"
+      },
+      {
+        "periodId": "202608111016",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:06:20.964Z"
+      },
+      {
+        "periodId": "202608111015",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-11T14:05:20.910Z"
+      },
+      {
+        "periodId": "202608111014",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:04:20.868Z"
+      },
+      {
+        "periodId": "202608111013",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T14:03:20.812Z"
+      },
+      {
+        "periodId": "202608111012",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-11T14:02:20.763Z"
+      },
+      {
+        "periodId": "202608111011",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T14:01:20.697Z"
+      },
+      {
+        "periodId": "202608111010",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-11T14:00:20.660Z"
+      },
+      {
+        "periodId": "202608111009",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-11T13:59:20.614Z"
+      },
+      {
+        "periodId": "202608111008",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-11T13:58:20.578Z"
+      },
+      {
+        "periodId": "202608111007",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-11T13:57:20.530Z"
+      },
+      {
+        "periodId": "202608111006",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T13:56:20.489Z"
+      },
+      {
+        "periodId": "202608111005",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-11T13:55:20.428Z"
+      },
+      {
+        "periodId": "202608111004",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T13:54:20.377Z"
+      },
+      {
+        "periodId": "202608111003",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T13:53:20.320Z"
+      },
+      {
+        "periodId": "202608111002",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T13:52:20.270Z"
+      },
+      {
+        "periodId": "202608111001",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-11T13:51:20.220Z"
+      },
+      {
+        "periodId": "202608111000",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-11T13:49:20.173Z"
+      },
+      {
+        "periodId": "202608110999",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-11T13:48:20.173Z"
+      },
+      {
+        "periodId": "202608110998",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-11T13:47:20.173Z"
+      },
+      {
+        "periodId": "202608110997",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-11T13:46:20.173Z"
+      },
+      {
+        "periodId": "202608110996",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-11T13:45:20.173Z"
+      }
+    ],
+    "adminMode": "lowest_payout"
   },
   "activeUserId": "usr-root"
 }

@@ -102,6 +102,10 @@ export interface Transaction {
     | 'spin_reward'
     | 'rank_bonus'
     | 'product_purchase'
+    | 'color_prediction_bet'
+    | 'color_prediction_win'
+    | 'aviator_bet'
+    | 'aviator_win'
     | 'admin_adjust';
   amount: number;
   status: 'pending' | 'completed' | 'rejected';
@@ -290,3 +294,63 @@ export interface LevelBreakdownRow {
   incomePerNode: number;
   earned: number;
 }
+
+export interface ColorPredictionBet {
+  id: string;
+  userId: string;
+  userName: string;
+  userNodeId: string;
+  periodId: string;
+  selection: 'green' | 'red' | 'violet' | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'big' | 'small';
+  amount: number;
+  contractCount: number;
+  totalBet: number;
+  payout: number;
+  status: 'pending' | 'won' | 'lost';
+  createdAt: string;
+}
+
+export interface ColorPredictionResult {
+  periodId: string;
+  number: number; // 0 to 9
+  color: 'green' | 'red' | 'violet-green' | 'violet-red';
+  size: 'big' | 'small';
+  completedAt: string;
+}
+
+export interface ColorPredictionState {
+  currentPeriodId: string;
+  periodDurationSeconds: number; // 60s (1 min Win Go)
+  startTime: number; // Date.now() when period started
+  forcedNextNumber: number | null; // Admin forced result (0-9)
+  adminMode?: 'lowest_payout' | 'random' | 'manual'; // Risk management mode
+  bets: ColorPredictionBet[];
+  history: ColorPredictionResult[];
+}
+
+export interface AviatorBet {
+  id: string;
+  userId: string;
+  userName: string;
+  userNodeId: string;
+  roundId: string;
+  amount: number;
+  cashedOut: boolean;
+  cashoutMultiplier: number | null;
+  payout: number;
+  status: 'pending' | 'cashed_out' | 'crashed';
+  createdAt: string;
+}
+
+export interface AviatorState {
+  currentRoundId: string;
+  status: 'waiting' | 'flying' | 'crashed';
+  currentMultiplier: number;
+  targetCrashMultiplier: number;
+  startTime: number;
+  bets: AviatorBet[];
+  history: number[]; // crash multiplier history e.g. [1.25, 3.40, 10.50]
+  forcedNextCrash: number | null;
+  adminMode: 'lowest_payout' | 'random' | 'manual';
+}
+
