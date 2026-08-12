@@ -15,13 +15,16 @@ import { Sidebar } from './components/Sidebar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { DashboardView } from './components/DashboardView';
 import { MatrixTreeView } from './components/MatrixTreeView';
-import { BoostingQueueView } from './components/BoostingQueueView';
 import { FinanceView } from './components/FinanceView';
 import { GamificationView } from './components/GamificationView';
+import { RankRewardsView } from './components/RankRewardsView';
 import { StoreView } from './components/StoreView';
 import { LuckyDrawView } from './components/LuckyDrawView';
 import { ColorPredictionView } from './components/ColorPredictionView';
+import { DragonTigerView } from './components/DragonTigerView';
 import { AviatorView } from './components/AviatorView';
+import { ReferralAgencyView } from './components/ReferralAgencyView';
+import { LiveWinnerTicker } from './components/LiveWinnerTicker';
 import { AdminPanel } from './components/AdminPanel';
 import { DepositModal } from './components/DepositModal';
 import { WithdrawModal } from './components/WithdrawModal';
@@ -43,6 +46,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isAuthPage, setIsAuthPage] = useState<boolean>(true);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
 
   // Modals
   const [isDepositOpen, setIsDepositOpen] = useState(false);
@@ -169,12 +173,12 @@ export default function App() {
     }
   };
 
-  const handleWithdrawSubmit = async (amount: number, targetAddress: string, network: string) => {
+  const handleWithdrawSubmit = async (amount: number, targetAddress: string, network: string, walletType: 'mlm' | 'winning' = 'mlm') => {
     try {
       const res = await fetch('/api/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, targetAddress, network }),
+        body: JSON.stringify({ amount, targetAddress, network, walletType }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -185,6 +189,25 @@ export default function App() {
       showToast(`Withdrawal request for $${amount} USDT submitted!`);
     } catch (err) {
       showToast('Network error submitting withdrawal', 'error');
+    }
+  };
+
+  const handleConvertWinnings = async (amount: number) => {
+    try {
+      const res = await fetch('/api/wallet/convert-winnings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Failed to convert winnings', 'error');
+        return;
+      }
+      await fetchState();
+      showToast(data.message || `Transferred $${amount} USDT to Deposit Wallet!`);
+    } catch (err) {
+      showToast('Network error converting winnings', 'error');
     }
   };
 
@@ -549,7 +572,11 @@ export default function App() {
           setActiveTab(tab);
           setIsAdminView(false);
         }}
+        onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
       />
+
+      {/* Live Casino Winner Ticker Marquee */}
+      <LiveWinnerTicker />
 
       {/* Main Layout Container */}
       <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)]">
@@ -566,11 +593,13 @@ export default function App() {
           }}
           user={currentUser}
           isAdminView={isAdminView}
+          isMobileDrawerOpen={isMobileDrawerOpen}
+          onCloseMobileDrawer={() => setIsMobileDrawerOpen(false)}
         />
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 max-w-7xl mx-auto w-full overflow-x-hidden">
-          {(isAdminView || activeTab === 'admin') && (currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') ? (
+          {(isAdminView || activeTab === 'admin') && (currentUser?.isAdmin || currentUser?.nodeId === 'NX-ROOT01') ? (
             <AdminPanel
               settings={settings}
               users={users}
@@ -600,6 +629,7 @@ export default function App() {
               currentUser={currentUser}
               users={users}
               onOpenDeposit={() => setIsDepositOpen(true)}
+              onOpenWithdraw={() => setIsWithdrawOpen(true)}
               onRefreshState={fetchState}
             />
           ) : activeTab === 'colorprediction' ? (
@@ -607,13 +637,27 @@ export default function App() {
               user={currentUser}
               onRefreshUser={fetchState}
               showToast={showToast}
+              onOpenDeposit={() => setIsDepositOpen(true)}
+              onOpenWithdraw={() => setIsWithdrawOpen(true)}
+            />
+          ) : activeTab === 'dragontiger' ? (
+            <DragonTigerView
+              user={currentUser}
+              onRefreshUser={fetchState}
+              showToast={showToast}
+              onOpenDeposit={() => setIsDepositOpen(true)}
+              onOpenWithdraw={() => setIsWithdrawOpen(true)}
             />
           ) : activeTab === 'aviator' ? (
             <AviatorView
               user={currentUser}
               onRefreshUser={fetchState}
               showToast={showToast}
+              onOpenDeposit={() => setIsDepositOpen(true)}
+              onOpenWithdraw={() => setIsWithdrawOpen(true)}
             />
+          ) : activeTab === 'agency' ? (
+            <ReferralAgencyView user={currentUser} />
           ) : activeTab === 'store' ? (
             <StoreView
               currentUser={currentUser}
@@ -629,13 +673,6 @@ export default function App() {
               users={users}
               settings={settings}
             />
-          ) : activeTab === 'boosting' ? (
-            <BoostingQueueView
-              currentUser={currentUser}
-              boostingQueue={boostingQueue}
-              settings={settings}
-              onSimulateBoosting={handleSimulateBoosting}
-            />
           ) : activeTab === 'finance' ? (
             <FinanceView
               user={currentUser}
@@ -645,16 +682,22 @@ export default function App() {
               transactions={transactions}
               onDepositSubmit={handleDepositSubmit}
               onWithdrawSubmit={handleWithdrawSubmit}
+              onConvertWinnings={handleConvertWinnings}
               onNavigateToPackages={() => {
                 setActiveTab('dashboard');
                 setIsAdminView(false);
               }}
             />
-          ) : activeTab === 'rewards' ? (
+          ) : activeTab === 'spinwheel' || activeTab === 'rewards' ? (
             <GamificationView
               user={currentUser}
               settings={settings}
               onSpinWheel={handleSpinWheel}
+            />
+          ) : activeTab === 'rankrewards' ? (
+            <RankRewardsView
+              user={currentUser}
+              settings={settings}
               onClaimRankBonus={handleClaimRankBonus}
             />
           ) : (
@@ -681,6 +724,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         setIsAdminView={setIsAdminView}
         user={currentUser}
+        onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
       />
 
       {/* Modals */}

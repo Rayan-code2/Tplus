@@ -102,6 +102,9 @@ const defaultSettings: SystemSettings = {
   },
   withdrawalFeePercent: 2,
   upgradeFundDeductionPercent: 30,
+  sponsorGameWinPercent: 5,
+  winningWithdrawalFeePercent: 10,
+  winningWithdrawalMinAmount: 5,
   tickerText:
     '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | BNB/USDT $680 (+1.9%) | 🚀 GLOBAL BOOSTING POOL CYCLE #142 ACTIVE | TOTAL DISTRIBUTED: $1,485,200 USDT ⚡',
   spinWheelRewards: [
@@ -882,6 +885,8 @@ async function initSqlite() {
           ['balance', 'REAL DEFAULT 0'],
           ['depositBalance', 'REAL DEFAULT 0'],
           ['upgradeBalance', 'REAL DEFAULT 0'],
+          ['winningBalance', 'REAL DEFAULT 0'],
+          ['winningEarned', 'REAL DEFAULT 0'],
           ['totalEarned', 'REAL DEFAULT 0'],
           ['roiEarned', 'REAL DEFAULT 0'],
           ['levelEarned', 'REAL DEFAULT 0'],
@@ -975,11 +980,11 @@ function saveStore() {
             db.run(
               `INSERT INTO users (
                 id, nodeId, name, email, password, walletAddress, sponsorId, activePackageId,
-                packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
+                packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance, winningBalance, winningEarned,
                 totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
                 spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
                 registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
-              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
               [
                 u.id,
                 u.nodeId,
@@ -994,6 +999,8 @@ function saveStore() {
                 u.balance || 0,
                 u.depositBalance || 0,
                 u.upgradeBalance || 0,
+                u.winningBalance || 0,
+                u.winningEarned || 0,
                 u.totalEarned || 0,
                 u.roiEarned || 0,
                 u.levelEarned || 0,
@@ -1031,6 +1038,8 @@ function saveStore() {
               balance REAL,
               depositBalance REAL,
               upgradeBalance REAL,
+              winningBalance REAL,
+              winningEarned REAL,
               totalEarned REAL,
               roiEarned REAL,
               levelEarned REAL,
@@ -1053,11 +1062,11 @@ function saveStore() {
             db.run(
               `INSERT INTO users (
                 id, nodeId, name, email, password, walletAddress, sponsorId, activePackageId,
-                packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance,
+                packageActivatedAt, packageExpiryDays, balance, depositBalance, upgradeBalance, winningBalance, winningEarned,
                 totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
                 spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
                 registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
-              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
               [
                 u.id,
                 u.nodeId,
@@ -1072,6 +1081,8 @@ function saveStore() {
                 u.balance || 0,
                 u.depositBalance || 0,
                 u.upgradeBalance || 0,
+                u.winningBalance || 0,
+                u.winningEarned || 0,
                 u.totalEarned || 0,
                 u.roiEarned || 0,
                 u.levelEarned || 0,
@@ -1339,6 +1350,136 @@ function ensureColorPredictionState() {
   }
 }
 
+// Helper to deduct bet amount prioritizing Deposit Wallet first, then Winning Wallet, then Main Wallet
+function deductBetBalance(user: User, amount: number): boolean {
+  const depBal = user.depositBalance || 0;
+  const winBal = user.winningBalance || 0;
+  const mainBal = user.balance || 0;
+  const totalAvail = depBal + winBal + mainBal;
+
+  if (totalAvail < amount) {
+    return false;
+  }
+
+  let rem = amount;
+  // 1. Deduct from Deposit Wallet first
+  if ((user.depositBalance || 0) >= rem) {
+    user.depositBalance -= rem;
+    rem = 0;
+  } else {
+    rem -= (user.depositBalance || 0);
+    user.depositBalance = 0;
+
+    // 2. Deduct remaining from Winning Wallet
+    if ((user.winningBalance || 0) >= rem) {
+      user.winningBalance -= rem;
+      rem = 0;
+    } else {
+      rem -= (user.winningBalance || 0);
+      user.winningBalance = 0;
+
+      // 3. Deduct remaining from Main Balance
+      user.balance = Math.max(0, (user.balance || 0) - rem);
+      rem = 0;
+    }
+  }
+
+  return true;
+}
+
+// Helper to award game/lottery winnings to Winning Wallet & credit Sponsor Game Win Royalty Commission
+function awardGameWin(user: User, payout: number, gameName: string) {
+  if (payout <= 0) return;
+
+  // 1. Credit User's Winning Wallet
+  user.winningBalance = (user.winningBalance || 0) + payout;
+  user.winningEarned = (user.winningEarned || 0) + payout;
+
+  // 2. Sponsor Game Win Royalty Commission
+  const sponsorPercent = state.settings.sponsorGameWinPercent !== undefined
+    ? Number(state.settings.sponsorGameWinPercent)
+    : 5;
+
+  if (sponsorPercent > 0 && user.sponsorId) {
+    const sponsor = state.users.find((u) => u.id === user.sponsorId || u.nodeId === user.sponsorId);
+    if (sponsor) {
+      const sponsorBonus = payout * (sponsorPercent / 100);
+      if (sponsorBonus > 0) {
+        sponsor.balance = (sponsor.balance || 0) + sponsorBonus;
+        sponsor.sponsorEarned = (sponsor.sponsorEarned || 0) + sponsorBonus;
+        sponsor.totalEarned = (sponsor.totalEarned || 0) + sponsorBonus;
+
+        state.transactions.unshift({
+          id: `tx-spwin-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          userId: sponsor.id,
+          userNodeId: sponsor.nodeId,
+          type: 'sponsor_game_win_bonus',
+          amount: sponsorBonus,
+          status: 'completed',
+          notes: `${sponsorPercent}% Sponsor Game Win Royalty from ${user.name}'s ${gameName} Win ($${payout.toFixed(2)})`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+  }
+}
+
+// 5-Level Bet Turnover Commission percentages
+const BET_TURNOVER_LEVEL_PERCENTAGES = [0.60, 0.30, 0.15, 0.08, 0.05]; // L1 = 0.60%, L2 = 0.30%, L3 = 0.15%, L4 = 0.08%, L5 = 0.05%
+
+function process5LevelBetTurnoverCommission(user: User, betAmount: number, gameName: string) {
+  if (!betAmount || betAmount <= 0) return;
+
+  // 1. Update user's personal total turnover
+  user.totalBetTurnover = (user.totalBetTurnover || 0) + betAmount;
+
+  // 2. Loop up 5 levels of sponsors
+  let currentSponsorId: string | null = user.sponsorId;
+  let level = 1;
+
+  while (currentSponsorId && level <= 5) {
+    const sponsor = state.users.find(
+      (u) => u.id === currentSponsorId || u.nodeId === currentSponsorId
+    );
+
+    if (!sponsor) break;
+
+    const commissionRate = BET_TURNOVER_LEVEL_PERCENTAGES[level - 1] / 100;
+    const commissionEarned = parseFloat((betAmount * commissionRate).toFixed(4));
+
+    if (commissionEarned > 0) {
+      if (!sponsor.levelTurnover) {
+        sponsor.levelTurnover = { l1: 0, l2: 0, l3: 0, l4: 0, l5: 0 };
+      }
+      if (!sponsor.levelCommission) {
+        sponsor.levelCommission = { l1: 0, l2: 0, l3: 0, l4: 0, l5: 0 };
+      }
+
+      const lKey = `l${level}` as 'l1' | 'l2' | 'l3' | 'l4' | 'l5';
+      sponsor.levelTurnover[lKey] = (sponsor.levelTurnover[lKey] || 0) + betAmount;
+      sponsor.levelCommission[lKey] = (sponsor.levelCommission[lKey] || 0) + commissionEarned;
+
+      sponsor.referralCommissionEarned = (sponsor.referralCommissionEarned || 0) + commissionEarned;
+      sponsor.balance = (sponsor.balance || 0) + commissionEarned;
+      sponsor.totalEarned = (sponsor.totalEarned || 0) + commissionEarned;
+
+      state.transactions.unshift({
+        id: `tx-turnover-l${level}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        userId: sponsor.id,
+        userNodeId: sponsor.nodeId,
+        type: 'bet_turnover_commission' as any,
+        amount: commissionEarned,
+        status: 'completed',
+        notes: `🏆 Level ${level} Bet Turnover Commission ($${commissionEarned.toFixed(4)}) from ${user.name}'s $${betAmount.toFixed(2)} Bet on ${gameName}`,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    currentSponsorId = sponsor.sponsorId;
+    level++;
+  }
+}
+
 function calculatePayoutForNumber(candidateNum: number, activeBets: ColorPredictionBet[]): number {
   let totalPayout = 0;
   activeBets.forEach((bet) => {
@@ -1439,11 +1580,10 @@ function resolveColorPredictionPeriod() {
       bet.status = 'won';
       bet.payout = payout;
 
-      // Credit user wallet balance
+      // Credit user winning wallet & sponsor royalty
       const user = state.users.find((u) => u.id === bet.userId);
       if (user) {
-        user.balance = (user.balance || 0) + payout;
-        user.totalEarned = (user.totalEarned || 0) + payout;
+        awardGameWin(user, payout, 'Color Prediction (Win Go)');
 
         // Record Transaction
         state.transactions.unshift({
@@ -1453,7 +1593,7 @@ function resolveColorPredictionPeriod() {
           type: 'color_prediction_win',
           amount: payout,
           status: 'completed',
-          notes: `Win Go 1m Win - Period #${currentPeriod} Result: ${winningNum}`,
+          notes: `Win Go 1m Win - Period #${currentPeriod} Result: ${winningNum} ($${payout.toFixed(2)} to Winning Wallet)`,
           createdAt: new Date().toISOString(),
         });
       }
@@ -2289,21 +2429,119 @@ app.post('/api/deposit', (req: Request, res: Response) => {
   res.json({ success: true, depositRequest: dep });
 });
 
+// Convert Winnings Wallet to Deposit Balance (for betting)
+app.post('/api/wallet/convert-winnings', (req: Request, res: Response) => {
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorized. Please login.' });
+
+  const { amount } = req.body;
+  const numAmount = Number(amount);
+  if (isNaN(numAmount) || numAmount <= 0) {
+    return res.status(400).json({ error: 'Invalid conversion amount' });
+  }
+
+  const currentWinnings = user.winningBalance || 0;
+  if (currentWinnings < numAmount) {
+    return res.status(400).json({
+      error: `Insufficient Winnings Wallet balance ($${currentWinnings.toFixed(2)} USDT available).`
+    });
+  }
+
+  user.winningBalance = currentWinnings - numAmount;
+  user.depositBalance = (user.depositBalance || 0) + numAmount;
+
+  state.transactions.unshift({
+    id: `tx-convert-${Date.now()}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'admin_adjust',
+    amount: numAmount,
+    status: 'completed',
+    notes: `🔄 Converted $${numAmount.toFixed(2)} USDT from Winnings Wallet to Deposit Balance for Game Play`,
+    createdAt: new Date().toISOString(),
+  });
+
+  saveStore();
+  return res.json({
+    success: true,
+    message: `Successfully transferred $${numAmount.toFixed(2)} USDT from Winnings to Deposit Wallet!`,
+    user,
+  });
+});
+
 // 7. Request Withdrawal with 20% Upgrade Deduction Rule
 app.post('/api/withdraw', (req: Request, res: Response) => {
-  const { amount, targetAddress, network } = req.body;
+  const { amount, targetAddress, network, walletType } = req.body;
   const user = getUserFromReq(req);
 
   if (!user) return res.status(400).json({ error: 'User not logged in' });
 
+  const isWinningWallet = walletType === 'winning';
+  const reqAmt = parseFloat(amount);
+
+  if (isWinningWallet) {
+    // WINNING WALLET WITHDRAWAL: Flat 10% Fee, No MLM Conditions
+    const minWinWd = state.settings.winningWithdrawalMinAmount || 5;
+    if (!reqAmt || reqAmt < minWinWd) {
+      return res.status(400).json({ error: `Minimum Game Winning withdrawal is $${minWinWd} USDT` });
+    }
+    const winBal = user.winningBalance || 0;
+    if (winBal < reqAmt) {
+      return res.status(400).json({ error: `Insufficient winning balance ($${winBal.toFixed(2)} USDT available).` });
+    }
+    if (!targetAddress) return res.status(400).json({ error: 'Please provide target USDT wallet address' });
+
+    const feePercent = state.settings.winningWithdrawalFeePercent !== undefined
+      ? Number(state.settings.winningWithdrawalFeePercent)
+      : 10;
+    const adminFee = reqAmt * (feePercent / 100);
+    const netAmount = Math.max(0, reqAmt - adminFee);
+
+    user.winningBalance = (user.winningBalance || 0) - reqAmt;
+
+    const wd: WithdrawalRequest = {
+      id: `wd-win-${Date.now()}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      userName: user.name,
+      requestedAmount: reqAmt,
+      upgradeDeduction: 0,
+      gasFee: adminFee,
+      netAmount,
+      targetAddress: targetAddress.trim(),
+      network: network || 'BEP20',
+      walletType: 'winning',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      adminNotes: `Submitted - Game Winning Wallet Withdrawal (${feePercent}% Admin Fee)`,
+    };
+
+    state.withdrawalRequests.unshift(wd);
+
+    state.transactions.unshift({
+      id: `tx-${Date.now()}-wdwin`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'withdrawal',
+      amount: reqAmt,
+      status: 'pending',
+      network: network || 'BEP20',
+      notes: `Withdrawal Request: $${reqAmt.toFixed(2)} USDT from Game Winning Wallet (10% Admin Fee: $${adminFee.toFixed(2)}, Net: $${netAmount.toFixed(2)})`,
+      createdAt: new Date().toISOString(),
+    });
+
+    saveStore();
+    return res.json({ success: true, message: 'Game Winning withdrawal request submitted successfully', request: wd });
+  }
+
+  // MLM NETWORK WALLET WITHDRAWAL (WITH NETWORK CONDITIONS)
   // 0. Active Package Requirement Check
   if (!user.activePackageId) {
     return res.status(400).json({
-      error: 'Active Package Required! You must have an active package ($10 Starter or $20 Booster) to request withdrawals.',
+      error: 'Active Package Required! You must have an active package ($10 Starter or $20 Booster) to request MLM network withdrawals.',
     });
   }
 
-  const reqAmt = parseFloat(amount);
   if (!reqAmt || reqAmt < 10) return res.status(400).json({ error: 'Minimum withdrawal is $10 USDT' });
   if (user.balance < reqAmt)
     return res.status(400).json({ error: `Insufficient withdrawable balance ($${user.balance.toFixed(2)})` });
@@ -2433,6 +2671,7 @@ app.post('/api/withdraw', (req: Request, res: Response) => {
     netAmount,
     targetAddress: targetAddress.trim(),
     network: network || 'BEP20',
+    walletType: 'mlm',
     status: 'pending',
     createdAt: new Date().toISOString(),
     adminNotes: 'Submitted - Pending Admin Approval & Blockchain Dispatched',
@@ -2511,9 +2750,8 @@ app.post('/api/spin', (req: Request, res: Response) => {
   }
 
   if (winningReward.amount > 0) {
-    user.balance += winningReward.amount;
-    user.spinEarned += winningReward.amount;
-    user.totalEarned += winningReward.amount;
+    user.spinEarned = (user.spinEarned || 0) + winningReward.amount;
+    awardGameWin(user, winningReward.amount, 'Spin Wheel');
 
     state.transactions.unshift({
       id: `tx-${Date.now()}-spin`,
@@ -2522,7 +2760,7 @@ app.post('/api/spin', (req: Request, res: Response) => {
       type: 'spin_reward',
       amount: winningReward.amount,
       status: 'completed',
-      notes: `Daily Spin Wheel Reward: ${winningReward.label}`,
+      notes: `Daily Spin Wheel Reward: ${winningReward.label} ($${winningReward.amount} to Winning Wallet)`,
       createdAt: new Date().toISOString(),
     });
   } else if (winningReward.label === 'Extra Spin') {
@@ -2702,14 +2940,11 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
     }
   }
 
-  // Deduct from depositBalance first, then balance
-  if (user.depositBalance >= totalCost) {
-    user.depositBalance -= totalCost;
-  } else if (user.balance >= totalCost) {
-    user.balance -= totalCost;
-  } else {
+  // Deduct from depositBalance prioritizing Deposit Wallet, Winning Wallet, then Main Wallet
+  if (!deductBetBalance(user, totalCost)) {
+    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
     return res.status(400).json({
-      error: `Insufficient balance! Total cost: $${totalCost} USDT. (Available Deposit: $${user.depositBalance}, Withdrawable: $${user.balance})`,
+      error: `Insufficient balance! Total cost: $${totalCost} USDT. (Available: $${totalAvail.toFixed(2)} USDT)`,
     });
   }
 
@@ -2754,6 +2989,9 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
     notes: `Purchased ${qty} Lucky Draw Coupon(s) ($${ticketPrice} USDT each): ${newTickets.map((t) => '#' + t.ticketNumber).join(', ')}`,
     createdAt: new Date().toISOString(),
   });
+
+  // Distribute 5-Level Bet Turnover Commission
+  process5LevelBetTurnoverCommission(user, totalCost, 'Lucky Draw Lottery');
 
   saveStore();
   res.json({ success: true, tickets: newTickets, user, luckyDraw: state.luckyDraw });
@@ -2807,6 +3045,100 @@ app.post('/api/luckydraw/admin/config', (req: Request, res: Response) => {
 
   saveStore();
   res.json({ success: true, luckyDraw: state.luckyDraw });
+});
+
+// 5-Level Referral & Agency Stats Endpoint
+app.get('/api/referral/agency-stats', (req: Request, res: Response) => {
+  const user = getUserFromReq(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized. Please login.' });
+  }
+
+  // Calculate 5-level team hierarchy
+  const levelsData = [1, 2, 3, 4, 5].map((lvl) => {
+    const teamMembers = getTeamMembersUpToLevel(user.id, lvl).filter((item) => item.level === lvl);
+    const count = teamMembers.length;
+    const lKey = `l${lvl}` as 'l1' | 'l2' | 'l3' | 'l4' | 'l5';
+    const turnover = user.levelTurnover?.[lKey] || teamMembers.reduce((sum, item) => sum + (item.user.totalBetTurnover || 0), 0);
+    const commissionRate = BET_TURNOVER_LEVEL_PERCENTAGES[lvl - 1];
+    const commission = user.levelCommission?.[lKey] || turnover * (commissionRate / 100);
+
+    return {
+      level: lvl,
+      count,
+      turnover,
+      commissionRate,
+      commission,
+      members: teamMembers.map((item) => ({
+        id: item.user.id,
+        nodeId: item.user.nodeId,
+        name: item.user.name,
+        registeredAt: item.user.registeredAt,
+        totalBetTurnover: item.user.totalBetTurnover || 0,
+        rank: item.user.rank,
+      })),
+    };
+  });
+
+  // Calculate Daily VIP Active Players count (Level 1-5 players who placed bets today)
+  const allTeamMembers = getTeamMembersUpToLevel(user.id, 5);
+  const teamUserIds = new Set(allTeamMembers.map((item) => item.user.id));
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayActivePlayers = state.transactions
+    .filter(
+      (t) =>
+        t.createdAt.startsWith(todayStr) &&
+        teamUserIds.has(t.userId) &&
+        (t.type === 'color_prediction_bet' || t.type === 'dragon_tiger_bet' || t.type === 'aviator_bet')
+    )
+    .map((t) => t.userId);
+
+  const uniqueActivePlayersTodayCount = new Set(todayActivePlayers).size;
+
+  // VIP Tiers Matrix
+  const vipTiers = [
+    { level: 'VIP 1 Agent', minPlayers: 5, dailyBonusUsdt: 2.0, dailyBonusInr: 150 },
+    { level: 'VIP 2 Agent', minPlayers: 15, dailyBonusUsdt: 6.0, dailyBonusInr: 500 },
+    { level: 'VIP 3 Agent', minPlayers: 50, dailyBonusUsdt: 25.0, dailyBonusInr: 2000 },
+    { level: 'VIP 4 Agent', minPlayers: 200, dailyBonusUsdt: 120.0, dailyBonusInr: 10000 },
+  ];
+
+  let currentVipTier = null;
+  for (const tier of [...vipTiers].reverse()) {
+    if (uniqueActivePlayersTodayCount >= tier.minPlayers) {
+      currentVipTier = tier;
+      break;
+    }
+  }
+
+  // Get recent turnover commission logs
+  const turnoverLogs = state.transactions
+    .filter((t) => t.userId === user.id && t.type === ('bet_turnover_commission' as any))
+    .slice(0, 30);
+
+  res.json({
+    success: true,
+    user: {
+      id: user.id,
+      nodeId: user.nodeId,
+      name: user.name,
+      totalBetTurnover: user.totalBetTurnover || 0,
+      referralCommissionEarned: user.referralCommissionEarned || 0,
+      firstDepositBonusEarned: user.firstDepositBonusEarned || 0,
+      vipAgentBonusEarned: user.vipAgentBonusEarned || 0,
+    },
+    levelsData,
+    totalTeamSize: allTeamMembers.length,
+    totalTeamTurnover: levelsData.reduce((acc, l) => acc + l.turnover, 0),
+    totalCommissionEarned: user.referralCommissionEarned || levelsData.reduce((acc, l) => acc + l.commission, 0),
+    vipAgentStatus: {
+      activePlayersToday: uniqueActivePlayersTodayCount,
+      currentTier: currentVipTier,
+      tiers: vipTiers,
+    },
+    turnoverLogs,
+  });
 });
 
 // Admin Assign / Gift Ticket Endpoint
@@ -2920,8 +3252,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
     processedTicketIds.add(tkt.id);
     const u = state.users.find((usr) => usr.id === tkt.userId);
     if (u) {
-      u.balance += firstPrizeVal;
-      u.totalEarned += firstPrizeVal;
+      awardGameWin(u, firstPrizeVal, 'Lucky Draw Lottery (1st Prize)');
       state.transactions.unshift({
         id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-1st`,
         userId: u.id,
@@ -2929,7 +3260,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
         type: 'admin_adjust',
         amount: firstPrizeVal,
         status: 'completed',
-        notes: `🏆 1st Prize Winner of Lucky Draw Coupon #${tkt.ticketNumber} ($${firstPrizeVal} USDT)`,
+        notes: `🏆 1st Prize Winner of Lucky Draw Coupon #${tkt.ticketNumber} ($${firstPrizeVal} USDT to Winning Wallet)`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -2975,8 +3306,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
     processedTicketIds.add(tkt.id);
     const u = state.users.find((usr) => usr.id === tkt.userId);
     if (u) {
-      u.balance += secondPrizeVal;
-      u.totalEarned += secondPrizeVal;
+      awardGameWin(u, secondPrizeVal, 'Lucky Draw Lottery (2nd Prize)');
       state.transactions.unshift({
         id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-2nd`,
         userId: u.id,
@@ -2984,7 +3314,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
         type: 'admin_adjust',
         amount: secondPrizeVal,
         status: 'completed',
-        notes: `🥈 2nd Prize Winner (Matched Last 5 Digits / Runner-Up) Coupon #${tkt.ticketNumber} ($${secondPrizeVal} USDT)`,
+        notes: `🥈 2nd Prize Winner Coupon #${tkt.ticketNumber} ($${secondPrizeVal} USDT to Winning Wallet)`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -3017,8 +3347,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
     processedTicketIds.add(tkt.id);
     const u = state.users.find((usr) => usr.id === tkt.userId);
     if (u) {
-      u.balance += thirdPrizeVal;
-      u.totalEarned += thirdPrizeVal;
+      awardGameWin(u, thirdPrizeVal, 'Lucky Draw Lottery (3rd Prize)');
       state.transactions.unshift({
         id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-3rd`,
         userId: u.id,
@@ -3026,7 +3355,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
         type: 'admin_adjust',
         amount: thirdPrizeVal,
         status: 'completed',
-        notes: `🥉 3rd Prize Winner (Matched Last 4 Digits / Runner-Up) Coupon #${tkt.ticketNumber} ($${thirdPrizeVal} USDT)`,
+        notes: `🥉 3rd Prize Winner Coupon #${tkt.ticketNumber} ($${thirdPrizeVal} USDT to Winning Wallet)`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -3127,12 +3456,10 @@ app.post('/api/color-prediction/bet', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid bet amount.' });
   }
 
-  if ((user.balance || 0) < totalBet) {
-    return res.status(400).json({ error: `Insufficient balance ($${user.balance.toFixed(2)} available). Please deposit USDT.` });
+  if (!deductBetBalance(user, totalBet)) {
+    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+    return res.status(400).json({ error: `Insufficient balance ($${totalAvail.toFixed(2)} total available). Deposit wallet is required for bets.` });
   }
-
-  // Deduct balance
-  user.balance -= totalBet;
 
   const newBet: ColorPredictionBet = {
     id: `bet-cp-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
@@ -3162,6 +3489,9 @@ app.post('/api/color-prediction/bet', (req: Request, res: Response) => {
     notes: `Win Go 1m Bet - Period #${cp.currentPeriodId} on [${String(selection).toUpperCase()}]`,
     createdAt: new Date().toISOString(),
   });
+
+  // Distribute 5-Level Bet Turnover Commission to Uplines
+  process5LevelBetTurnoverCommission(user, totalBet, 'Win Go 1m Color Prediction');
 
   saveStore();
 
@@ -3283,11 +3613,10 @@ app.post('/api/aviator/bet', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid bet amount' });
   }
 
-  if ((user.balance || 0) < numAmount) {
-    return res.status(400).json({ error: 'Insufficient wallet balance' });
+  if (!deductBetBalance(user, numAmount)) {
+    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+    return res.status(400).json({ error: `Insufficient wallet balance ($${totalAvail.toFixed(2)} USDT available). Deposit or Winning wallet is required for bets.` });
   }
-
-  user.balance -= numAmount;
 
   const newBet: AviatorBet = {
     id: `bet-av-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -3319,6 +3648,9 @@ app.post('/api/aviator/bet', (req: Request, res: Response) => {
     status: 'completed',
     createdAt: new Date().toISOString(),
   });
+
+  // Distribute 5-Level Bet Turnover Commission
+  process5LevelBetTurnoverCommission(user, numAmount, 'Aviator Game');
 
   saveStore();
 
@@ -3353,7 +3685,7 @@ app.post('/api/aviator/cashout', (req: Request, res: Response) => {
   bet.payout = payout;
   bet.status = 'cashed_out';
 
-  user.balance += payout;
+  awardGameWin(user, payout, 'Aviator Crash Game');
   user.totalEarned += Math.max(0, payout - bet.amount);
 
   state.transactions.unshift({
@@ -3375,6 +3707,213 @@ app.post('/api/aviator/cashout', (req: Request, res: Response) => {
     payout,
     multiplier,
     user,
+  });
+});
+
+// DRAGON VS TIGER API ENDPOINTS
+const dragonTigerHistory: any[] = [];
+const dragonTigerBets: any[] = [];
+let dragonTigerAdminMode: 'lowest_payout' | 'random' | 'manual' = 'lowest_payout';
+let dragonTigerForcedWinner: 'dragon' | 'tiger' | 'tie' | null = null;
+
+app.get('/api/dragon-tiger', (req: Request, res: Response) => {
+  const user = getUserFromReq(req);
+  const myBets = user ? dragonTigerBets.filter((b) => b.userId === user.id).slice(0, 30) : [];
+  res.json({
+    success: true,
+    history: dragonTigerHistory.slice(0, 50),
+    myBets,
+    adminMode: dragonTigerAdminMode,
+  });
+});
+
+// Admin endpoints for Dragon Tiger
+app.get('/api/admin/dragon-tiger/stats', (req: Request, res: Response) => {
+  const pendingBets = dragonTigerBets.slice(0, 50);
+  const totalStakes = pendingBets.reduce((acc, b) => acc + (b.amount || 0), 0);
+  const dragonStakes = pendingBets.filter((b) => b.choice === 'dragon').reduce((acc, b) => acc + (b.amount || 0), 0);
+  const tigerStakes = pendingBets.filter((b) => b.choice === 'tiger').reduce((acc, b) => acc + (b.amount || 0), 0);
+  const tieStakes = pendingBets.filter((b) => b.choice === 'tie').reduce((acc, b) => acc + (b.amount || 0), 0);
+
+  res.json({
+    success: true,
+    stats: {
+      adminMode: dragonTigerAdminMode,
+      forcedWinner: dragonTigerForcedWinner,
+      totalStakes,
+      dragonStakes,
+      tigerStakes,
+      tieStakes,
+      recentBetsCount: pendingBets.length,
+    },
+  });
+});
+
+app.post('/api/admin/dragon-tiger/mode', (req: Request, res: Response) => {
+  const { mode } = req.body;
+  if (!['lowest_payout', 'random', 'manual'].includes(mode)) {
+    return res.status(400).json({ error: 'Invalid mode' });
+  }
+  dragonTigerAdminMode = mode;
+  if (mode !== 'manual') dragonTigerForcedWinner = null;
+  saveStore();
+  res.json({ success: true, message: `Dragon Tiger risk mode set to ${mode.toUpperCase()}`, adminMode: dragonTigerAdminMode });
+});
+
+app.post('/api/admin/dragon-tiger/force-result', (req: Request, res: Response) => {
+  const { winner } = req.body;
+  if (!winner) {
+    dragonTigerForcedWinner = null;
+    return res.json({ success: true, message: 'Cleared forced Dragon Tiger result.' });
+  }
+  if (!['dragon', 'tiger', 'tie'].includes(winner)) {
+    return res.status(400).json({ error: 'Invalid winner choice' });
+  }
+  dragonTigerForcedWinner = winner;
+  dragonTigerAdminMode = 'manual';
+  saveStore();
+  res.json({ success: true, message: `Next Dragon Tiger outcome forced to [${winner.toUpperCase()}].` });
+});
+
+app.post('/api/dragon-tiger/bet', (req: Request, res: Response) => {
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not authenticated' });
+
+  const { choice, amount } = req.body;
+  const numAmount = Number(amount);
+  if (!['dragon', 'tiger', 'tie'].includes(choice)) {
+    return res.status(400).json({ error: 'Invalid bet choice' });
+  }
+  if (isNaN(numAmount) || numAmount <= 0) {
+    return res.status(400).json({ error: 'Invalid bet amount' });
+  }
+  if (!deductBetBalance(user, numAmount)) {
+    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+    return res.status(400).json({ error: `Insufficient wallet balance ($${totalAvail.toFixed(2)} USDT available). Deposit wallet is required for bets.` });
+  }
+
+  // Determine winner based on Admin Control Settings
+  let winner: 'dragon' | 'tiger' | 'tie' = 'dragon';
+
+  if (dragonTigerAdminMode === 'manual' && dragonTigerForcedWinner) {
+    winner = dragonTigerForcedWinner;
+    // Reset after one manual forced round
+    dragonTigerForcedWinner = null;
+    dragonTigerAdminMode = 'lowest_payout';
+  } else if (dragonTigerAdminMode === 'lowest_payout') {
+    // House Profit Mode: Make user lose if they bet high, or pick house-winning side
+    if (choice === 'dragon') winner = 'tiger';
+    else if (choice === 'tiger') winner = 'dragon';
+    else winner = Math.random() > 0.5 ? 'dragon' : 'tiger';
+  } else {
+    // Fair Random Mode
+    const rand = Math.random();
+    if (rand < 0.45) winner = 'dragon';
+    else if (rand < 0.90) winner = 'tiger';
+    else winner = 'tie';
+  }
+
+  // Generate cards corresponding to winner outcome
+  const suits: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
+  const values = [
+    { val: 'A', rank: 1 },
+    { val: '2', rank: 2 },
+    { val: '3', rank: 3 },
+    { val: '4', rank: 4 },
+    { val: '5', rank: 5 },
+    { val: '6', rank: 6 },
+    { val: '7', rank: 7 },
+    { val: '8', rank: 8 },
+    { val: '9', rank: 9 },
+    { val: '10', rank: 10 },
+    { val: 'J', rank: 11 },
+    { val: 'Q', rank: 12 },
+    { val: 'K', rank: 13 },
+  ];
+
+  const getRandomCardOfRank = (r: number) => {
+    const s = suits[Math.floor(Math.random() * suits.length)];
+    const item = values.find((v) => v.rank === r) || values[0];
+    return { suit: s, value: item.val, rank: item.rank, color: s === '♥' || s === '♦' ? 'red' : 'black' };
+  };
+
+  let dRank = 10;
+  let tRank = 5;
+
+  if (winner === 'dragon') {
+    dRank = Math.floor(6 + Math.random() * 8); // 6 to 13
+    tRank = Math.floor(1 + Math.random() * (dRank - 1));
+  } else if (winner === 'tiger') {
+    tRank = Math.floor(6 + Math.random() * 8);
+    dRank = Math.floor(1 + Math.random() * (tRank - 1));
+  } else {
+    dRank = Math.floor(1 + Math.random() * 13);
+    tRank = dRank;
+  }
+
+  const dragonCard = getRandomCardOfRank(dRank);
+  const tigerCard = getRandomCardOfRank(tRank);
+
+  const isWin = choice === winner;
+  let multiplier = choice === 'tie' ? 8.0 : 2.0;
+  const payout = isWin ? numAmount * multiplier : 0;
+
+  if (isWin) {
+    awardGameWin(user, payout, 'Dragon vs Tiger');
+  }
+
+  const roundId = `DT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  const newHist = {
+    id: `dt-h-${Date.now()}`,
+    roundId,
+    dragonCard,
+    tigerCard,
+    winner,
+    completedAt: new Date().toISOString(),
+  };
+  dragonTigerHistory.unshift(newHist);
+
+  const newBet = {
+    id: `dt-b-${Date.now()}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    userName: user.name,
+    roundId,
+    choice,
+    amount: numAmount,
+    winner,
+    payout,
+    status: isWin ? 'won' : 'lost',
+    createdAt: new Date().toISOString(),
+  };
+  dragonTigerBets.unshift(newBet);
+
+  state.transactions.unshift({
+    id: `tx-dt-${Date.now()}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'dragon_tiger_bet',
+    amount: numAmount,
+    notes: `Dragon vs Tiger Bet on [${choice.toUpperCase()}] Round #${roundId} (${isWin ? 'WON $' + payout.toFixed(2) : 'LOST'})`,
+    status: 'completed',
+    createdAt: new Date().toISOString(),
+  });
+
+  // Distribute 5-Level Bet Turnover Commission
+  process5LevelBetTurnoverCommission(user, numAmount, 'Dragon vs Tiger');
+
+  saveStore();
+
+  res.json({
+    success: true,
+    roundId,
+    dragonCard,
+    tigerCard,
+    winner,
+    isWin,
+    payout,
+    newBalance: user.balance,
   });
 });
 
@@ -3740,6 +4279,32 @@ app.post('/api/admin/deposit/action', (req: Request, res: Response) => {
     const user = state.users.find((u) => u.id === dep.userId);
     if (user) {
       user.depositBalance = (user.depositBalance || 0) + dep.amount;
+
+      // First Deposit Bonus check (Level 1 sponsor reward)
+      if (!user.hasFirstDepositApproved) {
+        user.hasFirstDepositApproved = true;
+        if (user.sponsorId) {
+          const sponsor = state.users.find((u) => u.id === user.sponsorId || u.nodeId === user.sponsorId);
+          if (sponsor) {
+            const bonusAmt = 5.0; // $5.00 / ₹50 First Deposit Bonus reward for sponsor
+            sponsor.balance = (sponsor.balance || 0) + bonusAmt;
+            sponsor.firstDepositBonusEarned = (sponsor.firstDepositBonusEarned || 0) + bonusAmt;
+            sponsor.totalEarned = (sponsor.totalEarned || 0) + bonusAmt;
+
+            state.transactions.unshift({
+              id: `tx-1stdep-${Date.now()}`,
+              userId: sponsor.id,
+              userNodeId: sponsor.nodeId,
+              type: 'first_deposit_bonus' as any,
+              amount: bonusAmt,
+              status: 'completed',
+              notes: `🎁 First Deposit Bonus ($${bonusAmt.toFixed(2)}) for sponsoring ${user.name}'s first deposit ($${dep.amount.toFixed(2)})`,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
       state.transactions.unshift({
         id: `tx-${Date.now()}-dep-app`,
         userId: user.id,

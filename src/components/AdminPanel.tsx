@@ -109,11 +109,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onDeleteUser,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'aviator_game'
+    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'dragon_tiger' | 'aviator_game'
   >('settings');
 
   const [colorStats, setColorStats] = useState<any>(null);
   const [aviatorStats, setAviatorStats] = useState<any>(null);
+  const [dragonTigerStats, setDragonTigerStats] = useState<any>(null);
+
+  const fetchDragonTigerStats = async () => {
+    try {
+      const res = await fetch('/api/admin/dragon-tiger/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setDragonTigerStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dragon tiger stats:', err);
+    }
+  };
+
+  const handleSetDragonTigerMode = async (mode: 'lowest_payout' | 'random' | 'manual') => {
+    try {
+      const res = await fetch('/api/admin/dragon-tiger/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchDragonTigerStats();
+      }
+    } catch (err) {
+      alert('Error setting dragon tiger mode');
+    }
+  };
+
+  const handleForceDragonTigerResult = async (winner: 'dragon' | 'tiger' | 'tie' | null) => {
+    try {
+      const res = await fetch('/api/admin/dragon-tiger/force-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ winner }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchDragonTigerStats();
+      }
+    } catch (err) {
+      alert('Error setting force result');
+    }
+  };
 
   const fetchAviatorStats = async () => {
     try {
@@ -1103,17 +1150,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </button>
         <button
           onClick={() => {
-            setActiveTab('aviator_game');
-            fetchAviatorStats();
+            setActiveTab('dragon_tiger');
+            fetchDragonTigerStats();
           }}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'aviator_game'
+            activeTab === 'dragon_tiger'
               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Plane className="w-4 h-4 text-rose-400" />
-          Aviator Crash Control
+          <Zap className="w-4 h-4 text-amber-400" />
+          Dragon vs Tiger Control
         </button>
       </div>
 
@@ -4772,6 +4819,176 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="text-xs text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400" />
                 Next round result is currently FORCED to number #{colorStats.forcedNextNumber}!
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: DRAGON VS TIGER RISK & RESULT CONTROL */}
+      {activeTab === 'dragon_tiger' && (
+        <div className="space-y-6 font-mono">
+          <div className="bg-[#0b1424] border border-amber-500/30 rounded-2xl p-5 flex items-center justify-between shadow-lg">
+            <div>
+              <h2 className="text-lg font-bold text-amber-300 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-400" />
+                Dragon vs Tiger Risk & Result Control Engine
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Set house profit risk algorithms or manually force Dragon (2X), Tiger (2X), or Tie (8X) as the next winning outcome.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={fetchDragonTigerStats}
+              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold border border-slate-700 flex items-center gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh Stats
+            </button>
+          </div>
+
+          {/* Stats Overview Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
+              <div className="text-xs text-slate-400">Total Recent Bets Volume</div>
+              <div className="text-2xl font-black text-amber-400">${dragonTigerStats?.totalStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">{dragonTigerStats?.recentBetsCount || 0} bets placed</div>
+            </div>
+            <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
+              <div className="text-xs text-slate-400">🐉 Dragon Stakes</div>
+              <div className="text-2xl font-black text-rose-400">${dragonTigerStats?.dragonStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">2.0X Payout Rate</div>
+            </div>
+            <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
+              <div className="text-xs text-slate-400">🐅 Tiger Stakes</div>
+              <div className="text-2xl font-black text-amber-400">${dragonTigerStats?.tigerStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">2.0X Payout Rate</div>
+            </div>
+            <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
+              <div className="text-xs text-slate-400">👔 Tie Stakes</div>
+              <div className="text-2xl font-black text-emerald-400">${dragonTigerStats?.tieStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">8.0X Mega Payout</div>
+            </div>
+          </div>
+
+          {/* Risk Mode Selector */}
+          <div className="bg-[#070d18] border border-amber-500/30 p-5 rounded-2xl space-y-4">
+            <div className="text-sm font-bold text-amber-300">Select Platform Risk Algorithm</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => handleSetDragonTigerMode('lowest_payout')}
+                className={`p-4 rounded-xl text-left border transition ${
+                  dragonTigerStats?.adminMode === 'lowest_payout'
+                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-200'
+                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`}
+              >
+                <div className="font-bold text-sm text-emerald-400 flex items-center gap-2">
+                  <Bot className="w-4 h-4" /> Automatic House Profit (Lowest Payout)
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  Engine automatically calculates bets and picks the winning side that minimizes house payout loss.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSetDragonTigerMode('random')}
+                className={`p-4 rounded-xl text-left border transition ${
+                  dragonTigerStats?.adminMode === 'random'
+                    ? 'bg-blue-500/10 border-blue-500 text-blue-200'
+                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`}
+              >
+                <div className="font-bold text-sm text-blue-400 flex items-center gap-2">
+                  <Shuffle className="w-4 h-4" /> Standard Fair RNG (50/50 Random)
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  100% unbiased random cards distribution (45% Dragon, 45% Tiger, 10% Tie).
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSetDragonTigerMode('manual')}
+                className={`p-4 rounded-xl text-left border transition ${
+                  dragonTigerStats?.adminMode === 'manual'
+                    ? 'bg-amber-500/10 border-amber-500 text-amber-200'
+                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`}
+              >
+                <div className="font-bold text-sm text-amber-400 flex items-center gap-2">
+                  <Shield className="w-4 h-4" /> Manual Forced Winner Mode
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  Admin forces a specific winner (Dragon, Tiger, or Tie) for the next card deal.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Forced Winner Buttons */}
+          <div className="bg-[#070d18] border border-amber-500/30 p-5 rounded-2xl space-y-4">
+            <div className="text-sm font-bold text-amber-300 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Force Next Round Winner (1-Click Override)
+            </div>
+            <p className="text-xs text-slate-400 font-sans">
+              Click any button below to instantly dictate which outcome wins in the upcoming deal round:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => handleForceDragonTigerResult('dragon')}
+                className={`py-3.5 px-4 rounded-xl font-black text-sm border-2 transition flex items-center justify-center gap-2 ${
+                  dragonTigerStats?.forcedWinner === 'dragon'
+                    ? 'bg-rose-600 text-white border-white shadow-[0_0_20px_rgba(244,63,94,0.8)]'
+                    : 'bg-rose-950/40 text-rose-300 border-rose-600/50 hover:bg-rose-600 hover:text-white'
+                }`}
+              >
+                <span>🐉 Force Dragon Win (2X)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleForceDragonTigerResult('tiger')}
+                className={`py-3.5 px-4 rounded-xl font-black text-sm border-2 transition flex items-center justify-center gap-2 ${
+                  dragonTigerStats?.forcedWinner === 'tiger'
+                    ? 'bg-amber-500 text-black border-white shadow-[0_0_20px_rgba(245,158,11,0.8)]'
+                    : 'bg-amber-950/40 text-amber-300 border-amber-500/50 hover:bg-amber-500 hover:text-black'
+                }`}
+              >
+                <span>🐅 Force Tiger Win (2X)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleForceDragonTigerResult('tie')}
+                className={`py-3.5 px-4 rounded-xl font-black text-sm border-2 transition flex items-center justify-center gap-2 ${
+                  dragonTigerStats?.forcedWinner === 'tie'
+                    ? 'bg-emerald-600 text-white border-white shadow-[0_0_20px_rgba(16,185,129,0.8)]'
+                    : 'bg-emerald-950/40 text-emerald-300 border-emerald-600/50 hover:bg-emerald-600 hover:text-white'
+                }`}
+              >
+                <span>👔 Force Tie Win (8X)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleForceDragonTigerResult(null)}
+                className="py-3.5 px-4 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
+              >
+                <span>🔄 Reset / Clear Force</span>
+              </button>
+            </div>
+
+            {dragonTigerStats?.forcedWinner && (
+              <div className="text-xs text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                Next round outcome is currently FORCED to: [{dragonTigerStats.forcedWinner.toUpperCase()}]!
               </div>
             )}
           </div>

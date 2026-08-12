@@ -22,6 +22,8 @@ interface ColorPredictionViewProps {
   user: User;
   onRefreshUser: () => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
+  onOpenDeposit?: () => void;
+  onOpenWithdraw?: () => void;
 }
 
 type BetSelection = 'green' | 'red' | 'violet' | 'big' | 'small' | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
@@ -30,12 +32,19 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
   user,
   onRefreshUser,
   showToast,
+  onOpenDeposit,
+  onOpenWithdraw,
 }) => {
   const [currentPeriodId, setCurrentPeriodId] = useState<string>('');
   const [remainingSeconds, setRemainingSeconds] = useState<number>(60);
   const [isFreeze, setIsFreeze] = useState<boolean>(false);
   const [history, setHistory] = useState<ColorPredictionResult[]>([]);
   const [myBets, setMyBets] = useState<ColorPredictionBet[]>([]);
+
+  // Calculate real total winnings from won bets in Color Prediction
+  const totalColorWins = myBets
+    .filter((b) => b.status === 'won')
+    .reduce((acc, b) => acc + (b.payout || 0), 0);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'game' | 'history' | 'mybets' | 'rules'>('game');
 
@@ -45,6 +54,16 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
   const [baseAmount, setBaseAmount] = useState<number>(1);
   const [multiplierCount, setMultiplierCount] = useState<number>(1);
   const [placingBet, setPlacingBet] = useState<boolean>(false);
+
+  // User Result Popup Modal State
+  const [resultPopup, setResultPopup] = useState<{
+    isOpen: boolean;
+    bet: ColorPredictionBet;
+    result: ColorPredictionResult | null;
+  } | null>(null);
+
+  const shownResultIdsRef = React.useRef<Set<string>>(new Set());
+  const isFirstFetchRef = React.useRef<boolean>(true);
 
   // Fetch Game State from Backend
   const fetchGameState = async () => {
@@ -60,8 +79,41 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
         setCurrentPeriodId(data.currentPeriodId);
         setRemainingSeconds(data.remainingSeconds);
         setIsFreeze(data.isFreeze);
-        setHistory(data.history || []);
-        setMyBets(data.myBets || []);
+        const newHistory: ColorPredictionResult[] = data.history || [];
+        const newMyBets: ColorPredictionBet[] = data.myBets || [];
+
+        setHistory(newHistory);
+        setMyBets(newMyBets);
+
+        // Manage Result Popup Modal for user bets
+        if (isFirstFetchRef.current) {
+          isFirstFetchRef.current = false;
+          // Mark bets older than 2 minutes as already shown on initial load
+          const now = Date.now();
+          newMyBets.forEach((b) => {
+            if (b.status !== 'pending') {
+              const ageMs = now - new Date(b.createdAt).getTime();
+              if (ageMs > 120000) {
+                shownResultIdsRef.current.add(b.id);
+              }
+            }
+          });
+        }
+
+        // Check if there is any newly resolved bet (won/lost) that hasn't been shown in popup
+        const newlyResolvedBet = newMyBets.find(
+          (b) => b.status !== 'pending' && !shownResultIdsRef.current.has(b.id)
+        );
+
+        if (newlyResolvedBet) {
+          shownResultIdsRef.current.add(newlyResolvedBet.id);
+          const matchedResult = newHistory.find((h) => h.periodId === newlyResolvedBet.periodId) || null;
+          setResultPopup({
+            isOpen: true,
+            bet: newlyResolvedBet,
+            result: matchedResult,
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to fetch Color Prediction state:', err);
@@ -185,20 +237,45 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
           </div>
 
           {/* User Wallet Balance Summary Card */}
-          <div className="w-full lg:w-auto bg-[#070c14]/80 border border-cyan-500/40 rounded-2xl p-4 flex items-center justify-between lg:justify-start gap-4 shadow-[0_0_15px_rgba(0,0,0,0.6)]">
-            <div>
-              <div className="text-[10px] uppercase text-slate-400 tracking-wider font-semibold">Available Wallet</div>
-              <div className="text-xl font-extrabold text-cyan-300 flex items-center gap-1">
-                ${user.balance.toFixed(2)}
-                <span className="text-xs text-slate-500 font-normal">USDT</span>
+          <div className="w-full lg:w-auto bg-[#070c14]/90 border border-cyan-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between lg:justify-start gap-4 shadow-[0_0_20px_rgba(0,0,0,0.6)] backdrop-blur-md">
+            <div className="flex items-center gap-4">
+              <div>
+                <div className="text-[10px] uppercase text-cyan-400 tracking-wider font-extrabold flex items-center gap-1">
+                  <span>💳 Deposit Wallet</span>
+                </div>
+                <div className="text-lg font-black text-cyan-300">
+                  ${(user.depositBalance || 0).toFixed(2)} <span className="text-xs text-slate-500 font-normal">USDT</span>
+                </div>
+              </div>
+              <div className="h-10 w-[1px] bg-slate-800" />
+              <div>
+                <div className="text-[10px] uppercase text-amber-400 tracking-wider font-extrabold flex items-center gap-1">
+                  <span>🎮 Winning Wallet</span>
+                </div>
+                <div className="text-lg font-black text-amber-300">
+                  ${(user.winningBalance || 0).toFixed(2)} <span className="text-xs text-slate-500 font-normal">USDT</span>
+                </div>
               </div>
             </div>
-            <div className="h-10 w-[1px] bg-slate-800" />
-            <div>
-              <div className="text-[10px] uppercase text-slate-400 tracking-wider font-semibold">My Total Wins</div>
-              <div className="text-lg font-bold text-emerald-400 flex items-center gap-1">
-                ${user.totalEarned.toFixed(2)}
-              </div>
+
+            {/* Quick Deposit & Withdraw Buttons */}
+            <div className="flex items-center gap-2 border-t sm:border-t-0 sm:border-l border-slate-800 pt-2 sm:pt-0 sm:pl-4 w-full sm:w-auto justify-end">
+              {onOpenDeposit && (
+                <button
+                  onClick={onOpenDeposit}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-xs font-black transition shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                >
+                  + Deposit
+                </button>
+              )}
+              {onOpenWithdraw && (
+                <button
+                  onClick={onOpenWithdraw}
+                  className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 text-xs font-black transition shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                >
+                  Withdraw
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -739,6 +816,119 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
                   )}
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 2. USER WIN / LOSS RESULT POPUP MODAL */}
+        {resultPopup && resultPopup.isOpen && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.7, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.7, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className={`relative w-full max-w-md bg-[#0a0f1d] border rounded-3xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden space-y-5 text-center ${
+                resultPopup.bet.status === 'won' ? 'border-emerald-500/60' : 'border-rose-500/50'
+              }`}
+            >
+              {/* Background ambient lighting */}
+              <div
+                className={`absolute -top-20 -left-20 w-60 h-60 rounded-full blur-3xl pointer-events-none ${
+                  resultPopup.bet.status === 'won' ? 'bg-emerald-500/20' : 'bg-rose-500/20'
+                }`}
+              />
+
+              {/* Close Button */}
+              <button
+                onClick={() => setResultPopup(null)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold border border-slate-700 transition z-10"
+              >
+                ✕
+              </button>
+
+              {/* Header Icon & Winner Title */}
+              {resultPopup.bet.status === 'won' ? (
+                <div className="space-y-2 pt-2">
+                  <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500/30 via-emerald-500/30 to-yellow-400/20 border-2 border-amber-400 flex items-center justify-center shadow-[0_0_30px_rgba(245,158,11,0.5)] animate-bounce">
+                    <Trophy className="w-10 h-10 text-yellow-400" />
+                  </div>
+                  <div className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center justify-center gap-1">
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-spin-slow" />
+                    <span>WINNER ANNOUNCEMENT</span>
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-spin-slow" />
+                  </div>
+                  <h2 className="text-2xl font-black text-white tracking-tight">
+                    CONGRATULATIONS! YOU WON!
+                  </h2>
+                  <div className="text-3xl md:text-4xl font-black bg-gradient-to-r from-emerald-300 via-amber-300 to-yellow-300 bg-clip-text text-transparent">
+                    +${resultPopup.bet.payout.toFixed(2)} USDT
+                  </div>
+                  <p className="text-[11px] text-emerald-300/80 font-sans">
+                    ✨ Added instantly to your 🎮 Winning Wallet
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 pt-2">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]">
+                    <AlertCircle className="w-8 h-8 text-rose-400" />
+                  </div>
+                  <div className="text-xs font-black uppercase tracking-widest text-rose-400">
+                    ROUND RESULT
+                  </div>
+                  <h2 className="text-xl font-extrabold text-white">
+                    BETTER LUCK NEXT TIME!
+                  </h2>
+                  <div className="text-2xl font-black text-rose-400">
+                    -${resultPopup.bet.totalBet.toFixed(2)} USDT
+                  </div>
+                </div>
+              )}
+
+              {/* Game Result Details Box */}
+              <div className="bg-[#050913] border border-cyan-500/20 rounded-2xl p-4 space-y-3 text-left">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-2 text-xs">
+                  <span className="text-slate-400 font-semibold">Period ID:</span>
+                  <span className="text-cyan-300 font-bold">#{resultPopup.bet.periodId}</span>
+                </div>
+
+                {resultPopup.result && (
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span className="text-slate-400 text-xs font-semibold">Lucky Result:</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${getNumColorClasses(resultPopup.result.number)}`}>
+                        {resultPopup.result.number}
+                      </span>
+                      <span className="text-xs font-bold text-slate-300 uppercase">
+                        {resultPopup.result.color.replace('-', ' & ')} | {resultPopup.result.size}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center text-xs pt-1">
+                  <span className="text-slate-400 font-semibold">Your Prediction:</span>
+                  <div>{getSelectionBadge(resultPopup.bet.selection)}</div>
+                </div>
+
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-semibold">Total Bet Placed:</span>
+                  <span className="text-white font-extrabold">${resultPopup.bet.totalBet.toFixed(2)} USDT</span>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => setResultPopup(null)}
+                className={`w-full py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 ${
+                  resultPopup.bet.status === 'won'
+                    ? 'bg-gradient-to-r from-emerald-500 to-amber-400 hover:from-emerald-400 hover:to-amber-300 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                }`}
+              >
+                <span>CONTINUE & PLAY AGAIN</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </motion.div>
           </div>
         )}

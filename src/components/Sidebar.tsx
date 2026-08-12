@@ -2,7 +2,6 @@ import React from 'react';
 import {
   LayoutDashboard,
   GitFork,
-  Zap,
   ArrowLeftRight,
   Disc,
   Shield,
@@ -12,7 +11,8 @@ import {
   ShoppingBag,
   Ticket,
   Dices,
-  Plane,
+  Flame,
+  X,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -21,6 +21,8 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   user: User;
   isAdminView: boolean;
+  isMobileDrawerOpen?: boolean;
+  onCloseMobileDrawer?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -28,6 +30,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   user,
   isAdminView,
+  isMobileDrawerOpen,
+  onCloseMobileDrawer,
 }) => {
   const navItems = [
     {
@@ -40,13 +44,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'matrix',
       label: 'Matrix Network',
       icon: GitFork,
-      badge: `${user.directReferralsCount} Directs`,
+      badge: `${user?.directReferralsCount || 0} Directs`,
+    },
+    {
+      id: 'agency',
+      label: '5-Level Referral',
+      icon: Users,
+      badge: 'Agent Income',
+      highlight: true,
     },
     {
       id: 'luckydraw',
       label: 'Lucky Draw',
       icon: Ticket,
       badge: 'Win USDT',
+      highlight: true,
+    },
+    {
+      id: 'dragontiger',
+      label: 'Dragon vs Tiger',
+      icon: Flame,
+      badge: '2X / 8X',
       highlight: true,
     },
     {
@@ -57,17 +75,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       highlight: true,
     },
     {
-      id: 'aviator',
-      label: 'Aviator Crash',
-      icon: Plane,
-      badge: '100X HOT',
+      id: 'spinwheel',
+      label: 'Spin Wheel',
+      icon: Disc,
+      badge: `${user?.spinCredits || 0} Spins`,
       highlight: true,
     },
     {
-      id: 'boosting',
-      label: 'Gold Boosting Pool',
-      icon: Zap,
-      badge: '$50 FIFO',
+      id: 'store',
+      label: 'TetherMart Store',
+      icon: ShoppingBag,
+      badge: 'Discounts',
       highlight: true,
     },
     {
@@ -76,42 +94,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: ArrowLeftRight,
     },
     {
-      id: 'store',
-      label: 'TetherMart',
-      icon: ShoppingBag,
-      badge: 'Hot Deals',
-      highlight: true,
-    },
-    {
-      id: 'rewards',
-      label: 'Spin & Rank Rewards',
-      icon: Disc,
-      badge: `${user.spinCredits} Spins`,
+      id: 'rankrewards',
+      label: 'MLM Rank Rewards',
+      icon: Award,
+      badge: user?.rank && !['None', 'Unranked', 'No Rank', ''].includes(user.rank) ? user.rank : 'MLM Ranks',
     },
   ];
 
-  return (
-    <aside className="hidden md:flex md:w-64 bg-[#080d14]/90 border-r border-cyan-500/20 p-4 flex-col justify-between font-mono text-sm shrink-0">
+  const handleSelect = (tabId: string) => {
+    setActiveTab(tabId);
+    if (onCloseMobileDrawer) onCloseMobileDrawer();
+  };
+
+  const renderContent = () => (
+    <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-6">
         {/* Node Profile Summary Card */}
         <div className="bg-[#0c1524] border border-cyan-500/30 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_15px_rgba(6,182,212,0.1)]">
           <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-indigo-600 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-[0_0_10px_rgba(6,182,212,0.4)]">
-              #{user.nodeId.substring(3, 5)}
+              #{user?.nodeId ? user.nodeId.substring(3, 5) : '00'}
             </div>
             <div>
               <div className="text-cyan-300 font-bold text-sm flex items-center gap-1">
-                <span>#{user.nodeId}</span>
+                <span>#{user?.nodeId || 'N/A'}</span>
               </div>
-              <div className="text-slate-400 text-xs truncate max-w-[120px]">
-                {user.name}
+              <div className="text-slate-400 text-xs truncate max-w-[140px]">
+                {user?.name || 'User'}
               </div>
             </div>
           </div>
           <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
             <span className="text-slate-400">Rank:</span>
-            {user.rank && !['None', 'Unranked', 'No Rank', ''].includes(user.rank) ? (
+            {user?.rank && !['None', 'Unranked', 'No Rank', ''].includes(user.rank) ? (
               <span className="text-amber-400 font-bold flex items-center gap-1">
                 <Award className="w-3.5 h-3.5" />
                 {user.rank}
@@ -133,8 +149,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition duration-200 group ${
+                onClick={() => handleSelect(item.id)}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition duration-200 group ${
                   isActive
                     ? 'bg-gradient-to-r from-cyan-500/20 to-indigo-500/10 border border-cyan-500/50 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
                     : 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 border border-transparent'
@@ -168,14 +184,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
 
           {/* Admin Control Link (Only for Admins) */}
-          {(user.isAdmin || user.nodeId === 'NX-ROOT01') && (
+          {(user?.isAdmin || user?.nodeId === 'NX-ROOT01') && (
             <div className="pt-4">
               <div className="text-[10px] text-slate-500 uppercase tracking-widest px-3 mb-2 font-semibold">
                 Administration
               </div>
               <button
-                onClick={() => setActiveTab('admin')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition duration-200 border ${
+                onClick={() => handleSelect('admin')}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition duration-200 border ${
                   activeTab === 'admin' || isAdminView
                     ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
                     : 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 border border-transparent'
@@ -183,7 +199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <Shield className="w-4 h-4 text-amber-400" />
-                  <span className="font-semibold text-xs">Admin Control</span>
+                  <span className="font-semibold text-xs">Admin Control Panel</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
               </button>
@@ -203,6 +219,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className="text-cyan-400 truncate max-w-[100px]">Verified</span>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden md:flex md:w-64 bg-[#080d14]/90 border-r border-cyan-500/20 p-4 flex-col justify-between font-mono text-sm shrink-0">
+        {renderContent()}
+      </aside>
+
+      {/* Mobile Slide-Over Drawer Modal */}
+      {isMobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          {/* Backdrop Overlay */}
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={onCloseMobileDrawer}
+          />
+
+          {/* Drawer Container */}
+          <div className="relative w-4/5 max-w-xs bg-[#080d14] border-r border-cyan-500/40 p-5 flex flex-col justify-between z-10 font-mono shadow-2xl h-full overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+              <span className="text-xs font-bold text-cyan-300 uppercase tracking-widest">
+                TetherPlus Menu
+              </span>
+              <button
+                onClick={onCloseMobileDrawer}
+                className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {renderContent()}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
+

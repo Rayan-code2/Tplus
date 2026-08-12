@@ -12,8 +12,10 @@ export interface User {
   packageActivatedAt: string | null;
   packageExpiryDays: number;
   balance: number; // Available Withdrawable ($)
-  depositBalance: number; // Deposit / Fund Wallet ($) for buying packages
+  depositBalance: number; // Deposit / Fund Wallet ($) for buying packages/bets
   upgradeBalance: number; // Reinvestment / Upgrade Wallet ($)
+  winningBalance?: number; // Game & Lottery Winnings Wallet ($) - 10% fee, no MLM conditions
+  winningEarned?: number; // Total Game & Lottery Winnings ($)
   totalEarned: number; // Lifetime Earnings ($)
   roiEarned: number; // Node Yield ($)
   levelEarned: number; // Matrix Level Income ($)
@@ -34,6 +36,13 @@ export interface User {
   spinCredits: number;
   lastSpinAt: string | null;
   isUpgraded?: boolean;
+  totalBetTurnover?: number;
+  referralCommissionEarned?: number;
+  firstDepositBonusEarned?: number;
+  vipAgentBonusEarned?: number;
+  hasFirstDepositApproved?: boolean;
+  levelTurnover?: { l1: number; l2: number; l3: number; l4: number; l5: number };
+  levelCommission?: { l1: number; l2: number; l3: number; l4: number; l5: number };
 }
 
 export interface Package {
@@ -104,6 +113,12 @@ export interface Transaction {
     | 'product_purchase'
     | 'color_prediction_bet'
     | 'color_prediction_win'
+    | 'dragon_tiger_bet'
+    | 'dragon_tiger_win'
+    | 'sponsor_game_win_bonus'
+    | 'bet_turnover_commission'
+    | 'first_deposit_bonus'
+    | 'vip_agent_bonus'
     | 'aviator_bet'
     | 'aviator_win'
     | 'admin_adjust';
@@ -135,11 +150,12 @@ export interface WithdrawalRequest {
   userNodeId: string;
   userName: string;
   requestedAmount: number;
-  upgradeDeduction: number; // 20%
-  gasFee: number; // $1.50
-  netAmount: number; // 80% - gasFee
+  upgradeDeduction: number; // 20% / 30%
+  gasFee: number; // $1.50 or %
+  netAmount: number;
   targetAddress: string;
   network: string;
+  walletType?: 'mlm' | 'winning';
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   adminNotes?: string;
@@ -214,6 +230,9 @@ export interface SystemSettings {
   };
   withdrawalFeePercent: number;
   upgradeFundDeductionPercent: number;
+  sponsorGameWinPercent?: number; // Sponsor royalty % on downline game wins (e.g. 5%)
+  winningWithdrawalFeePercent?: number; // Admin charge % on winning wallet withdrawals (e.g. 10%)
+  winningWithdrawalMinAmount?: number; // Min withdrawal from winning wallet (e.g. $5)
   tickerText: string;
   spinWheelRewards: SpinReward[];
   spinWheelIntervalHours?: number;

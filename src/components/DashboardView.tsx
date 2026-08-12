@@ -16,6 +16,7 @@ import {
   Clock,
   Coins,
   RefreshCw,
+  Trophy,
   CheckCircle2,
   Shield,
   Star,
@@ -48,11 +49,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [claimingRoi, setClaimingRoi] = useState(false);
   const [liveAccruedRoi, setLiveAccruedRoi] = useState<number>(0);
 
-  const activePackage = settings.packages.find((p) => p.id === user.activePackageId);
+  const activePackage = settings?.packages?.find((p) => p.id === user?.activePackageId);
 
   // Live Mining Yield Per Second Calculation
   useEffect(() => {
-    if (!activePackage || !user.lastRoiClaimAt) {
+    if (!activePackage || !user?.lastRoiClaimAt) {
       setLiveAccruedRoi(0);
       return;
     }
@@ -66,9 +67,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [user.lastRoiClaimAt, activePackage]);
+  }, [user?.lastRoiClaimAt, activePackage]);
 
-  const referralUrl = `${window.location.origin}?ref=${user.nodeId}`;
+  const referralUrl = `${window.location.origin}?ref=${user?.nodeId || ''}`;
 
   const handleCopyReferral = () => {
     navigator.clipboard.writeText(referralUrl);
@@ -94,16 +95,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const userTransactions = transactions.filter(
-    (tx) => tx.userId === user.id || (user.nodeId && tx.userNodeId === user.nodeId)
+  const userTransactions = (transactions || []).filter(
+    (tx) => tx.userId === user?.id || (user?.nodeId && tx.userNodeId === user.nodeId)
   );
 
   return (
     <div className="space-y-8 font-mono pb-12">
       {/* 1. TOP WALLET CARDS OVERVIEW */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Deposit Wallet (Fund Balance) */}
-        <div className="bg-gradient-to-br from-[#0a1b2d] to-[#071321] border border-[#0ef]/40 rounded-2xl p-4.5 relative overflow-hidden shadow-[0_0_20px_rgba(0,238,255,0.15)] group hover:border-[#0ef]/70 transition">
+        <div className="bg-gradient-to-br from-[#0a1b2d] to-[#071321] border border-[#0ef]/40 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_20px_rgba(0,238,255,0.15)] group hover:border-[#0ef]/70 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-[#0ef]/10 rounded-full blur-2xl group-hover:bg-[#0ef]/20 transition" />
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-slate-300 font-semibold uppercase tracking-wider flex items-center gap-1.5">
@@ -111,7 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Deposit Wallet
             </span>
             <span className="text-[10px] bg-[#0ef]/20 text-[#0ef] border border-[#0ef]/40 px-2 py-0.5 rounded-full font-bold">
-              Package Fund
+              Bets & Pkgs
             </span>
           </div>
           <div className="text-2xl font-extrabold text-white tracking-tight">
@@ -119,7 +120,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-xs font-normal text-[#0ef] ml-1">USDT</span>
           </div>
           <p className="text-[10px] text-slate-400 mt-1">
-            Deposit fund used for buying & activating Node packages.
+            Deposit fund used for buying Node packages & game bets.
           </p>
           <div className="mt-3">
             <button
@@ -132,16 +133,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Available Balance (Withdrawable) */}
-        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-emerald-500/30 rounded-2xl p-4.5 relative overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.1)] group hover:border-emerald-500/50 transition">
+        {/* Game Winning Wallet (Game Winnings) */}
+        <div className="bg-gradient-to-br from-[#1a1205] to-[#2b1c06] border border-amber-500/50 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_25px_rgba(245,158,11,0.2)] group hover:border-amber-400 transition">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/15 rounded-full blur-2xl group-hover:bg-amber-500/30 transition" />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-amber-300 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+              <Trophy className="w-4 h-4 text-amber-400 animate-pulse" />
+              Winning Wallet
+            </span>
+            <span className="text-[10px] bg-amber-500/30 text-amber-200 border border-amber-500/60 px-2 py-0.5 rounded-full font-bold">
+              10% Fee
+            </span>
+          </div>
+          <div className="text-2xl font-extrabold text-amber-300 tracking-tight">
+            ${(user.winningBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="text-xs font-normal text-amber-400 ml-1">USDT</span>
+          </div>
+          <p className="text-[10px] text-amber-200/80 mt-1">
+            Game & Lottery winnings. Instant withdrawal with 10% fee!
+          </p>
+          <div className="mt-3">
+            <button
+              onClick={onOpenWithdraw}
+              className="w-full flex items-center justify-center gap-1 text-xs font-bold py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/60 transition shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+            >
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              Withdraw Winnings
+            </button>
+          </div>
+        </div>
+
+        {/* Available Balance (Withdrawable MLM) */}
+        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-emerald-500/30 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.1)] group hover:border-emerald-500/50 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition" />
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
               <Coins className="w-4 h-4 text-emerald-400" />
-              Withdrawable Earnings
+              MLM Earnings
             </span>
             <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
-              Instant
+              Network
             </span>
           </div>
           <div className="text-2xl font-extrabold text-white tracking-tight">
@@ -157,13 +188,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="w-full flex items-center justify-center gap-1 text-xs font-bold py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 transition"
             >
               <ArrowUpRight className="w-3.5 h-3.5" />
-              Withdraw Payout
+              Withdraw MLM
             </button>
           </div>
         </div>
 
         {/* Shopping Wallet */}
-        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-cyan-500/30 rounded-2xl p-4.5 relative overflow-hidden shadow-[0_0_20px_rgba(6,182,212,0.1)] group hover:border-cyan-500/50 transition">
+        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-cyan-500/30 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_20px_rgba(6,182,212,0.1)] group hover:border-cyan-500/50 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition" />
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
@@ -184,7 +215,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Total Lifetime Earnings */}
-        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-amber-500/30 rounded-2xl p-4.5 relative overflow-hidden shadow-[0_0_20px_rgba(245,158,11,0.1)] group hover:border-amber-500/50 transition">
+        <div className="bg-gradient-to-br from-[#0c1829] to-[#080f1a] border border-amber-500/30 rounded-2xl p-4 relative overflow-hidden shadow-[0_0_20px_rgba(245,158,11,0.1)] group hover:border-amber-500/50 transition">
           <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition" />
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">

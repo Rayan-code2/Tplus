@@ -22,7 +22,8 @@ interface FinanceViewProps {
   withdrawalRequests: WithdrawalRequest[];
   transactions?: Transaction[];
   onDepositSubmit: (amount: number, network: string, txHash: string) => Promise<void>;
-  onWithdrawSubmit: (amount: number, targetAddress: string, network: string) => Promise<void>;
+  onWithdrawSubmit: (amount: number, targetAddress: string, network: string, walletType?: 'mlm' | 'winning') => Promise<void>;
+  onConvertWinnings?: (amount: number) => Promise<void>;
   onNavigateToPackages?: () => void;
 }
 
@@ -34,9 +35,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   transactions = [],
   onDepositSubmit,
   onWithdrawSubmit,
+  onConvertWinnings,
   onNavigateToPackages,
 }) => {
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
+  const [selectedWallet, setSelectedWallet] = useState<'winning' | 'mlm'>('winning');
+
+  // Conversion Form State
+  const [convertAmt, setConvertAmt] = useState<string>('');
+  const [submittingConvert, setSubmittingConvert] = useState<boolean>(false);
 
   // Deposit Form State
   const [depAmount, setDepAmount] = useState<string>('100');
@@ -46,7 +53,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Withdrawal Form State
-  const [wdAmount, setWdAmount] = useState<string>('50');
+  const [wdAmount, setWdAmount] = useState<string>('20');
   const [wdAddress, setWdAddress] = useState<string>(user.walletAddress || '');
   const [wdNetwork, setWdNetwork] = useState<'TRC20' | 'BEP20' | 'ERC20'>('BEP20');
   const [submittingWd, setSubmittingWd] = useState(false);
@@ -78,25 +85,51 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   const { isUpgraded20, capacityLimit, tierTitle, isUnlimited, remainingCapacity, totalWithdrawnSoFar } = capacityDetails;
 
   const reqAmountNum = parseFloat(wdAmount) || 0;
+  const isWinning = selectedWallet === 'winning';
+
+  const currentAvailableBalance = isWinning ? (user.winningBalance || 0) : user.balance;
+  const minWdAmount = isWinning ? (settings.winningWithdrawalMinAmount || 5) : 10;
+
   const hasActivePackage = !!(user.activePackageId || user.isUpgraded || isUpgraded20);
-  const isExceeding10PkgLimit = !isUpgraded20 && reqAmountNum > 10;
-  const isExceedingCapacityLimit = !isUnlimited && reqAmountNum > remainingCapacity;
-  const upgradeDeductionPercent = isUpgraded20 ? (settings.upgradeFundDeductionPercent ?? 30) : 0;
-  const upgradeDeductionAmt = reqAmountNum * (upgradeDeductionPercent / 100);
-  const gasFee = 1.5;
-  const netPayout = Math.max(0, reqAmountNum - upgradeDeductionAmt - gasFee);
+  const isExceeding10PkgLimit = !isWinning && !isUpgraded20 && reqAmountNum > 10;
+  const isExceedingCapacityLimit = !isWinning && !isUnlimited && reqAmountNum > remainingCapacity;
+
+  // Fees calculation
+  const winFeePercent = settings.winningWithdrawalFeePercent ?? 10;
+  const mlmUpgradeDeductionPercent = isUpgraded20 ? (settings.upgradeFundDeductionPercent ?? 30) : 0;
+  const mlmFeePercent = settings.withdrawalFeePercent ?? 2;
+
+  const adminFeeAmt = isWinning ? reqAmountNum * (winFeePercent / 100) : reqAmountNum * (mlmFeePercent / 100);
+  const upgradeDeductionAmt = isWinning ? 0 : reqAmountNum * (mlmUpgradeDeductionPercent / 100);
+  const netPayout = Math.max(0, reqAmountNum - adminFeeAmt - upgradeDeductionAmt);
 
   const handleWithdrawSubmitAction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reqAmountNum || reqAmountNum < 10 || isExceeding10PkgLimit || isExceedingCapacityLimit) return;
-    if (user.balance < reqAmountNum) return;
+    if (!reqAmountNum || reqAmountNum < minWdAmount) return;
+    if (!isWinning && (isExceeding10PkgLimit || isExceedingCapacityLimit || !hasActivePackage)) return;
+    if (currentAvailableBalance < reqAmountNum) return;
     if (!wdAddress || wdAddress.trim().length < 10) return;
 
     setSubmittingWd(true);
     try {
-      await onWithdrawSubmit(reqAmountNum, wdAddress, wdNetwork);
+      await onWithdrawSubmit(reqAmountNum, wdAddress, wdNetwork, selectedWallet);
     } finally {
       setSubmittingWd(false);
+    }
+  };
+
+  const handleConvertWinningsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const num = parseFloat(convertAmt);
+    if (!num || num <= 0 || !onConvertWinnings) return;
+    if ((user.winningBalance || 0) < num) return;
+
+    setSubmittingConvert(true);
+    try {
+      await onConvertWinnings(num);
+      setConvertAmt('');
+    } finally {
+      setSubmittingConvert(false);
     }
   };
 
@@ -115,6 +148,63 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
   return (
     <div className="space-y-8 font-mono pb-12">
+      {/* Quick Convert Winnings Card */}
+      <div className="bg-gradient-to-r from-amber-500/10 via-[#0b1424] to-cyan-500/10 border border-amber-500/40 rounded-2xl p-5 space-y-3 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-500/20 text-amber-300 rounded-xl border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+              <RefreshCw className="w-5 h-5 animate-spin-slow" />
+            </div>
+            <div>
+              <h4 className="text-xs font-extrabold uppercase text-amber-300 tracking-wider flex items-center gap-2">
+                🔄 Convert Winnings to Deposit Balance
+              </h4>
+              <p className="text-[10px] text-slate-400">
+                Transfer your game winnings ($ USDT) to Deposit Wallet instantly to place more bets!
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-full font-bold self-start sm:self-auto">
+            0% Conversion Fee • Instant
+          </span>
+        </div>
+
+        <form onSubmit={handleConvertWinningsSubmit} className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+          <div className="relative w-full sm:flex-1">
+            <input
+              type="number"
+              min={1}
+              max={user.winningBalance || 0}
+              step={1}
+              placeholder="Enter amount ($ USDT)"
+              value={convertAmt}
+              onChange={(e) => setConvertAmt(e.target.value)}
+              className="w-full bg-[#050911] border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-amber-300 focus:outline-none focus:border-amber-500 font-mono pr-24"
+            />
+            <button
+              type="button"
+              onClick={() => setConvertAmt(String(user.winningBalance || 0))}
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-amber-500/20 text-amber-300 rounded-lg text-[10px] font-bold hover:bg-amber-500/30 transition border border-amber-500/30"
+            >
+              MAX (${(user.winningBalance || 0).toFixed(2)})
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            disabled={
+              submittingConvert ||
+              !parseFloat(convertAmt) ||
+              parseFloat(convertAmt) <= 0 ||
+              (user.winningBalance || 0) < parseFloat(convertAmt)
+            }
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-black font-extrabold text-xs transition shadow-[0_0_15px_rgba(245,158,11,0.25)] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          >
+            {submittingConvert ? 'Transferring...' : 'Transfer to Deposit Wallet'}
+          </button>
+        </form>
+      </div>
+
       {/* Tab Switcher */}
       <div className="flex items-center gap-3 bg-[#0b1424] border border-cyan-500/30 p-2 rounded-2xl w-fit">
         <button
@@ -301,89 +391,130 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               </p>
             </div>
 
-            {/* 3 Wallet Overview Cards in Finance */}
-            <div className="grid grid-cols-3 gap-2 bg-[#050911] border border-slate-800 rounded-xl p-3 text-center">
-              <div>
-                <span className="text-[9px] text-slate-400 uppercase block">Deposit Wallet</span>
-                <div className="text-sm font-bold text-[#0ef]">${(user.depositBalance || 0).toFixed(2)}</div>
+            {/* 4 Wallet Overview Cards in Finance */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-[#050911] border border-slate-800 rounded-xl p-3 text-center">
+              <div className="bg-[#070d18] p-2 rounded-lg border border-cyan-500/20">
+                <span className="text-[9px] text-cyan-400 font-bold uppercase block">Deposit Wallet</span>
+                <div className="text-sm font-bold text-cyan-300">${(user.depositBalance || 0).toFixed(2)}</div>
+                <span className="text-[8px] text-slate-500">For Game Bets</span>
               </div>
-              <div className="border-x border-slate-800">
-                <span className="text-[9px] text-slate-400 uppercase block">Withdrawable</span>
-                <div className="text-sm font-bold text-emerald-400">${user.balance.toFixed(2)}</div>
+              <div className="bg-[#070d18] p-2 rounded-lg border border-amber-500/20">
+                <span className="text-[9px] text-amber-400 font-bold uppercase block">Winning Wallet</span>
+                <div className="text-sm font-bold text-amber-300">${(user.winningBalance || 0).toFixed(2)}</div>
+                <span className="text-[8px] text-emerald-400">10% Admin Fee</span>
               </div>
-              <div>
-                <span className="text-[9px] text-slate-400 uppercase block">Shopping Fund</span>
-                <div className="text-sm font-bold text-cyan-400">${user.upgradeBalance.toFixed(2)}</div>
+              <div className="bg-[#070d18] p-2 rounded-lg border border-emerald-500/20">
+                <span className="text-[9px] text-emerald-400 font-bold uppercase block">MLM Wallet</span>
+                <div className="text-sm font-bold text-emerald-300">${user.balance.toFixed(2)}</div>
+                <span className="text-[8px] text-slate-500">Network Income</span>
               </div>
-            </div>
-
-            {/* Withdrawal Capacity & Daily Cap Status Box */}
-            <div className="bg-[#050911] border border-amber-500/30 rounded-xl p-4 space-y-3 text-xs">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-amber-300 font-extrabold uppercase flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-amber-400" />
-                  Withdrawal Capacity Capping
-                </span>
-                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded text-[10px] font-bold">
-                  {tierTitle}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
-                  <span className="text-slate-400 block text-[9px] uppercase">Lifetime Capping Limit</span>
-                  <span className="font-extrabold text-amber-300">
-                    {isUnlimited ? 'Unlimited' : `$${capacityLimit} USDT`}
-                  </span>
-                </div>
-
-                <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
-                  <span className="text-slate-400 block text-[9px] uppercase">Total Withdrawn So Far</span>
-                  <span className="font-bold text-cyan-300">${totalWithdrawnSoFar.toFixed(2)} USDT</span>
-                </div>
-
-                <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
-                  <span className="text-slate-400 block text-[9px] uppercase">Daily Max Capping</span>
-                  <span className="font-bold text-emerald-400">$100.00 / Day</span>
-                </div>
-
-                <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
-                  <span className="text-slate-400 block text-[9px] uppercase">Today Remaining Daily</span>
-                  <span className="font-bold text-indigo-300">${remainingDaily.toFixed(2)} USDT</span>
-                </div>
-              </div>
-
-              <div className="text-[10px] text-slate-400 bg-[#070e1b]/80 p-2 rounded-lg border border-slate-800/80 leading-relaxed">
-                💡 <span className="text-amber-300 font-bold">Withdrawal Capacity Rule:</span> Earnings continue crediting to your wallet normally. Capacity limits dictate how much total USDT you can withdraw:
-                <div className="mt-1 font-mono text-[9.5px] text-slate-300 space-y-0.5">
-                  <div>• $10 Package (0-1 Direct): $10 Max Withdrawal</div>
-                  <div>• $10 Package (2+ Directs): $100 Max Withdrawal</div>
-                  <div>• $20 Package + 2 Directs: $200 Max Withdrawal</div>
-                  <div>• $20 Package + 4 Directs: $400 Max Withdrawal</div>
-                  <div>• $20 Package + 6 Directs: $600 Max Withdrawal</div>
-                  <div>• Bronze Rank: $1,000 Max Withdrawal</div>
-                  <div>• Silver Rank: $2,000 Max Withdrawal</div>
-                  <div>• Gold Rank: $4,000 Max Withdrawal</div>
-                  <div>• Diamond Rank+: UNLIMITED Withdrawal</div>
-                </div>
+              <div className="bg-[#070d18] p-2 rounded-lg border border-indigo-500/20">
+                <span className="text-[9px] text-indigo-400 font-bold uppercase block">Shopping Fund</span>
+                <div className="text-sm font-bold text-indigo-300">${user.upgradeBalance.toFixed(2)}</div>
+                <span className="text-[8px] text-slate-500">Reinvestment</span>
               </div>
             </div>
 
-            {/* Withdrawal Capacity Tracker Widget */}
-            <WithdrawalCapacityTracker
-              user={user}
-              settings={settings}
-              withdrawalRequests={withdrawalRequests}
-              transactions={transactions}
-              onNavigateToPackages={onNavigateToPackages}
-            />
+            {/* Wallet Selector Tabs */}
+            <div className="space-y-2">
+              <label className="text-xs text-slate-300 font-bold uppercase">Select Withdrawal Wallet Source</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedWallet('winning')}
+                  className={`p-3 rounded-xl border text-left transition font-mono ${
+                    selectedWallet === 'winning'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                      : 'bg-[#050911] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="text-xs font-bold flex items-center justify-between">
+                    <span>🎮 Game Winning Wallet</span>
+                    <span className="text-[10px] bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded font-extrabold">10% Fee</span>
+                  </div>
+                  <div className="text-sm font-extrabold text-white mt-1">${(user.winningBalance || 0).toFixed(2)} USDT</div>
+                  <div className="text-[9px] text-emerald-400 mt-1">No MLM Conditions • Instant Payout</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedWallet('mlm')}
+                  className={`p-3 rounded-xl border text-left transition font-mono ${
+                    selectedWallet === 'mlm'
+                      ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                      : 'bg-[#050911] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="text-xs font-bold flex items-center justify-between">
+                    <span>🌐 MLM Network Wallet</span>
+                    <span className="text-[10px] bg-cyan-500/30 text-cyan-300 px-1.5 py-0.5 rounded font-extrabold">MLM Rules</span>
+                  </div>
+                  <div className="text-sm font-extrabold text-white mt-1">${user.balance.toFixed(2)} USDT</div>
+                  <div className="text-[9px] text-amber-400 mt-1">Package & Directs Capping Rules</div>
+                </button>
+              </div>
+            </div>
+
+            {/* MLM Wallet Capacity & Daily Cap Status Box (Shown only if MLM Wallet Selected) */}
+            {selectedWallet === 'mlm' && (
+              <>
+                <div className="bg-[#050911] border border-amber-500/30 rounded-xl p-4 space-y-3 text-xs">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="text-amber-300 font-extrabold uppercase flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 text-amber-400" />
+                      MLM Network Withdrawal Capping
+                    </span>
+                    <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded text-[10px] font-bold">
+                      {tierTitle}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
+                      <span className="text-slate-400 block text-[9px] uppercase">Lifetime Capping Limit</span>
+                      <span className="font-extrabold text-amber-300">
+                        {isUnlimited ? 'Unlimited' : `$${capacityLimit} USDT`}
+                      </span>
+                    </div>
+
+                    <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
+                      <span className="text-slate-400 block text-[9px] uppercase">Total Withdrawn So Far</span>
+                      <span className="font-bold text-cyan-300">${totalWithdrawnSoFar.toFixed(2)} USDT</span>
+                    </div>
+
+                    <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
+                      <span className="text-slate-400 block text-[9px] uppercase">Daily Max Capping</span>
+                      <span className="font-bold text-emerald-400">$100.00 / Day</span>
+                    </div>
+
+                    <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
+                      <span className="text-slate-400 block text-[9px] uppercase">Today Remaining Daily</span>
+                      <span className="font-bold text-indigo-300">${remainingDaily.toFixed(2)} USDT</span>
+                    </div>
+                  </div>
+                </div>
+
+                <WithdrawalCapacityTracker
+                  user={user}
+                  settings={settings}
+                  withdrawalRequests={withdrawalRequests}
+                  transactions={transactions}
+                  onNavigateToPackages={onNavigateToPackages}
+                />
+              </>
+            )}
 
             <form onSubmit={handleWithdrawSubmitAction} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-300 font-bold">Withdrawal Amount ($ USDT)</label>
+                <div className="flex justify-between items-center text-xs">
+                  <label className="text-slate-300 font-bold">Withdrawal Amount ($ USDT)</label>
+                  <span className="text-cyan-400 font-mono">
+                    Available: ${currentAvailableBalance.toFixed(2)} USDT
+                  </span>
+                </div>
                 <input
                   type="number"
-                  min={10}
+                  min={minWdAmount}
                   step={1}
                   required
                   value={wdAmount}
@@ -393,7 +524,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-300 font-bold">Target USDT Wallet Address</label>
+                <label className="text-xs text-slate-300 font-bold">Target USDT Wallet Address ({wdNetwork})</label>
                 <input
                   type="text"
                   required
@@ -404,42 +535,53 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 />
               </div>
 
-              {!user.activePackageId && (
+              {selectedWallet === 'mlm' && !user.activePackageId && (
                 <div className="bg-red-500/10 border border-red-500/40 rounded-xl p-3 text-red-400 text-xs font-bold flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span>Withdrawal Condition Alert: Active Package Required! Please activate a package ($10 or $20) to enable withdrawals.</span>
+                  <span>Withdrawal Condition Alert: Active Package Required for MLM Network withdrawals!</span>
                 </div>
               )}
 
-              {isExceeding10PkgLimit && (
+              {selectedWallet === 'mlm' && isExceeding10PkgLimit && (
                 <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-3 text-amber-400 text-xs font-bold flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span>$10 Starter Package Limit: Maximum allowed withdrawal is $10 USDT per request. Upgrade to $20 Booster Package for higher withdrawal limits ($100+).</span>
+                  <span>$10 Starter Package Limit: Maximum allowed withdrawal is $10 USDT per request.</span>
                 </div>
               )}
 
-              {/* 30% Shopping Wallet Rule Live Breakdown */}
+              {/* Breakdown Box */}
               <div className="bg-[#0d1726] border border-amber-500/30 rounded-xl p-4 space-y-2 text-xs font-mono">
                 <div className="flex items-center justify-between text-amber-300 font-bold border-b border-slate-800 pb-2">
                   <span className="flex items-center gap-1">
                     <ShieldAlert className="w-3.5 h-3.5" />
-                    Automatic 30% Shopping Wallet Rule Breakdown
+                    {selectedWallet === 'winning' ? 'Game Winning Wallet Fee Breakdown' : 'MLM Shopping & Fee Rule Breakdown'}
                   </span>
-                  <span>{isUpgraded20 ? '30% Active ($20 Package)' : '0% Exempt ($10 Package)'}</span>
+                  <span>{selectedWallet === 'winning' ? `${winFeePercent}% Admin Charge` : (isUpgraded20 ? '30% Active' : '0% Exempt')}</span>
                 </div>
 
                 <div className="flex justify-between text-slate-300">
                   <span>Requested Amount:</span>
                   <span className="font-bold">${reqAmountNum.toFixed(2)} USDT</span>
                 </div>
-                <div className="flex justify-between text-amber-400">
-                  <span>{upgradeDeductionPercent}% Shopping Wallet Fund:</span>
-                  <span>-${upgradeDeductionAmt.toFixed(2)} USDT {upgradeDeductionPercent === 0 && '(0% for $10 Pkg)'}</span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Network Gas Fee:</span>
-                  <span>-${gasFee.toFixed(2)} USDT</span>
-                </div>
+
+                {selectedWallet === 'winning' ? (
+                  <div className="flex justify-between text-amber-400">
+                    <span>Admin Processing Charge ({winFeePercent}%):</span>
+                    <span>-${adminFeeAmt.toFixed(2)} USDT</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-amber-400">
+                      <span>{mlmUpgradeDeductionPercent}% Shopping Wallet Fund:</span>
+                      <span>-${upgradeDeductionAmt.toFixed(2)} USDT</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Network Processing Fee ({mlmFeePercent}%):</span>
+                      <span>-${adminFeeAmt.toFixed(2)} USDT</span>
+                    </div>
+                  </>
+                )}
+
                 <div className="flex justify-between text-emerald-400 font-extrabold text-sm pt-2 border-t border-slate-800">
                   <span>Net Dispatched To Wallet:</span>
                   <span>${netPayout.toFixed(2)} USDT</span>
@@ -448,20 +590,27 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
               <button
                 type="submit"
-                disabled={submittingWd || !hasActivePackage || isExceeding10PkgLimit || user.balance < reqAmountNum || reqAmountNum < 10}
+                disabled={
+                  submittingWd ||
+                  reqAmountNum < minWdAmount ||
+                  currentAvailableBalance < reqAmountNum ||
+                  (!isWinning && (!hasActivePackage || isExceeding10PkgLimit))
+                }
                 className={`w-full py-3.5 rounded-xl font-extrabold text-xs transition shadow-lg ${
-                  hasActivePackage && !isExceeding10PkgLimit && user.balance >= reqAmountNum && reqAmountNum >= 10
-                    ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                  reqAmountNum >= minWdAmount &&
+                  currentAvailableBalance >= reqAmountNum &&
+                  (isWinning || (hasActivePackage && !isExceeding10PkgLimit))
+                    ? 'bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-black font-extrabold shadow-[0_0_15px_rgba(245,158,11,0.3)]'
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                 }`}
               >
                 {submittingWd
                   ? 'Processing Request...'
-                  : !hasActivePackage
-                  ? 'Active Package Required to Withdraw'
-                  : isExceeding10PkgLimit
-                  ? '$10 Pkg Capped at $10 Max Withdrawal'
-                  : `Confirm Withdrawal ($${reqAmountNum} USDT)`}
+                  : currentAvailableBalance < reqAmountNum
+                  ? `Insufficient Balance ($${currentAvailableBalance.toFixed(2)} USDT)`
+                  : !isWinning && !hasActivePackage
+                  ? 'Active Package Required'
+                  : `Confirm ${selectedWallet === 'winning' ? 'Winning' : 'MLM'} Withdrawal ($${reqAmountNum} USDT)`}
               </button>
             </form>
           </div>

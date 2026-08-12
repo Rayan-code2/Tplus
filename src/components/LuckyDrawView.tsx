@@ -27,6 +27,7 @@ interface LuckyDrawViewProps {
   currentUser: User;
   users: User[];
   onOpenDeposit?: () => void;
+  onOpenWithdraw?: () => void;
   onRefreshState?: () => void;
 }
 
@@ -34,6 +35,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   currentUser,
   users,
   onOpenDeposit,
+  onOpenWithdraw,
   onRefreshState,
 }) => {
   const [luckyDraw, setLuckyDraw] = useState<LuckyDrawState | null>(null);
@@ -544,6 +546,44 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
               <div className="text-base sm:text-xl font-black text-emerald-300">${luckyDraw?.thirdPrizeAmount ?? 10}</div>
               <div className="text-[9px] text-slate-400">Match Last 4</div>
             </div>
+          </div>
+        </div>
+
+        {/* User Balance Display Bar */}
+        <div className="mt-4 pt-3 border-t border-cyan-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#040812]/80 rounded-2xl p-3 px-4">
+          <div className="flex items-center gap-4">
+            <div>
+              <div className="text-[10px] text-cyan-400 uppercase tracking-wider font-extrabold flex items-center gap-1">
+                <span>💳 Deposit Wallet</span>
+              </div>
+              <div className="text-base font-black text-cyan-300">${(currentUser?.depositBalance || 0).toFixed(2)} USDT</div>
+            </div>
+            <div className="h-8 w-[1px] bg-slate-800" />
+            <div>
+              <div className="text-[10px] text-amber-400 uppercase tracking-wider font-extrabold flex items-center gap-1">
+                <span>🎮 Winning Wallet</span>
+              </div>
+              <div className="text-base font-black text-amber-300">${(currentUser?.winningBalance || 0).toFixed(2)} USDT</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {onOpenDeposit && (
+              <button
+                onClick={onOpenDeposit}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-xs font-black transition shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+              >
+                + Deposit
+              </button>
+            )}
+            {onOpenWithdraw && (
+              <button
+                onClick={onOpenWithdraw}
+                className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 text-xs font-black transition shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+              >
+                Withdraw
+              </button>
+            )}
           </div>
         </div>
       </div>

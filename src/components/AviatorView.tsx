@@ -6,12 +6,16 @@ interface AviatorViewProps {
   user: User;
   onRefreshUser: () => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  onOpenDeposit?: () => void;
+  onOpenWithdraw?: () => void;
 }
 
 export const AviatorView: React.FC<AviatorViewProps> = ({
   user,
   onRefreshUser,
   showToast,
+  onOpenDeposit,
+  onOpenWithdraw,
 }) => {
   const [gameState, setGameState] = useState<AviatorState | null>(null);
   const [betAmount, setBetAmount] = useState<number>(1);
@@ -328,11 +332,40 @@ export const AviatorView: React.FC<AviatorViewProps> = ({
         </div>
 
         {/* User Balance Display */}
-        <div className="bg-[#0b1320] border border-cyan-500/30 px-4 py-2.5 rounded-xl flex items-center gap-3 shrink-0">
-          <DollarSign className="w-5 h-5 text-emerald-400" />
-          <div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Available Wallet</div>
-            <div className="text-lg font-bold text-emerald-400">${user.balance.toFixed(2)} USDT</div>
+        <div className="bg-[#0b1320] border border-cyan-500/30 p-3 px-4 rounded-2xl flex flex-col sm:flex-row items-center gap-4 shrink-0 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div>
+              <div className="text-[10px] text-cyan-400 uppercase tracking-widest font-extrabold flex items-center gap-1">
+                <span>💳 Deposit Wallet</span>
+              </div>
+              <div className="text-base font-black text-cyan-300">${(user.depositBalance || 0).toFixed(2)} USDT</div>
+            </div>
+            <div className="h-8 w-[1px] bg-slate-800" />
+            <div>
+              <div className="text-[10px] text-amber-400 uppercase tracking-widest font-extrabold flex items-center gap-1">
+                <span>🎮 Winning Wallet</span>
+              </div>
+              <div className="text-base font-black text-amber-300">${(user.winningBalance || 0).toFixed(2)} USDT</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 border-t sm:border-t-0 sm:border-l border-slate-800 pt-2 sm:pt-0 sm:pl-3 w-full sm:w-auto justify-end">
+            {onOpenDeposit && (
+              <button
+                onClick={onOpenDeposit}
+                className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-xs font-black transition shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+              >
+                + Deposit
+              </button>
+            )}
+            {onOpenWithdraw && (
+              <button
+                onClick={onOpenWithdraw}
+                className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/50 text-xs font-black transition shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+              >
+                Withdraw
+              </button>
+            )}
           </div>
         </div>
       </div>
