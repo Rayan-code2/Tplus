@@ -963,47 +963,6 @@ async function initSqlite() {
               lastSpinAt TEXT
             );
           `);
-        } else {
-          const requiredCols: [string, string][] = [
-            ['password', 'TEXT DEFAULT "123456"'],
-            ['walletAddress', 'TEXT DEFAULT ""'],
-            ['sponsorId', 'TEXT DEFAULT ""'],
-            ['activePackageId', 'TEXT DEFAULT ""'],
-            ['packageActivatedAt', 'TEXT DEFAULT ""'],
-            ['packageExpiryDays', 'INTEGER DEFAULT 100'],
-            ['balance', 'REAL DEFAULT 0'],
-            ['depositBalance', 'REAL DEFAULT 0'],
-            ['upgradeBalance', 'REAL DEFAULT 0'],
-            ['winningBalance', 'REAL DEFAULT 0'],
-            ['winningEarned', 'REAL DEFAULT 0'],
-            ['totalEarned', 'REAL DEFAULT 0'],
-            ['roiEarned', 'REAL DEFAULT 0'],
-            ['levelEarned', 'REAL DEFAULT 0'],
-            ['sponsorEarned', 'REAL DEFAULT 0'],
-            ['rankEarned', 'REAL DEFAULT 0'],
-            ['boostingEarned', 'REAL DEFAULT 0'],
-            ['spinEarned', 'REAL DEFAULT 0'],
-            ['directReferralsCount', 'INTEGER DEFAULT 0'],
-            ['teamCount', 'INTEGER DEFAULT 0'],
-            ['teamVolume', 'REAL DEFAULT 0'],
-            ['rank', 'TEXT DEFAULT "Member"'],
-            ['status', 'TEXT DEFAULT "active"'],
-            ['registeredAt', 'TEXT DEFAULT ""'],
-            ['lastRoiClaimAt', 'TEXT DEFAULT ""'],
-            ['spinCredits', 'INTEGER DEFAULT 0'],
-            ['lastSpinAt', 'TEXT DEFAULT ""'],
-          ];
-
-          for (const [colName, colType] of requiredCols) {
-            if (!existingColNames.includes(colName)) {
-              try {
-                db.run(`ALTER TABLE users ADD COLUMN ${colName} ${colType};`);
-                console.log(`🔧 Auto-migrated: Added missing column ${colName} to users table in SQLite.`);
-              } catch (colErr) {
-                // Ignore if already exists
-              }
-            }
-          }
         }
       }
     } catch (migErr) {
@@ -1111,7 +1070,8 @@ function saveStore() {
             );
           }
         } catch (userInsertErr) {
-          console.error('Users table insert failed, recreating structure:', userInsertErr);
+          console.error('Users table insert failed, resetting users table structure safely...');
+          try { db.run('ROLLBACK;'); } catch (_) {}
           db.run('DROP TABLE IF EXISTS users;');
           db.run(`
             CREATE TABLE users (
@@ -1148,6 +1108,10 @@ function saveStore() {
               lastSpinAt TEXT
             );
           `);
+          db.run('BEGIN TRANSACTION;');
+          db.run('INSERT OR REPLACE INTO settings (id, data) VALUES (1, ?)', [
+            JSON.stringify(state.settings),
+          ]);
           for (const u of state.users) {
             db.run(
               `INSERT INTO users (
