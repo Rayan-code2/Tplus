@@ -6,7 +6,6 @@ import {
   Users,
   TrendingUp,
   Award,
-  Gift,
   DollarSign,
   Send,
   Zap,
@@ -238,7 +237,7 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
       </div>
 
       {/* Top 4 Key Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Commission Earned */}
         <div className="bg-[#0b1320] border border-cyan-500/30 rounded-2xl p-5 relative overflow-hidden shadow-lg">
           <div className="flex items-center justify-between">
@@ -253,7 +252,7 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
               <span className="text-xs text-cyan-400 font-normal">USDT</span>
             </h3>
             <p className="text-[11px] text-slate-400">
-              ≈ ₹{((stats?.totalCommissionEarned || 0) * 85).toFixed(0)} INR
+              ≈ ₹{((stats?.totalCommissionEarned || user?.referralCommissionEarned || 0) * 100).toLocaleString('en-IN')} INR (Rate: $1 = ₹100)
             </p>
           </div>
         </div>
@@ -272,7 +271,7 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
               <span className="text-xs text-indigo-400 font-normal">USDT</span>
             </h3>
             <p className="text-[11px] text-slate-400">
-              ≈ ₹{((stats?.totalTeamTurnover || 0) * 85).toFixed(0)} Total Bets
+              ≈ ₹{((stats?.totalTeamTurnover || 0) * 100).toLocaleString('en-IN')} Total Bets
             </p>
           </div>
         </div>
@@ -292,25 +291,6 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
             </h3>
             <p className="text-[11px] text-slate-400">
               Directs: {user?.directReferralsCount || 0} Members
-            </p>
-          </div>
-        </div>
-
-        {/* First Deposit Bonus */}
-        <div className="bg-[#0b1320] border border-amber-500/30 rounded-2xl p-5 relative overflow-hidden shadow-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">First Deposit Bonuses</span>
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-              <Gift className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3 space-y-1">
-            <h3 className="text-2xl font-extrabold text-white">
-              ${(stats?.user?.firstDepositBonusEarned || user?.firstDepositBonusEarned || 0).toFixed(2)}{' '}
-              <span className="text-xs text-amber-400 font-normal">USDT</span>
-            </h3>
-            <p className="text-[11px] text-amber-400 font-medium">
-              $5.00 (₹50) per First Deposit
             </p>
           </div>
         </div>
@@ -429,8 +409,8 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
         </div>
       </div>
 
-      {/* Extra Growth Boosters: Daily VIP Agent Bonus & First Deposit Bonus */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Extra Growth Booster: Daily VIP Agent Bonus */}
+      <div className="grid grid-cols-1 gap-6">
         {/* Daily VIP Agent Bonus Card */}
         <div className="bg-[#0b1320] border border-cyan-500/30 rounded-3xl p-6 space-y-4 shadow-xl">
           <div className="flex items-center gap-3">
@@ -453,12 +433,13 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
 
             <div className="space-y-2">
               {(stats?.vipAgentStatus?.tiers || [
-                { level: 'VIP 1 Agent', minPlayers: 5, dailyBonusUsdt: 2.0, dailyBonusInr: 150 },
-                { level: 'VIP 2 Agent', minPlayers: 15, dailyBonusUsdt: 6.0, dailyBonusInr: 500 },
-                { level: 'VIP 3 Agent', minPlayers: 50, dailyBonusUsdt: 25.0, dailyBonusInr: 2000 },
-                { level: 'VIP 4 Agent', minPlayers: 200, dailyBonusUsdt: 120.0, dailyBonusInr: 10000 },
+                { level: 'VIP 1 Agent', minPlayers: 5, dailyBonusUsdt: 2.0, dailyBonusInr: 200 },
+                { level: 'VIP 2 Agent', minPlayers: 15, dailyBonusUsdt: 6.0, dailyBonusInr: 600 },
+                { level: 'VIP 3 Agent', minPlayers: 50, dailyBonusUsdt: 25.0, dailyBonusInr: 2500 },
+                { level: 'VIP 4 Agent', minPlayers: 200, dailyBonusUsdt: 120.0, dailyBonusInr: 12000 },
               ]).map((tier, idx) => {
                 const isActive = (stats?.vipAgentStatus?.activePlayersToday || 0) >= tier.minPlayers;
+                const calculatedInr = tier.dailyBonusUsdt * 100;
                 return (
                   <div
                     key={idx}
@@ -474,48 +455,11 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
                     </div>
                     <div className="text-right">
                       <span className="font-extrabold text-cyan-400">${tier.dailyBonusUsdt} USDT / Day</span>
-                      <span className="text-[10px] block text-slate-400">(₹{tier.dailyBonusInr} INR)</span>
+                      <span className="text-[10px] block text-slate-400">(₹{calculatedInr.toLocaleString('en-IN')} INR)</span>
                     </div>
                   </div>
                 );
               })}
-            </div>
-          </div>
-        </div>
-
-        {/* First Deposit Reward Explanation Card */}
-        <div className="bg-[#0b1320] border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-              <Gift className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">First Deposit Sponsor Reward</h3>
-              <p className="text-xs text-slate-400">Instant cash reward when your direct user adds money first time.</p>
-            </div>
-          </div>
-
-          <div className="bg-[#050a12] border border-slate-800 rounded-2xl p-4 space-y-3 text-xs text-slate-300">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
-              <div>
-                <p className="font-bold text-amber-300">Reward Per First Deposit</p>
-                <p className="text-[11px] text-slate-400">Direct Level 1 Member Recharge</p>
-              </div>
-              <div className="text-right">
-                <p className="text-base font-extrabold text-amber-400">$5.00 USDT</p>
-                <p className="text-[10px] text-slate-400">≈ ₹50.00 INR</p>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-slate-400 text-[11px] leading-relaxed pt-2">
-              <p className="flex items-start gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Automatic trigger upon Admin approval of member&apos;s first wallet deposit.</span>
-              </p>
-              <p className="flex items-start gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Instant credit directly to your Main Balance with no withdrawal locking.</span>
-              </p>
             </div>
           </div>
         </div>

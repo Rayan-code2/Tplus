@@ -3267,7 +3267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-300">
                   {products.map((prod) => {
-                    const inrVal = prod.priceInr || prod.priceUsdt * (settings.rates.usdtToInr || 90);
+                    const inrVal = prod.priceInr || prod.priceUsdt * (settings.rates.usdtToInr || 100);
 
                     return (
                       <tr key={prod.id} className="hover:bg-slate-900/50 transition">
@@ -3407,7 +3407,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-emerald-400 font-bold focus:outline-none focus:border-amber-500 text-sm"
                       />
                       <span className="text-[10px] text-slate-500 mt-0.5 block">
-                        ≈ ₹{(Number(editPrice || 0) * (settings.rates.usdtToInr || 90)).toLocaleString('en-IN')} INR
+                        ≈ ₹{(Number(editPrice || 0) * (settings.rates.usdtToInr || 100)).toLocaleString('en-IN')} INR
                       </span>
                     </div>
 

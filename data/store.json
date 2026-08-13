@@ -101,8 +101,8 @@
       "ERC20": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
     },
     "rates": {
-      "usdtToInr": 88.5,
-      "inrToUsdt": 0.0113
+      "usdtToInr": 100,
+      "inrToUsdt": 0.01
     },
     "withdrawalFeePercent": 2,
     "upgradeFundDeductionPercent": 20,
@@ -1626,9 +1626,9 @@
     "historyCleared": true
   },
   "colorPrediction": {
-    "currentPeriodId": "202608111043",
+    "currentPeriodId": "202608131058",
     "periodDurationSeconds": 60,
-    "startTime": 1786458742992,
+    "startTime": 1786594435178,
     "forcedNextNumber": null,
     "bets": [
       {
@@ -1759,6 +1759,111 @@
       }
     ],
     "history": [
+      {
+        "periodId": "202608131057",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T04:13:55.178Z"
+      },
+      {
+        "periodId": "202608131056",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-13T04:12:55.165Z"
+      },
+      {
+        "periodId": "202608131055",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T04:11:55.155Z"
+      },
+      {
+        "periodId": "202608131054",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T04:10:55.142Z"
+      },
+      {
+        "periodId": "202608131053",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T04:09:55.120Z"
+      },
+      {
+        "periodId": "202608131052",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-13T04:08:55.104Z"
+      },
+      {
+        "periodId": "202608131051",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-13T04:07:55.087Z"
+      },
+      {
+        "periodId": "202608131050",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T04:06:55.071Z"
+      },
+      {
+        "periodId": "202608131049",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T04:05:55.054Z"
+      },
+      {
+        "periodId": "202608131048",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T04:04:54.536Z"
+      },
+      {
+        "periodId": "202608131047",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T04:03:54.523Z"
+      },
+      {
+        "periodId": "202608131046",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T04:02:54.505Z"
+      },
+      {
+        "periodId": "202608131045",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T04:01:54.487Z"
+      },
+      {
+        "periodId": "202608131044",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T04:00:54.468Z"
+      },
+      {
+        "periodId": "202608111043",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T03:59:54.448Z"
+      },
       {
         "periodId": "202608111042",
         "number": 8,
@@ -2089,6 +2194,38 @@
         "completedAt": "2026-08-11T13:45:20.173Z"
       }
     ],
+    "adminMode": "lowest_payout"
+  },
+  "aviator": {
+    "currentRoundId": "AV-1786594467661",
+    "status": "waiting",
+    "currentMultiplier": 1,
+    "targetCrashMultiplier": 2.43,
+    "startTime": 1786594467661,
+    "bets": [],
+    "history": [
+      2.43,
+      4.65,
+      6.19,
+      2.7,
+      8.31,
+      5.15,
+      1.53,
+      6.46,
+      3.7,
+      2.69,
+      5.18,
+      5.81,
+      7.42,
+      8.62,
+      8.74,
+      8.39,
+      5.58,
+      7.19,
+      9.05,
+      2.17
+    ],
+    "forcedNextCrash": null,
     "adminMode": "lowest_payout"
   },
   "activeUserId": "usr-root"

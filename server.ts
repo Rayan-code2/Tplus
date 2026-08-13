@@ -97,8 +97,8 @@ const defaultSettings: SystemSettings = {
     ERC20: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
   },
   rates: {
-    usdtToInr: 88.5,
-    inrToUsdt: 0.0113,
+    usdtToInr: 100,
+    inrToUsdt: 0.01,
   },
   withdrawalFeePercent: 2,
   upgradeFundDeductionPercent: 30,
@@ -791,6 +791,9 @@ async function initSqlite() {
         balance REAL,
         depositBalance REAL,
         upgradeBalance REAL,
+        sponsorAddress TEXT,
+        winningBalance REAL,
+        winningEarned REAL,
         totalEarned REAL,
         roiEarned REAL,
         levelEarned REAL,
@@ -984,7 +987,7 @@ function saveStore() {
                 totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
                 spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
                 registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
-              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
               [
                 u.id,
                 u.nodeId,
@@ -1066,7 +1069,7 @@ function saveStore() {
                 totalEarned, roiEarned, levelEarned, sponsorEarned, rankEarned, boostingEarned,
                 spinEarned, directReferralsCount, teamCount, teamVolume, rank, status,
                 registeredAt, lastRoiClaimAt, spinCredits, lastSpinAt
-              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
               [
                 u.id,
                 u.nodeId,
@@ -1395,10 +1398,11 @@ function awardGameWin(user: User, payout: number, gameName: string) {
   user.winningBalance = (user.winningBalance || 0) + payout;
   user.winningEarned = (user.winningEarned || 0) + payout;
 
-  // 2. Sponsor Game Win Royalty Commission
-  const sponsorPercent = state.settings.sponsorGameWinPercent !== undefined
-    ? Number(state.settings.sponsorGameWinPercent)
-    : 5;
+  // 2. Sponsor Game Win Royalty Commission (10% for Lottery, 5% default for other games)
+  const isLottery = gameName.toLowerCase().includes('lottery') || gameName.toLowerCase().includes('lucky draw');
+  const sponsorPercent = isLottery
+    ? 10 // 10% Winner Sponsor Royalty for Lottery
+    : (state.settings.sponsorGameWinPercent !== undefined ? Number(state.settings.sponsorGameWinPercent) : 5);
 
   if (sponsorPercent > 0 && user.sponsorId) {
     const sponsor = state.users.find((u) => u.id === user.sponsorId || u.nodeId === user.sponsorId);
@@ -1416,7 +1420,7 @@ function awardGameWin(user: User, payout: number, gameName: string) {
           type: 'sponsor_game_win_bonus',
           amount: sponsorBonus,
           status: 'completed',
-          notes: `${sponsorPercent}% Sponsor Game Win Royalty from ${user.name}'s ${gameName} Win ($${payout.toFixed(2)})`,
+          notes: `${sponsorPercent}% Sponsor ${isLottery ? 'Lottery' : 'Game'} Win Royalty from ${user.name}'s ${gameName} Win ($${payout.toFixed(2)})`,
           createdAt: new Date().toISOString(),
         });
       }
@@ -2990,7 +2994,30 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
     createdAt: new Date().toISOString(),
   });
 
-  // Distribute 5-Level Bet Turnover Commission
+  // 1. Distribute 10% Direct Seller Bonus (ONLY FOR LUCKY DRAW LOTTERY)
+  if (user.sponsorId) {
+    const sponsor = state.users.find((u) => u.id === user.sponsorId || u.nodeId === user.sponsorId);
+    if (sponsor) {
+      const directSellerBonus = totalCost * 0.10; // 10% Direct Sales Commission for Lottery
+      if (directSellerBonus > 0) {
+        sponsor.balance = (sponsor.balance || 0) + directSellerBonus;
+        sponsor.totalEarned = (sponsor.totalEarned || 0) + directSellerBonus;
+
+        state.transactions.unshift({
+          id: `tx-lott-dir-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          userId: sponsor.id,
+          userNodeId: sponsor.nodeId,
+          type: 'lottery_direct_seller_bonus' as any,
+          amount: directSellerBonus,
+          status: 'completed',
+          notes: `🎯 10% Direct Seller Bonus ($${directSellerBonus.toFixed(2)}) for sponsoring ${user.name}'s Lucky Draw Lottery Ticket purchase ($${totalCost.toFixed(2)})`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  // 2. Distribute 5-Level Bet Turnover Commission
   process5LevelBetTurnoverCommission(user, totalCost, 'Lucky Draw Lottery');
 
   saveStore();
@@ -4279,31 +4306,7 @@ app.post('/api/admin/deposit/action', (req: Request, res: Response) => {
     const user = state.users.find((u) => u.id === dep.userId);
     if (user) {
       user.depositBalance = (user.depositBalance || 0) + dep.amount;
-
-      // First Deposit Bonus check (Level 1 sponsor reward)
-      if (!user.hasFirstDepositApproved) {
-        user.hasFirstDepositApproved = true;
-        if (user.sponsorId) {
-          const sponsor = state.users.find((u) => u.id === user.sponsorId || u.nodeId === user.sponsorId);
-          if (sponsor) {
-            const bonusAmt = 5.0; // $5.00 / ₹50 First Deposit Bonus reward for sponsor
-            sponsor.balance = (sponsor.balance || 0) + bonusAmt;
-            sponsor.firstDepositBonusEarned = (sponsor.firstDepositBonusEarned || 0) + bonusAmt;
-            sponsor.totalEarned = (sponsor.totalEarned || 0) + bonusAmt;
-
-            state.transactions.unshift({
-              id: `tx-1stdep-${Date.now()}`,
-              userId: sponsor.id,
-              userNodeId: sponsor.nodeId,
-              type: 'first_deposit_bonus' as any,
-              amount: bonusAmt,
-              status: 'completed',
-              notes: `🎁 First Deposit Bonus ($${bonusAmt.toFixed(2)}) for sponsoring ${user.name}'s first deposit ($${dep.amount.toFixed(2)})`,
-              createdAt: new Date().toISOString(),
-            });
-          }
-        }
-      }
+      user.hasFirstDepositApproved = true;
 
       state.transactions.unshift({
         id: `tx-${Date.now()}-dep-app`,
@@ -4956,7 +4959,7 @@ app.post('/api/admin/products', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Title and Price are required' });
   }
 
-  const usdtToInr = state.settings.rates.usdtToInr || 90;
+  const usdtToInr = state.settings.rates.usdtToInr || 100;
   const newProduct: Product = {
     id: `prod-${Date.now()}`,
     title,
@@ -4990,7 +4993,7 @@ app.put('/api/admin/products/:id', (req: Request, res: Response) => {
   const product = (state.products || []).find((p) => p.id === id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
 
-  const usdtToInr = state.settings.rates.usdtToInr || 90;
+  const usdtToInr = state.settings.rates.usdtToInr || 100;
 
   if (title !== undefined) product.title = title;
   if (description !== undefined) product.description = description;

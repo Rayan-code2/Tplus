@@ -100,17 +100,33 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-[#0b1320]/95 backdrop-blur-md border-b border-cyan-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
       {/* Dynamic Marquee Ticker */}
-      <div className="bg-[#050911] border-b border-cyan-500/10 py-1 px-3 overflow-hidden text-[11px] text-cyan-400 font-mono flex items-center gap-2">
-        <span className="bg-cyan-500/10 border border-cyan-500/30 px-1.5 py-0.5 rounded text-[9px] font-bold text-cyan-300 uppercase tracking-wider shrink-0 flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+      <div className="bg-[#050911] border-b border-cyan-500/10 py-1.5 px-3 overflow-hidden text-[11px] text-cyan-400 font-mono flex items-center gap-2">
+        <span className="bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded text-[9px] font-bold text-cyan-300 uppercase tracking-wider shrink-0 flex items-center gap-1.5 z-10 shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
           Live
         </span>
-        <div className="whitespace-nowrap animate-marquee flex items-center gap-6 text-slate-300">
-          <span>{settings?.tickerText || 'Welcome to TetherPlus Web3 Ecosystem'}</span>
-          <span>•</span>
-          <span className="text-emerald-400">BEP-20 Gas: 3 Gwei</span>
-          <span>•</span>
-          <span className="text-cyan-400">Global Yield Pool: $1,485,200 USDT</span>
+        <div className="overflow-hidden relative w-full flex items-center">
+          <div className="animate-marquee flex items-center gap-8 text-slate-300 shrink-0">
+            <span className="font-bold text-cyan-300">
+              {(settings?.tickerText || '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | 🚀 GLOBAL YIELD POOL: $1,485,200 USDT ⚡').replace(/CRYPTOSPIRAL/gi, 'TETHERPLUS')}
+            </span>
+            <span>•</span>
+            <span className="text-emerald-400 font-semibold">BEP-20 Gas: 3 Gwei</span>
+            <span>•</span>
+            <span className="text-cyan-400 font-bold">LIVE TETHERPLUS NETWORK</span>
+            <span>•</span>
+            <span className="text-amber-400 font-bold">24/7 AUTOMATED SMART CONTRACT YIELD</span>
+            <span>•</span>
+            <span className="font-bold text-cyan-300">
+              {(settings?.tickerText || '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | 🚀 GLOBAL YIELD POOL: $1,485,200 USDT ⚡').replace(/CRYPTOSPIRAL/gi, 'TETHERPLUS')}
+            </span>
+            <span>•</span>
+            <span className="text-emerald-400 font-semibold">BEP-20 Gas: 3 Gwei</span>
+            <span>•</span>
+            <span className="text-cyan-400 font-bold">LIVE TETHERPLUS NETWORK</span>
+            <span>•</span>
+            <span className="text-amber-400 font-bold">24/7 AUTOMATED SMART CONTRACT YIELD</span>
+          </div>
         </div>
       </div>
 

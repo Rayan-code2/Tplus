@@ -136,7 +136,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
 
   const currentSlidingProduct = products && products.length > 0 ? products[productSlideIndex % products.length] : null;
   const slidingInrPrice = currentSlidingProduct
-    ? currentSlidingProduct.priceInr || currentSlidingProduct.priceUsdt * (settings.rates.usdtToInr || 90)
+    ? currentSlidingProduct.priceInr || currentSlidingProduct.priceUsdt * (settings.rates.usdtToInr || 100)
     : 0;
 
   const categories = [
@@ -589,7 +589,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-6">
               {sortedProducts.map((product) => {
-                const inrPrice = product.priceInr || product.priceUsdt * (settings.rates.usdtToInr || 90);
+                const inrPrice = product.priceInr || product.priceUsdt * (settings.rates.usdtToInr || 100);
                 const isOutOfStock = product.stock <= 0;
                 const isSaved = wishlist.includes(product.id);
                 const originalPrice = (product.priceUsdt * 1.25).toFixed(0); // Display 20% original price strikethrough
@@ -761,7 +761,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
             /* LIST VIEW LAYOUT */
             <div className="space-y-4">
               {sortedProducts.map((product) => {
-                const inrPrice = product.priceInr || product.priceUsdt * (settings.rates.usdtToInr || 90);
+                const inrPrice = product.priceInr || product.priceUsdt * (settings.rates.usdtToInr || 100);
                 const isOutOfStock = product.stock <= 0;
                 const isSaved = wishlist.includes(product.id);
 
@@ -1041,7 +1041,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     <div className="font-mono">
                       <div className="text-2xl font-black text-emerald-400">${quickViewProduct.priceUsdt} USDT</div>
                       <div className="text-xs text-slate-400">
-                        ≈ ₹{(quickViewProduct.priceInr || quickViewProduct.priceUsdt * 90).toLocaleString('en-IN')} INR
+                        ≈ ₹{(quickViewProduct.priceInr || quickViewProduct.priceUsdt * 100).toLocaleString('en-IN')} INR
                       </div>
                     </div>
 
