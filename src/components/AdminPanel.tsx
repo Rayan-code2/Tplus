@@ -45,6 +45,7 @@ import {
   Bot,
   Shuffle,
   Plane,
+  Image,
 } from 'lucide-react';
 import {
   User,
@@ -799,7 +800,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   }, [settings, isSettingsDirty]);
 
-  const updateEditableSettings: typeof setEditableSettings = (value) => {
+  const updateEditableSettings = (
+    value: SystemSettings | ((prev: SystemSettings) => SystemSettings)
+  ) => {
     setIsSettingsDirty(true);
     setEditableSettings(value);
   };
@@ -1556,7 +1559,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       requiredSelfPackagePrice: 10,
                       requiredDirectsCount: 2,
                     };
-                    setEditableSettings({
+                    updateEditableSettings({
                       ...editableSettings,
                       specialSponsorBonus: { ...current, enabled: e.target.checked },
                     });
@@ -1588,7 +1591,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         requiredSelfPackagePrice: 10,
                         requiredDirectsCount: 2,
                       };
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         specialSponsorBonus: {
                           ...current,
@@ -1624,7 +1627,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         requiredSelfPackagePrice: 10,
                         requiredDirectsCount: 2,
                       };
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         specialSponsorBonus: {
                           ...current,
@@ -1658,7 +1661,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         requiredSelfPackagePrice: 10,
                         requiredDirectsCount: 2,
                       };
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         specialSponsorBonus: {
                           ...current,
@@ -1692,7 +1695,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         requiredSelfPackagePrice: 10,
                         requiredDirectsCount: 2,
                       };
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         specialSponsorBonus: {
                           ...current,
@@ -1726,14 +1729,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   type="button"
                   onClick={() => {
                     const default8: SpinReward[] = [
-                      { id: 'sp-1', label: '$0.50 USDT', amount: 0.5, probability: 25, color: '#10b981' },
-                      { id: 'sp-2', label: '$1.00 USDT', amount: 1.0, probability: 15, color: '#06b6d4' },
-                      { id: 'sp-3', label: '$2.50 USDT', amount: 2.5, probability: 10, color: '#3b82f6' },
-                      { id: 'sp-4', label: '$5.00 USDT', amount: 5.0, probability: 5, color: '#8b5cf6' },
-                      { id: 'sp-5', label: '$10.00 USDT', amount: 10.0, probability: 2, color: '#ec4899' },
-                      { id: 'sp-6', label: '$50.00 USDT', amount: 50.0, probability: 0.5, color: '#f59e0b' },
-                      { id: 'sp-7', label: 'Try Again', amount: 0, probability: 8, color: '#374151' },
-                      { id: 'sp-8', label: 'Extra Spin', amount: 0, probability: 5, color: '#6366f1' },
+                      { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151' },
+                      { id: 'sp-2', label: '$0.20 USDT', amount: 0.20, probability: 25, color: '#06b6d4' },
+                      { id: 'sp-3', label: '$0.50 USDT', amount: 0.50, probability: 15, color: '#10b981' },
+                      { id: 'sp-4', label: '$1.00 USDT', amount: 1.00, probability: 10, color: '#8b5cf6' },
+                      { id: 'sp-5', label: '$2.00 USDT', amount: 2.00, probability: 3, color: '#f59e0b' },
+                      { id: 'sp-6', label: '$5.00 USDT', amount: 5.00, probability: 1.5, color: '#ec4899' },
+                      { id: 'sp-7', label: '$10.00 BIG', amount: 10.00, probability: 0.4, color: '#ef4444' },
+                      { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.00, probability: 0.1, color: '#eab308' },
                     ];
                     setEditableSettings({ ...editableSettings, spinWheelRewards: default8 });
                     setIsSettingsDirty(true);
@@ -1769,11 +1772,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            {/* Spin Wheel Interval & Free Spin Credits Config */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#050911] border border-slate-800 rounded-2xl p-4">
+            {/* Spin Wheel Interval, Free Spin Credits & Ticket Price Config */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#050911] border border-slate-800 rounded-2xl p-4">
               <div>
                 <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
-                  Free Spin Cooldown Interval (Hours)
+                  Free Spin Cooldown (Hours)
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -1793,13 +1796,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-xs text-slate-400 shrink-0">Hours</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Time gap before a user gets free spin recharge (e.g. 24 = Once every 24 Hours).
+                  Time gap before free spin recharge (e.g. 24 Hours).
                 </span>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
-                  Free Spins Granted Per Interval
+                  Free Spins Per Cycle
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -1819,7 +1822,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-xs text-slate-400 shrink-0">Spins</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Number of free spins automatically awarded every interval cycle.
+                  Number of free spins automatically awarded.
+                </span>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-amber-400 uppercase block mb-1">
+                  Spin Ticket Price ($ USDT)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={editableSettings.spinTicketPrice !== undefined ? editableSettings.spinTicketPrice : 1.0}
+                    onChange={(e) => {
+                      setEditableSettings({
+                        ...editableSettings,
+                        spinTicketPrice: parseFloat(e.target.value) || 1.0,
+                      });
+                      setIsSettingsDirty(true);
+                    }}
+                    className="w-full bg-[#0d1726] border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 font-extrabold text-xs focus:outline-none focus:border-amber-400"
+                  />
+                  <span className="text-xs text-slate-400 shrink-0">USDT</span>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Cost per spin ticket when users buy extra spins.
                 </span>
               </div>
             </div>
@@ -2003,6 +2032,341 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
 
+          {/* SECTION 2.8: TETHER MART STORE HERO BANNER SLIDER MANAGER */}
+          <div className="bg-[#0b1424] border border-cyan-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_20px_rgba(6,182,212,0.08)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                  <Image className="w-4 h-4 text-cyan-400" />
+                  Tether Mart Store Hero Banner Slider Manager
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Manage custom promotional hero banner slides displayed at the top of Tether Mart Store.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaultBanners = [
+                      {
+                        id: `hb-1-${Date.now()}`,
+                        badge: 'OFFICIAL CYBER MALL • TETHER MART',
+                        title: 'Next-Gen DePIN & Web3 Mining Rigs',
+                        subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets.',
+                        discount: 'UP TO 35% OFF',
+                        cta: 'Explore DePIN Rigs',
+                        category: 'Mining Hardware',
+                        image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+                        enabled: true,
+                      },
+                      {
+                        id: `hb-2-${Date.now()}`,
+                        badge: 'NEW ARRIVALS • WEB3 APPAREL',
+                        title: 'TetherMart Official Cyberpunk Merch',
+                        subtitle: 'Exclusive hoodies, embroidered polo tees & custom cap collections crafted with premium cotton blends.',
+                        discount: 'BUY 1 GET 1 20% OFF',
+                        cta: 'Shop Web3 Apparel',
+                        category: 'Apparel & Merch',
+                        image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80',
+                        enabled: true,
+                      },
+                      {
+                        id: `hb-3-${Date.now()}`,
+                        badge: 'MILITARY-GRADE COLD STORAGE',
+                        title: 'Unhackable Hardware Wallets & Vaults',
+                        subtitle: 'Keep your USDT, Bitcoin & Ethereum bulletproof with certified offline storage devices & physical seed cards.',
+                        discount: 'FREE EXPRESS AIR SHIPPING',
+                        cta: 'Explore Cold Storage',
+                        category: 'Hardware Wallets',
+                        image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80',
+                        enabled: true,
+                      },
+                      {
+                        id: `hb-4-${Date.now()}`,
+                        badge: 'HIGH-TECH CYBER GADGETS',
+                        title: 'DePIN Electronics & Smart Devices',
+                        subtitle: 'Encrypted communication gear, high-performance node power supplies, and Web3 smart electronics.',
+                        discount: 'EARN UP TO 50% REBATE',
+                        cta: 'Browse Gadgets',
+                        category: 'Gadgets',
+                        image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80',
+                        enabled: true,
+                      },
+                    ];
+                    updateEditableSettings({ ...editableSettings, heroBanners: defaultBanners });
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold border border-slate-700 flex items-center gap-1.5 transition"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                  Reset Defaults
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newBanner = {
+                      id: `hb-${Date.now()}`,
+                      badge: 'SPECIAL PROMO • TETHER MART',
+                      title: 'New Store Banner Headline',
+                      subtitle: 'Add banner description and promotion details here.',
+                      discount: 'EXCLUSIVE OFFER',
+                      cta: 'Shop Now',
+                      category: 'All',
+                      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+                      enabled: true,
+                    };
+                    updateEditableSettings({
+                      ...editableSettings,
+                      heroBanners: [...(editableSettings.heroBanners || []), newBanner],
+                    });
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-[11px] flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.3)] transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add New Banner
+                </button>
+              </div>
+            </div>
+
+            {/* RECOMMENDED IMAGE RESOLUTION GUIDANCE BOX */}
+            <div className="bg-[#050911] border border-cyan-500/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-cyan-500/20 text-cyan-300 rounded-lg border border-cyan-500/40 shrink-0 mt-0.5">
+                  <Image className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-cyan-300 uppercase tracking-wider text-[11px]">
+                      Recommended Image Specification:
+                    </span>
+                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[10px] font-mono font-bold">
+                      1200 × 400 px (3:1 Aspect Ratio)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    HD Desktop/Mobile banner fit ke liye ideal resolution <strong className="text-slate-200">1200 × 400 pixels</strong> (ya 1920 × 640 px) hai. Direct image URLs (Unsplash, Imgur, Cloudinary, WebP, JPG, PNG) support hote hain.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* SLIDES EDITABLE CARDS GRID */}
+            <div className="space-y-4">
+              {(editableSettings.heroBanners || []).length === 0 && (
+                <div className="text-center py-6 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
+                  No hero banners configured. Click "Reset Defaults" or "Add New Banner" to get started.
+                </div>
+              )}
+              {(editableSettings.heroBanners || []).map((banner, idx) => (
+                <div
+                  key={banner.id || idx}
+                  className={`bg-[#050911] border rounded-xl p-4 space-y-3 transition-all ${
+                    banner.enabled !== false ? 'border-slate-800 hover:border-cyan-500/40' : 'border-slate-800/60 opacity-60'
+                  }`}
+                >
+                  {/* Slide Header Row */}
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center font-mono font-bold text-[10px]">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-bold text-slate-200 text-xs truncate max-w-[200px] sm:max-w-xs">
+                        {banner.title || 'Untitled Banner'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-mono">
+                        {banner.category || 'All'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {/* Active Toggle */}
+                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={banner.enabled !== false}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], enabled: e.target.checked };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          className="w-4 h-4 accent-cyan-500 cursor-pointer"
+                        />
+                        <span>{banner.enabled !== false ? 'Active' : 'Disabled'}</span>
+                      </label>
+
+                      {/* Delete Slide */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = (editableSettings.heroBanners || []).filter((_, i) => i !== idx);
+                          updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                        }}
+                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition"
+                        title="Delete Banner Slide"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Banner Content Inputs Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
+                    {/* Image Preview & URL (4 cols) */}
+                    <div className="md:col-span-4 space-y-2">
+                      <label className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider flex items-center justify-between">
+                        <span>Banner Image URL</span>
+                        <span className="text-slate-500 font-mono text-[9px]">1200×400 px</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={banner.image || ''}
+                        onChange={(e) => {
+                          const updated = [...(editableSettings.heroBanners || [])];
+                          updated[idx] = { ...updated[idx], image: e.target.value };
+                          updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                        }}
+                        placeholder="https://images.unsplash.com/photo-..."
+                        className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-cyan-300 font-mono text-[11px] focus:outline-none focus:border-cyan-500"
+                      />
+                      {/* Image Thumbnail Preview */}
+                      <div className="relative w-full h-24 rounded-lg overflow-hidden border border-slate-800 bg-slate-900 group">
+                        {banner.image ? (
+                          <img
+                            src={banner.image}
+                            alt="Banner Preview"
+                            className="w-full h-full object-cover object-center"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-1">
+                            <Image className="w-6 h-6" />
+                            <span className="text-[10px]">No image URL set</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] text-slate-300 font-mono p-2 text-center pointer-events-none">
+                          Image Preview
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Banner Text Details (8 cols) */}
+                    <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-extrabold text-amber-400 uppercase tracking-wider">
+                          Top Badge Header Text
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.badge || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], badge: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. OFFICIAL CYBER MALL • TETHER MART"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-slate-200 font-bold mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">
+                          Discount / Tagline Pill Text
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.discount || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], discount: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. UP TO 35% OFF"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-emerald-300 font-bold mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] font-extrabold text-white uppercase tracking-wider">
+                          Main Headline Title
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.title || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], title: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. Next-Gen DePIN & Web3 Mining Rigs"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-cyan-300 font-extrabold mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                          Subtitle / Description
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.subtitle || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], subtitle: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. Equip your Web3 node with top-tier ASIC miners..."
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-slate-300 mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-extrabold text-purple-400 uppercase tracking-wider">
+                          CTA Button Label
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.cta || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], cta: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. Explore DePIN Rigs"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-purple-300 font-bold mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider">
+                          Target Store Category
+                        </label>
+                        <select
+                          value={banner.category || 'All'}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], category: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-[11px]"
+                        >
+                          <option value="All">All Categories</option>
+                          <option value="Hardware Wallets">Hardware Wallets</option>
+                          <option value="Mining Hardware">Mining Hardware</option>
+                          <option value="Crypto Security">Crypto Security</option>
+                          <option value="Gadgets">Gadgets</option>
+                          <option value="DePIN Electronics">DePIN Electronics</option>
+                          <option value="Apparel & Merch">Apparel & Merch</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* SECTION 3: SYSTEM PROTOCOL, WALLETS & DEDUCTION RULES */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
             {/* Top Ticker Text */}
@@ -2012,9 +2376,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </label>
               <input
                 type="text"
-                value={editableSettings.tickerText}
+                value={editableSettings.tickerText || ''}
                 onChange={(e) =>
-                  setEditableSettings({ ...editableSettings, tickerText: e.target.value })
+                  updateEditableSettings({ ...editableSettings, tickerText: e.target.value })
                 }
                 className="w-full bg-[#050911] border border-slate-700 rounded-xl px-4 py-2.5 text-cyan-300 focus:outline-none text-xs"
               />
@@ -2031,9 +2395,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-slate-400">Withdrawal Upgrade Deduction (%):</span>
                   <input
                     type="number"
-                    value={editableSettings.upgradeFundDeductionPercent}
+                    value={editableSettings.upgradeFundDeductionPercent ?? 30}
                     onChange={(e) =>
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         upgradeFundDeductionPercent: parseFloat(e.target.value) || 0,
                       })
@@ -2045,9 +2409,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-slate-400">Withdrawal Fee (%):</span>
                   <input
                     type="number"
-                    value={editableSettings.withdrawalFeePercent}
+                    value={editableSettings.withdrawalFeePercent ?? 2}
                     onChange={(e) =>
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         withdrawalFeePercent: parseFloat(e.target.value) || 0,
                       })
@@ -2060,12 +2424,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input
                     type="number"
                     step="0.1"
-                    value={editableSettings.rates.usdtToInr}
+                    value={editableSettings.rates?.usdtToInr ?? 100}
                     onChange={(e) =>
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         rates: {
-                          ...editableSettings.rates,
+                          ...(editableSettings.rates || { usdtToInr: 100, inrToUsdt: 0.01 }),
                           usdtToInr: parseFloat(e.target.value) || 0,
                         },
                       })
@@ -2086,12 +2450,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-slate-400">BEP20 Address:</span>
                   <input
                     type="text"
-                    value={editableSettings.walletAddresses.BEP20}
+                    value={editableSettings.walletAddresses?.BEP20 ?? ''}
                     onChange={(e) =>
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         walletAddresses: {
-                          ...editableSettings.walletAddresses,
+                          ...(editableSettings.walletAddresses || { BEP20: '', TRC20: '', ERC20: '' }),
                           BEP20: e.target.value,
                         },
                       })
@@ -2103,12 +2467,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-slate-400">TRC20 Address:</span>
                   <input
                     type="text"
-                    value={editableSettings.walletAddresses.TRC20}
+                    value={editableSettings.walletAddresses?.TRC20 ?? ''}
                     onChange={(e) =>
-                      setEditableSettings({
+                      updateEditableSettings({
                         ...editableSettings,
                         walletAddresses: {
-                          ...editableSettings.walletAddresses,
+                          ...(editableSettings.walletAddresses || { BEP20: '', TRC20: '', ERC20: '' }),
                           TRC20: e.target.value,
                         },
                       })
@@ -3022,6 +3386,354 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* TAB 8: AMAZON MALL PRODUCTS & RATES MANAGER */}
       {activeTab === 'products' && (
         <div className="space-y-6">
+          {/* TETHER MART STORE HERO BANNER SLIDER MANAGER */}
+          <div className="bg-[#0b1424] border border-cyan-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_20px_rgba(6,182,212,0.12)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-sm font-black text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                  <Image className="w-5 h-5 text-cyan-400" />
+                  <span>Tether Mart Store Hero Banner Slider Manager</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Manage promo banner slides & custom image URLs displayed at the top of Tether Mart Store.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await onUpdateSettings({
+                      ...editableSettings,
+                    });
+                    alert('Hero Banner Slider Settings saved successfully!');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.4)] transition"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Hero Banners</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaultBanners = [
+                      {
+                        id: `hb-1-${Date.now()}`,
+                        badge: 'OFFICIAL CYBER MALL • TETHER MART',
+                        title: 'Next-Gen DePIN & Web3 Mining Rigs',
+                        subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets.',
+                        discount: 'UP TO 35% OFF',
+                        cta: 'Explore DePIN Rigs',
+                        category: 'Mining Hardware',
+                        image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+                        enabled: true,
+                      },
+                      {
+                        id: `hb-2-${Date.now()}`,
+                        badge: 'NEW ARRIVALS • WEB3 APPAREL',
+                        title: 'TetherMart Official Cyberpunk Merch',
+                        subtitle: 'Exclusive hoodies, embroidered polo tees & custom cap collections crafted with premium cotton blends.',
+                        discount: 'BUY 1 GET 1 20% OFF',
+                        cta: 'Shop Web3 Apparel',
+                        category: 'Apparel & Merch',
+                        image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80',
+                        enabled: true,
+                      },
+                      {
+                        id: `hb-3-${Date.now()}`,
+                        badge: 'MILITARY-GRADE COLD STORAGE',
+                        title: 'Unhackable Hardware Wallets & Vaults',
+                        subtitle: 'Keep your USDT, Bitcoin & Ethereum bulletproof with certified offline storage devices & physical seed cards.',
+                        discount: 'FREE EXPRESS AIR SHIPPING',
+                        cta: 'Explore Cold Storage',
+                        category: 'Hardware Wallets',
+                        image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80',
+                        enabled: true,
+                      },
+                      {
+                        id: `hb-4-${Date.now()}`,
+                        badge: 'HIGH-TECH CYBER GADGETS',
+                        title: 'DePIN Electronics & Smart Devices',
+                        subtitle: 'Encrypted communication gear, high-performance node power supplies, and Web3 smart electronics.',
+                        discount: 'EARN UP TO 50% REBATE',
+                        cta: 'Browse Gadgets',
+                        category: 'Gadgets',
+                        image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80',
+                        enabled: true,
+                      },
+                    ];
+                    updateEditableSettings({ ...editableSettings, heroBanners: defaultBanners });
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Reset Defaults</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newBanner = {
+                      id: `hb-${Date.now()}`,
+                      badge: 'SPECIAL PROMO • TETHER MART',
+                      title: 'New Store Banner Headline',
+                      subtitle: 'Add banner description and promotion details here.',
+                      discount: 'EXCLUSIVE OFFER',
+                      cta: 'Shop Now',
+                      category: 'All',
+                      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+                      enabled: true,
+                    };
+                    updateEditableSettings({
+                      ...editableSettings,
+                      heroBanners: [...(editableSettings.heroBanners || []), newBanner],
+                    });
+                  }}
+                  className="px-3 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.3)] transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add New Banner</span>
+                </button>
+              </div>
+            </div>
+
+            {/* RECOMMENDED IMAGE RESOLUTION GUIDANCE BOX */}
+            <div className="bg-[#050911] border border-cyan-500/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-cyan-500/20 text-cyan-300 rounded-lg border border-cyan-500/40 shrink-0 mt-0.5">
+                  <Image className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-cyan-300 uppercase tracking-wider text-[11px]">
+                      Recommended Image Specification:
+                    </span>
+                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[10px] font-mono font-bold">
+                      1200 × 400 px (3:1 Aspect Ratio)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    HD Desktop & Mobile banner fit ke liye ideal resolution <strong className="text-slate-200">1200 × 400 pixels</strong> (ya 1920 × 640 px) hai. Direct image URLs (Unsplash, Imgur, Cloudinary, WebP, JPG, PNG) support hote hain.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* SLIDES EDITABLE CARDS GRID */}
+            <div className="space-y-4">
+              {(editableSettings.heroBanners || []).length === 0 && (
+                <div className="text-center py-6 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
+                  No hero banners configured. Click "Reset Defaults" or "Add New Banner" to get started.
+                </div>
+              )}
+              {(editableSettings.heroBanners || []).map((banner, idx) => (
+                <div
+                  key={banner.id || idx}
+                  className={`bg-[#050911] border rounded-xl p-4 space-y-3 transition-all ${
+                    banner.enabled !== false ? 'border-slate-800 hover:border-cyan-500/40' : 'border-slate-800/60 opacity-60'
+                  }`}
+                >
+                  {/* Slide Header Row */}
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center font-mono font-bold text-[10px]">
+                        #{idx + 1}
+                      </span>
+                      <span className="font-bold text-slate-200 text-xs truncate max-w-[200px] sm:max-w-xs">
+                        {banner.title || 'Untitled Banner'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-mono">
+                        {banner.category || 'All'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {/* Active Toggle */}
+                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={banner.enabled !== false}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], enabled: e.target.checked };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          className="w-4 h-4 accent-cyan-500 cursor-pointer"
+                        />
+                        <span>{banner.enabled !== false ? 'Active' : 'Disabled'}</span>
+                      </label>
+
+                      {/* Delete Slide */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = (editableSettings.heroBanners || []).filter((_, i) => i !== idx);
+                          updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                        }}
+                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition"
+                        title="Delete Banner Slide"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Banner Content Inputs Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
+                    {/* Image Preview & URL (4 cols) */}
+                    <div className="md:col-span-4 space-y-2">
+                      <label className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider flex items-center justify-between">
+                        <span>Banner Image URL</span>
+                        <span className="text-slate-500 font-mono text-[9px]">1200×400 px</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={banner.image || ''}
+                        onChange={(e) => {
+                          const updated = [...(editableSettings.heroBanners || [])];
+                          updated[idx] = { ...updated[idx], image: e.target.value };
+                          updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                        }}
+                        placeholder="https://images.unsplash.com/photo-..."
+                        className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-cyan-300 font-mono text-[11px] focus:outline-none focus:border-cyan-500"
+                      />
+                      {/* Image Thumbnail Preview */}
+                      <div className="relative w-full h-24 rounded-lg overflow-hidden border border-slate-800 bg-slate-900 group">
+                        {banner.image ? (
+                          <img
+                            src={banner.image}
+                            alt="Banner Preview"
+                            className="w-full h-full object-cover object-center"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-1">
+                            <Image className="w-6 h-6" />
+                            <span className="text-[10px]">No image URL set</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-[10px] text-slate-300 font-mono p-2 text-center pointer-events-none">
+                          Image Preview
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Banner Text Details (8 cols) */}
+                    <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-extrabold text-amber-400 uppercase tracking-wider">
+                          Top Badge Header Text
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.badge || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], badge: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. OFFICIAL CYBER MALL • TETHER MART"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-slate-200 font-bold mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">
+                          Discount / Tagline Pill Text
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.discount || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], discount: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. UP TO 35% OFF"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-emerald-300 font-bold mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] font-extrabold text-white uppercase tracking-wider">
+                          Main Headline Title
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.title || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], title: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. Next-Gen DePIN & Web3 Mining Rigs"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-cyan-300 font-extrabold mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                          Subtitle / Description
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.subtitle || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], subtitle: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. Equip your Web3 node with top-tier ASIC miners..."
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-slate-300 mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-extrabold text-purple-400 uppercase tracking-wider">
+                          CTA Button Label
+                        </label>
+                        <input
+                          type="text"
+                          value={banner.cta || ''}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], cta: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          placeholder="e.g. Explore DePIN Rigs"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-purple-300 font-bold mt-1 text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider">
+                          Target Store Category
+                        </label>
+                        <select
+                          value={banner.category || 'All'}
+                          onChange={(e) => {
+                            const updated = [...(editableSettings.heroBanners || [])];
+                            updated[idx] = { ...updated[idx], category: e.target.value };
+                            updateEditableSettings({ ...editableSettings, heroBanners: updated });
+                          }}
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-[11px]"
+                        >
+                          <option value="All">All Categories</option>
+                          <option value="Hardware Wallets">Hardware Wallets</option>
+                          <option value="Mining Hardware">Mining Hardware</option>
+                          <option value="Crypto Security">Crypto Security</option>
+                          <option value="Gadgets">Gadgets</option>
+                          <option value="DePIN Electronics">DePIN Electronics</option>
+                          <option value="Apparel & Merch">Apparel & Merch</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Header Bar with Add Product Action */}
           <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>

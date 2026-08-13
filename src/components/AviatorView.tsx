@@ -58,14 +58,15 @@ export const AviatorView: React.FC<AviatorViewProps> = ({
       showToast('Please enter a valid bet amount', 'error');
       return;
     }
-    if (user.balance < betAmount) {
-      showToast('Insufficient wallet balance!', 'error');
+    const totalAvail = (user?.balance || 0) + (user?.winningBalance || 0) + (user?.depositBalance || 0);
+    if (totalAvail < betAmount) {
+      showToast(`Insufficient wallet balance! Required: $${betAmount.toFixed(2)} (Available: $${totalAvail.toFixed(2)})`, 'error');
       return;
     }
 
     setLoadingBet(true);
     try {
-      const storedId = user?.id || localStorage.getItem('tp_user_id') || '';
+      const storedId = user?.id || user?.nodeId || localStorage.getItem('tp_user_id') || '';
       const res = await fetch('/api/aviator/bet', {
         method: 'POST',
         headers: {

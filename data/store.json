@@ -238,17 +238,17 @@
       "activePackageId": "pkg-1000",
       "packageActivatedAt": "2026-06-27T15:56:23.737Z",
       "packageExpiryDays": 100,
-      "balance": 14549,
+      "balance": 14524.029999999999,
       "depositBalance": 0,
       "upgradeBalance": 1200,
-      "totalEarned": 49227,
+      "totalEarned": 49227.03,
       "roiEarned": 3000,
       "levelEarned": 18500,
       "sponsorEarned": 8401,
       "rankEarned": 10000,
       "boostingEarned": 9000,
       "spinEarned": 0,
-      "directReferralsCount": 2,
+      "directReferralsCount": 3,
       "teamCount": 148,
       "teamVolume": 245010,
       "rank": "Apex",
@@ -257,7 +257,23 @@
       "lastRoiClaimAt": "2026-07-27T14:56:23.737Z",
       "spinCredits": 5,
       "lastSpinAt": "",
-      "isUpgraded": false
+      "isUpgraded": false,
+      "totalBetTurnover": 25,
+      "levelTurnover": {
+        "l1": 0,
+        "l2": 10,
+        "l3": 0,
+        "l4": 0,
+        "l5": 0
+      },
+      "levelCommission": {
+        "l1": 0,
+        "l2": 0.03,
+        "l3": 0,
+        "l4": 0,
+        "l5": 0
+      },
+      "referralCommissionEarned": 0.03
     },
     {
       "id": "usr-cyber1",
@@ -642,9 +658,234 @@
       "spinCredits": 1,
       "lastSpinAt": "",
       "isUpgraded": true
+    },
+    {
+      "id": "usr-1786632163372",
+      "nodeId": "NX-6Q89LT",
+      "name": "mina",
+      "email": "mina@gmail.com",
+      "password": "12345678",
+      "walletAddress": "0x1ed92f8e2dc3",
+      "sponsorId": "usr-root",
+      "placementUplineId": "usr-alpha2",
+      "activePackageId": null,
+      "packageActivatedAt": null,
+      "packageExpiryDays": 0,
+      "balance": 1.06,
+      "depositBalance": 0,
+      "upgradeBalance": 0,
+      "totalEarned": 1.06,
+      "roiEarned": 0,
+      "levelEarned": 0,
+      "sponsorEarned": 0,
+      "rankEarned": 0,
+      "boostingEarned": 0,
+      "spinEarned": 0,
+      "directReferralsCount": 1,
+      "teamCount": 0,
+      "teamVolume": 0,
+      "rank": "None",
+      "status": "active",
+      "registeredAt": "2026-08-13T14:42:43.372Z",
+      "lastRoiClaimAt": "2026-08-13T14:42:43.372Z",
+      "spinCredits": 1,
+      "lastSpinAt": null,
+      "isUpgraded": false,
+      "levelTurnover": {
+        "l1": 10,
+        "l2": 0,
+        "l3": 0,
+        "l4": 0,
+        "l5": 0
+      },
+      "levelCommission": {
+        "l1": 0.06,
+        "l2": 0,
+        "l3": 0,
+        "l4": 0,
+        "l5": 0
+      },
+      "referralCommissionEarned": 0.06
+    },
+    {
+      "id": "usr-1786632220819",
+      "nodeId": "NX-84GU6Z",
+      "name": "mina1@gmail.com",
+      "email": "mina1@gmail.com",
+      "password": "12345678",
+      "walletAddress": "0x40c0c230cb8a",
+      "sponsorId": "usr-1786632163372",
+      "placementUplineId": "usr-1786632163372",
+      "activePackageId": null,
+      "packageActivatedAt": null,
+      "packageExpiryDays": 0,
+      "balance": 0,
+      "depositBalance": 90,
+      "upgradeBalance": 0,
+      "totalEarned": 0,
+      "roiEarned": 0,
+      "levelEarned": 0,
+      "sponsorEarned": 0,
+      "rankEarned": 0,
+      "boostingEarned": 0,
+      "spinEarned": 0,
+      "directReferralsCount": 0,
+      "teamCount": 0,
+      "teamVolume": 0,
+      "rank": "None",
+      "status": "active",
+      "registeredAt": "2026-08-13T14:43:40.819Z",
+      "lastRoiClaimAt": "2026-08-13T14:43:40.819Z",
+      "spinCredits": 1,
+      "lastSpinAt": null,
+      "isUpgraded": false,
+      "hasFirstDepositApproved": true,
+      "totalBetTurnover": 10
     }
   ],
   "transactions": [
+    {
+      "id": "tx-turnover-l2-1786633318504-121",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.015,
+      "status": "completed",
+      "notes": "🏆 Level 2 Bet Turnover Commission ($0.0150) from mina1@gmail.com's $5.00 Bet on Lucky Draw Lottery",
+      "createdAt": "2026-08-13T15:01:58.504Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786633318504-35",
+      "userId": "usr-1786632163372",
+      "userNodeId": "NX-6Q89LT",
+      "type": "bet_turnover_commission",
+      "amount": 0.03,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0300) from mina1@gmail.com's $5.00 Bet on Lucky Draw Lottery",
+      "createdAt": "2026-08-13T15:01:58.504Z"
+    },
+    {
+      "id": "tx-lott-dir-1786633318504-790",
+      "userId": "usr-1786632163372",
+      "userNodeId": "NX-6Q89LT",
+      "type": "lottery_direct_seller_bonus",
+      "amount": 0.5,
+      "status": "completed",
+      "notes": "🎯 10% Direct Seller Bonus ($0.50) for sponsoring mina1@gmail.com's Lucky Draw Lottery Ticket purchase ($5.00)",
+      "createdAt": "2026-08-13T15:01:58.504Z"
+    },
+    {
+      "id": "tx-1786633318504-lkd",
+      "userId": "usr-1786632220819",
+      "userNodeId": "NX-84GU6Z",
+      "type": "product_purchase",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Purchased 1 Lucky Draw Coupon(s) ($5 USDT each): #248199",
+      "createdAt": "2026-08-13T15:01:58.504Z"
+    },
+    {
+      "id": "tx-turnover-l2-1786633298001-889",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.015,
+      "status": "completed",
+      "notes": "🏆 Level 2 Bet Turnover Commission ($0.0150) from mina1@gmail.com's $5.00 Bet on Lucky Draw Lottery",
+      "createdAt": "2026-08-13T15:01:38.001Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786633298001-920",
+      "userId": "usr-1786632163372",
+      "userNodeId": "NX-6Q89LT",
+      "type": "bet_turnover_commission",
+      "amount": 0.03,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0300) from mina1@gmail.com's $5.00 Bet on Lucky Draw Lottery",
+      "createdAt": "2026-08-13T15:01:38.001Z"
+    },
+    {
+      "id": "tx-lott-dir-1786633298000-309",
+      "userId": "usr-1786632163372",
+      "userNodeId": "NX-6Q89LT",
+      "type": "lottery_direct_seller_bonus",
+      "amount": 0.5,
+      "status": "completed",
+      "notes": "🎯 10% Direct Seller Bonus ($0.50) for sponsoring mina1@gmail.com's Lucky Draw Lottery Ticket purchase ($5.00)",
+      "createdAt": "2026-08-13T15:01:38.000Z"
+    },
+    {
+      "id": "tx-1786633298000-lkd",
+      "userId": "usr-1786632220819",
+      "userNodeId": "NX-84GU6Z",
+      "type": "product_purchase",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Purchased 1 Lucky Draw Coupon(s) ($5 USDT each): #449229",
+      "createdAt": "2026-08-13T15:01:38.000Z"
+    },
+    {
+      "id": "tx-1786633003996-lkd",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "product_purchase",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Purchased 1 Lucky Draw Coupon(s) ($5 USDT each): #215561",
+      "createdAt": "2026-08-13T14:56:43.996Z"
+    },
+    {
+      "id": "tx-1786632994308-lkd",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "product_purchase",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Purchased 1 Lucky Draw Coupon(s) ($5 USDT each): #980621",
+      "createdAt": "2026-08-13T14:56:34.308Z"
+    },
+    {
+      "id": "tx-1786632943425-lkd",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "product_purchase",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Purchased 1 Lucky Draw Coupon(s) ($5 USDT each): #252807",
+      "createdAt": "2026-08-13T14:55:43.425Z"
+    },
+    {
+      "id": "tx-1786632927261-lkd",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "product_purchase",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Purchased 1 Lucky Draw Coupon(s) ($5 USDT each): #620910",
+      "createdAt": "2026-08-13T14:55:27.261Z"
+    },
+    {
+      "id": "tx-1786632310071-lkd",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "product_purchase",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Purchased 1 Lucky Draw Coupon(s) ($5 USDT each): #670281",
+      "createdAt": "2026-08-13T14:45:10.071Z"
+    },
+    {
+      "id": "tx-1786632268976-dep-app",
+      "userId": "usr-1786632220819",
+      "userNodeId": "NX-84GU6Z",
+      "type": "deposit",
+      "amount": 100,
+      "status": "completed",
+      "txHash": "kldsjflsjflsfjl;sfjs",
+      "network": "BEP20",
+      "notes": "Deposit Approved: +$100 USDT credited to Deposit Wallet",
+      "createdAt": "2026-08-13T14:44:28.976Z"
+    },
     {
       "id": "tx-cpwin-1786457901891-75",
       "userId": "usr-root",
@@ -1282,6 +1523,18 @@
   ],
   "depositRequests": [
     {
+      "id": "dep-1786632232415",
+      "userId": "usr-1786632220819",
+      "userNodeId": "NX-84GU6Z",
+      "userName": "mina1@gmail.com",
+      "amount": 100,
+      "network": "BEP20",
+      "txHash": "kldsjflsjflsfjl;sfjs",
+      "status": "approved",
+      "createdAt": "2026-08-13T14:43:52.415Z",
+      "adminNotes": "Approved by Admin"
+    },
+    {
       "id": "dep-1785539990588",
       "userId": "usr-1785537091494",
       "userNodeId": "NX-SQXCVC",
@@ -1619,16 +1872,73 @@
     "status": "completed",
     "forcedWinnerUserId": null,
     "forcedWinnerTicketNumber": null,
-    "tickets": [],
+    "tickets": [
+      {
+        "id": "tkt-1786632310071-0-57ad",
+        "ticketNumber": "670281",
+        "userId": "usr-root",
+        "userNodeId": "NX-ROOT01",
+        "userName": "Sovereign Nexus (Root Master)",
+        "purchasedAt": "2026-08-13T14:45:10.071Z"
+      },
+      {
+        "id": "tkt-1786632927261-0-gth6",
+        "ticketNumber": "620910",
+        "userId": "usr-root",
+        "userNodeId": "NX-ROOT01",
+        "userName": "Sovereign Nexus (Root Master)",
+        "purchasedAt": "2026-08-13T14:55:27.261Z"
+      },
+      {
+        "id": "tkt-1786632943425-0-w6qn",
+        "ticketNumber": "252807",
+        "userId": "usr-root",
+        "userNodeId": "NX-ROOT01",
+        "userName": "Sovereign Nexus (Root Master)",
+        "purchasedAt": "2026-08-13T14:55:43.425Z"
+      },
+      {
+        "id": "tkt-1786632994308-0-qpu0",
+        "ticketNumber": "980621",
+        "userId": "usr-root",
+        "userNodeId": "NX-ROOT01",
+        "userName": "Sovereign Nexus (Root Master)",
+        "purchasedAt": "2026-08-13T14:56:34.308Z"
+      },
+      {
+        "id": "tkt-1786633003996-0-dzk1",
+        "ticketNumber": "215561",
+        "userId": "usr-root",
+        "userNodeId": "NX-ROOT01",
+        "userName": "Sovereign Nexus (Root Master)",
+        "purchasedAt": "2026-08-13T14:56:43.996Z"
+      },
+      {
+        "id": "tkt-1786633298000-0-xf8j",
+        "ticketNumber": "449229",
+        "userId": "usr-1786632220819",
+        "userNodeId": "NX-84GU6Z",
+        "userName": "mina1@gmail.com",
+        "purchasedAt": "2026-08-13T15:01:38.000Z"
+      },
+      {
+        "id": "tkt-1786633318504-0-7njt",
+        "ticketNumber": "248199",
+        "userId": "usr-1786632220819",
+        "userNodeId": "NX-84GU6Z",
+        "userName": "mina1@gmail.com",
+        "purchasedAt": "2026-08-13T15:01:58.504Z"
+      }
+    ],
     "pastWinners": [],
     "lastWinningNumber": "156789",
     "lastDrawAt": "2026-08-11T05:47:17.632Z",
     "historyCleared": true
   },
   "colorPrediction": {
-    "currentPeriodId": "202608131058",
+    "currentPeriodId": "202608131098",
     "periodDurationSeconds": 60,
-    "startTime": 1786594435178,
+    "startTime": 1786633582495,
     "forcedNextNumber": null,
     "bets": [
       {
@@ -1759,6 +2069,286 @@
       }
     ],
     "history": [
+      {
+        "periodId": "202608131097",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-13T15:06:22.495Z"
+      },
+      {
+        "periodId": "202608131096",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-13T15:05:22.458Z"
+      },
+      {
+        "periodId": "202608131095",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T15:04:22.431Z"
+      },
+      {
+        "periodId": "202608131094",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-13T15:03:22.398Z"
+      },
+      {
+        "periodId": "202608131093",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T15:02:22.374Z"
+      },
+      {
+        "periodId": "202608131092",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T15:01:22.341Z"
+      },
+      {
+        "periodId": "202608131091",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T15:00:22.313Z"
+      },
+      {
+        "periodId": "202608131090",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:59:22.278Z"
+      },
+      {
+        "periodId": "202608131089",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-13T14:58:21.845Z"
+      },
+      {
+        "periodId": "202608131088",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:57:21.815Z"
+      },
+      {
+        "periodId": "202608131087",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T14:56:21.778Z"
+      },
+      {
+        "periodId": "202608131086",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:55:21.742Z"
+      },
+      {
+        "periodId": "202608131085",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-13T14:54:21.710Z"
+      },
+      {
+        "periodId": "202608131084",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:53:21.676Z"
+      },
+      {
+        "periodId": "202608131083",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T14:52:21.553Z"
+      },
+      {
+        "periodId": "202608131082",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:51:21.513Z"
+      },
+      {
+        "periodId": "202608131081",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:50:21.469Z"
+      },
+      {
+        "periodId": "202608131080",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:49:21.430Z"
+      },
+      {
+        "periodId": "202608131079",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T14:48:21.388Z"
+      },
+      {
+        "periodId": "202608131078",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:47:21.339Z"
+      },
+      {
+        "periodId": "202608131077",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-13T14:46:21.304Z"
+      },
+      {
+        "periodId": "202608131076",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:45:21.273Z"
+      },
+      {
+        "periodId": "202608131075",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:44:21.242Z"
+      },
+      {
+        "periodId": "202608131074",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T14:43:21.213Z"
+      },
+      {
+        "periodId": "202608131073",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:42:21.190Z"
+      },
+      {
+        "periodId": "202608131072",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:41:21.164Z"
+      },
+      {
+        "periodId": "202608131071",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:40:21.145Z"
+      },
+      {
+        "periodId": "202608131070",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:39:21.120Z"
+      },
+      {
+        "periodId": "202608131069",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-13T14:38:21.084Z"
+      },
+      {
+        "periodId": "202608131068",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:37:21.039Z"
+      },
+      {
+        "periodId": "202608131067",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-13T14:36:21.000Z"
+      },
+      {
+        "periodId": "202608131066",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T14:35:20.958Z"
+      },
+      {
+        "periodId": "202608131065",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:34:20.928Z"
+      },
+      {
+        "periodId": "202608131064",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-13T14:33:20.891Z"
+      },
+      {
+        "periodId": "202608131063",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T14:32:20.844Z"
+      },
+      {
+        "periodId": "202608131062",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-13T14:31:20.796Z"
+      },
+      {
+        "periodId": "202608131061",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:30:20.750Z"
+      },
+      {
+        "periodId": "202608131060",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:29:20.721Z"
+      },
+      {
+        "periodId": "202608131059",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-13T14:28:20.692Z"
+      },
+      {
+        "periodId": "202608131058",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-13T14:27:20.669Z"
+      },
       {
         "periodId": "202608131057",
         "number": 1,
@@ -2178,52 +2768,38 @@
         "color": "violet-red",
         "size": "small",
         "completedAt": "2026-08-11T13:47:20.173Z"
-      },
-      {
-        "periodId": "202608110997",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-11T13:46:20.173Z"
-      },
-      {
-        "periodId": "202608110996",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-11T13:45:20.173Z"
       }
     ],
     "adminMode": "lowest_payout"
   },
   "aviator": {
-    "currentRoundId": "AV-1786594467661",
+    "currentRoundId": "AV-1786633601416",
     "status": "waiting",
     "currentMultiplier": 1,
-    "targetCrashMultiplier": 2.43,
-    "startTime": 1786594467661,
+    "targetCrashMultiplier": 3.52,
+    "startTime": 1786633601416,
     "bets": [],
     "history": [
-      2.43,
-      4.65,
-      6.19,
-      2.7,
-      8.31,
-      5.15,
-      1.53,
-      6.46,
-      3.7,
-      2.69,
-      5.18,
-      5.81,
-      7.42,
+      3.52,
+      6.09,
+      1.92,
+      5.92,
+      8.08,
+      2.91,
+      1.84,
+      8.47,
+      7.27,
+      2.63,
+      4.93,
+      1.42,
+      7.21,
+      6.67,
+      5.91,
+      8.15,
       8.62,
-      8.74,
-      8.39,
-      5.58,
-      7.19,
-      9.05,
-      2.17
+      1.91,
+      1.58,
+      7.16
     ],
     "forcedNextCrash": null,
     "adminMode": "lowest_payout"

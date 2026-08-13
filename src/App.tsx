@@ -230,6 +230,27 @@ export default function App() {
     }
   };
 
+  const handleBuySpinTicket = async (qty: number): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/spin/buy-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qty }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Failed to buy spin tickets', 'error');
+        return false;
+      }
+      showToast(data.message || 'Spin tickets purchased successfully!', 'success');
+      await fetchState();
+      return true;
+    } catch (err) {
+      showToast('Network error purchasing spin tickets', 'error');
+      return false;
+    }
+  };
+
   const handleClaimRankBonus = async (rankId: string) => {
     try {
       const res = await fetch('/api/rank/claim', {
@@ -693,6 +714,7 @@ export default function App() {
               user={currentUser}
               settings={settings}
               onSpinWheel={handleSpinWheel}
+              onBuySpinTicket={handleBuySpinTicket}
             />
           ) : activeTab === 'rankrewards' ? (
             <RankRewardsView

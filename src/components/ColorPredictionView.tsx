@@ -157,14 +157,15 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
   const handleConfirmBet = async () => {
     if (!selectedBet) return;
     const totalBet = baseAmount * multiplierCount;
-    if (user.balance < totalBet) {
-      showToast(`Insufficient balance! You need $${totalBet.toFixed(2)}, but have $${user.balance.toFixed(2)}.`, 'error');
+    const totalAvail = (user?.balance || 0) + (user?.winningBalance || 0) + (user?.depositBalance || 0);
+    if (totalAvail < totalBet) {
+      showToast(`Insufficient balance! You need $${totalBet.toFixed(2)}, but have $${totalAvail.toFixed(2)}.`, 'error');
       return;
     }
 
     setPlacingBet(true);
     try {
-      const storedId = user?.id || localStorage.getItem('tp_user_id') || '';
+      const storedId = user?.id || user?.nodeId || localStorage.getItem('tp_user_id') || '';
       const res = await fetch('/api/color-prediction/bet', {
         method: 'POST',
         headers: {
@@ -332,23 +333,23 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
             <span className="text-[11px] text-cyan-400 font-normal">Choose 1 or more options</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {/* Join Green */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={isFreeze}
               onClick={() => openBetModal('green')}
-              className={`relative overflow-hidden py-4 rounded-2xl font-extrabold text-sm md:text-base transition duration-200 shadow-lg flex flex-col items-center justify-center gap-1 border border-emerald-400/50 ${
+              className={`relative overflow-hidden py-3 px-1.5 sm:px-3 rounded-2xl font-extrabold transition duration-200 shadow-lg flex flex-col items-center justify-center gap-1 border border-emerald-400/50 ${
                 isFreeze
                   ? 'opacity-50 cursor-not-allowed bg-emerald-900/30 text-emerald-300'
                   : 'bg-gradient-to-b from-emerald-500 to-emerald-700 text-black hover:from-emerald-400 hover:to-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
               }`}
             >
-              <div className="flex items-center gap-1.5 text-black font-black">
+              <div className="flex items-center gap-1 text-black font-black text-xs sm:text-sm md:text-base whitespace-nowrap">
                 <span>JOIN GREEN</span>
               </div>
-              <span className="text-[11px] bg-black/30 px-2 py-0.5 rounded-full font-bold text-emerald-100">
+              <span className="text-[9px] sm:text-[11px] bg-black/30 px-1.5 sm:px-2 py-0.5 rounded-full font-bold text-emerald-100 whitespace-nowrap">
                 2X PAYOUT
               </span>
             </motion.button>
@@ -359,16 +360,16 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
               whileTap={{ scale: 0.98 }}
               disabled={isFreeze}
               onClick={() => openBetModal('violet')}
-              className={`relative overflow-hidden py-4 rounded-2xl font-extrabold text-sm md:text-base transition duration-200 shadow-lg flex flex-col items-center justify-center gap-1 border border-purple-400/50 ${
+              className={`relative overflow-hidden py-3 px-1.5 sm:px-3 rounded-2xl font-extrabold transition duration-200 shadow-lg flex flex-col items-center justify-center gap-1 border border-purple-400/50 ${
                 isFreeze
                   ? 'opacity-50 cursor-not-allowed bg-purple-900/30 text-purple-300'
                   : 'bg-gradient-to-b from-purple-500 to-purple-800 text-white hover:from-purple-400 hover:to-purple-700 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
               }`}
             >
-              <div className="flex items-center gap-1.5 font-black">
+              <div className="flex items-center gap-1 font-black text-xs sm:text-sm md:text-base whitespace-nowrap">
                 <span>JOIN VIOLET</span>
               </div>
-              <span className="text-[11px] bg-black/40 px-2 py-0.5 rounded-full font-bold text-purple-200">
+              <span className="text-[9px] sm:text-[11px] bg-black/40 px-1.5 sm:px-2 py-0.5 rounded-full font-bold text-purple-200 whitespace-nowrap">
                 4.5X PAYOUT
               </span>
             </motion.button>
@@ -379,16 +380,16 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
               whileTap={{ scale: 0.98 }}
               disabled={isFreeze}
               onClick={() => openBetModal('red')}
-              className={`relative overflow-hidden py-4 rounded-2xl font-extrabold text-sm md:text-base transition duration-200 shadow-lg flex flex-col items-center justify-center gap-1 border border-rose-400/50 ${
+              className={`relative overflow-hidden py-3 px-1.5 sm:px-3 rounded-2xl font-extrabold transition duration-200 shadow-lg flex flex-col items-center justify-center gap-1 border border-rose-400/50 ${
                 isFreeze
                   ? 'opacity-50 cursor-not-allowed bg-rose-900/30 text-rose-300'
                   : 'bg-gradient-to-b from-rose-500 to-rose-700 text-white hover:from-rose-400 hover:to-rose-600 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
               }`}
             >
-              <div className="flex items-center gap-1.5 font-black">
+              <div className="flex items-center gap-1 font-black text-xs sm:text-sm md:text-base whitespace-nowrap">
                 <span>JOIN RED</span>
               </div>
-              <span className="text-[11px] bg-black/30 px-2 py-0.5 rounded-full font-bold text-rose-100">
+              <span className="text-[9px] sm:text-[11px] bg-black/30 px-1.5 sm:px-2 py-0.5 rounded-full font-bold text-rose-100 whitespace-nowrap">
                 2X PAYOUT
               </span>
             </motion.button>
@@ -399,7 +400,7 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
         <div className="space-y-2">
           <div className="text-xs uppercase text-slate-400 font-bold tracking-wider flex items-center justify-between">
             <span>Select Lucky Number (0 - 9)</span>
-            <span className="text-amber-400 font-bold text-xs bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
+            <span className="text-amber-400 font-bold text-[10px] sm:text-xs bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
               MEGA 9X PAYOUT
             </span>
           </div>
@@ -414,7 +415,7 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
                   whileTap={{ scale: 0.92 }}
                   disabled={isFreeze}
                   onClick={() => openBetModal(String(num) as BetSelection)}
-                  className={`h-14 rounded-2xl flex flex-col items-center justify-center font-black text-lg transition shadow-md border border-white/20 ${numClass} ${
+                  className={`h-12 sm:h-14 rounded-2xl flex flex-col items-center justify-center font-black text-base sm:text-lg transition shadow-md border border-white/20 ${numClass} ${
                     isFreeze ? 'opacity-40 cursor-not-allowed' : 'hover:brightness-110'
                   }`}
                 >
@@ -427,20 +428,20 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
         </div>
 
         {/* Big / Small Selection Buttons */}
-        <div className="grid grid-cols-2 gap-4 pt-2">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 pt-2">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             disabled={isFreeze}
             onClick={() => openBetModal('big')}
-            className={`py-3.5 rounded-2xl font-black text-sm md:text-base border border-amber-500/50 flex items-center justify-center gap-2 transition ${
+            className={`py-3 px-2 sm:px-4 rounded-2xl font-black text-xs sm:text-sm md:text-base border border-amber-500/50 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition ${
               isFreeze
                 ? 'opacity-50 cursor-not-allowed bg-amber-950/20 text-amber-500'
                 : 'bg-gradient-to-r from-amber-500 to-amber-600 text-black hover:from-amber-400 hover:to-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
             }`}
           >
-            <span>BIG (5 - 9)</span>
-            <span className="bg-black/20 text-amber-950 text-xs px-2 py-0.5 rounded-full font-bold">2X</span>
+            <span className="whitespace-nowrap">BIG (5 - 9)</span>
+            <span className="bg-black/20 text-amber-950 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold whitespace-nowrap">2X</span>
           </motion.button>
 
           <motion.button
@@ -448,14 +449,14 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
             whileTap={{ scale: 0.98 }}
             disabled={isFreeze}
             onClick={() => openBetModal('small')}
-            className={`py-3.5 rounded-2xl font-black text-sm md:text-base border border-cyan-500/50 flex items-center justify-center gap-2 transition ${
+            className={`py-3 px-2 sm:px-4 rounded-2xl font-black text-xs sm:text-sm md:text-base border border-cyan-500/50 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition ${
               isFreeze
                 ? 'opacity-50 cursor-not-allowed bg-cyan-950/20 text-cyan-500'
                 : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
             }`}
           >
-            <span>SMALL (0 - 4)</span>
-            <span className="bg-black/20 text-cyan-950 text-xs px-2 py-0.5 rounded-full font-bold">2X</span>
+            <span className="whitespace-nowrap">SMALL (0 - 4)</span>
+            <span className="bg-black/20 text-cyan-950 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold whitespace-nowrap">2X</span>
           </motion.button>
         </div>
       </div>

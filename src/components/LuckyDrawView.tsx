@@ -296,12 +296,21 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   // Buy Ticket Handler
   const handleBuyTickets = async () => {
     if (!luckyDraw) return;
-    const finalQty = selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty;
+
+    // Auto-include pending input in custom mode if user didn't press '+ Add'
+    let effectiveCustomList = [...customCouponList];
+    const pendingInput = customCouponInput.trim();
+    if (selectionMode === 'custom' && /^\d{6}$/.test(pendingInput) && !effectiveCustomList.includes(pendingInput)) {
+      effectiveCustomList.push(pendingInput);
+    }
+
+    const finalQty = selectionMode === 'custom' && effectiveCustomList.length > 0 ? effectiveCustomList.length : ticketQty;
     const totalCost = luckyDraw.ticketPrice * finalQty;
     
-    // Check balance
-    if (currentUser.depositBalance < totalCost && currentUser.balance < totalCost) {
-      alert(`Insufficient funds! Total cost is $${totalCost} USDT. Please deposit funds or upgrade.`);
+    // Check total available balance across all wallets
+    const totalUserAvail = (currentUser.depositBalance || 0) + (currentUser.winningBalance || 0) + (currentUser.balance || 0);
+    if (totalUserAvail < totalCost) {
+      alert(`Insufficient funds! Total cost is $${totalCost} USDT. (Available Balance: $${totalUserAvail.toFixed(2)} USDT). Please deposit funds.`);
       if (onOpenDeposit) onOpenDeposit();
       return;
     }
@@ -310,11 +319,14 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       setBuying(true);
       const res = await fetch('/api/luckydraw/buy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id || currentUser.nodeId,
+        },
         body: JSON.stringify({
-          userId: currentUser.id,
+          userId: currentUser.id || currentUser.nodeId,
           quantity: finalQty,
-          customNumbers: selectionMode === 'custom' ? customCouponList : [],
+          customNumbers: selectionMode === 'custom' ? effectiveCustomList : [],
         }),
       });
       const data = await res.json();
@@ -323,7 +335,10 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       } else {
         setCustomCouponList([]);
         setCustomCouponInput('');
-        fetchLuckyDraw();
+        if (data.luckyDraw) {
+          setLuckyDraw(data.luckyDraw);
+        }
+        await fetchLuckyDraw();
         if (onRefreshState) onRefreshState();
         alert(`🎉 Success! Purchased ${finalQty} Lucky Draw coupon(s)!`);
       }
@@ -446,7 +461,9 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
     }
   };
 
-  const userTickets = luckyDraw?.tickets?.filter((t) => t.userId === currentUser.id) || [];
+  const userTickets = luckyDraw?.tickets?.filter(
+    (t) => t.userId === currentUser.id || t.userNodeId === currentUser.nodeId || t.userId === currentUser.nodeId
+  ) || [];
   const filteredAdminUsers = users.filter((u) =>
     u.name.toLowerCase().includes(adminSearchUser.toLowerCase()) ||
     u.nodeId.toLowerCase().includes(adminSearchUser.toLowerCase())
@@ -691,7 +708,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           <div className="bg-[#050a14] border border-slate-800 rounded-2xl p-3 flex items-center justify-between text-xs">
             <span className="text-slate-400">Your Wallet Balance:</span>
             <span className="text-emerald-400 font-bold text-sm">
-              ${(currentUser.depositBalance + currentUser.balance).toFixed(2)} USDT
+              ${((currentUser.depositBalance || 0) + (currentUser.winningBalance || 0) + (currentUser.balance || 0)).toFixed(2)} USDT
             </span>
           </div>
 

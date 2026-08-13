@@ -25,6 +25,7 @@ import {
   ColorPredictionResult,
   AviatorState,
   AviatorBet,
+  SpinReward,
 } from './src/types';
 
 const app = express();
@@ -108,15 +109,16 @@ const defaultSettings: SystemSettings = {
   tickerText:
     '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | BNB/USDT $680 (+1.9%) | 🚀 GLOBAL BOOSTING POOL CYCLE #142 ACTIVE | TOTAL DISTRIBUTED: $1,485,200 USDT ⚡',
   spinWheelRewards: [
-    { id: 'sp-1', label: '$1 USDT', amount: 1, probability: 30, color: '#10b981' },
-    { id: 'sp-2', label: '$2 USDT', amount: 2, probability: 25, color: '#06b6d4' },
-    { id: 'sp-3', label: '$5 USDT', amount: 5, probability: 15, color: '#a855f7' },
-    { id: 'sp-4', label: '$10 USDT', amount: 10, probability: 10, color: '#f59e0b' },
-    { id: 'sp-5', label: '$25 USDT', amount: 25, probability: 5, color: '#ef4444' },
-    { id: 'sp-6', label: '$50 MEGA', amount: 50, probability: 2, color: '#ec4899' },
-    { id: 'sp-7', label: 'Try Again', amount: 0, probability: 8, color: '#374151' },
-    { id: 'sp-8', label: 'Extra Spin', amount: 0, probability: 5, color: '#6366f1' },
+    { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151' },
+    { id: 'sp-2', label: '$0.20 USDT', amount: 0.20, probability: 25, color: '#06b6d4' },
+    { id: 'sp-3', label: '$0.50 USDT', amount: 0.50, probability: 15, color: '#10b981' },
+    { id: 'sp-4', label: '$1.00 USDT', amount: 1.00, probability: 10, color: '#8b5cf6' },
+    { id: 'sp-5', label: '$2.00 USDT', amount: 2.00, probability: 3, color: '#f59e0b' },
+    { id: 'sp-6', label: '$5.00 USDT', amount: 5.00, probability: 1.5, color: '#ec4899' },
+    { id: 'sp-7', label: '$10.00 BIG', amount: 10.00, probability: 0.4, color: '#ef4444' },
+    { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.00, probability: 0.1, color: '#eab308' },
   ],
+  spinTicketPrice: 1.0,
   spinWheelIntervalHours: 24,
   spinCreditsPerReset: 1,
   specialSponsorBonus: {
@@ -191,6 +193,52 @@ const defaultSettings: SystemSettings = {
       requiredVolume: 200000,
       icon: 'Zap',
       color: '#ff007f',
+    },
+  ],
+  heroBanners: [
+    {
+      id: 'hb-1',
+      badge: 'OFFICIAL CYBER MALL • TETHER MART',
+      title: 'Next-Gen DePIN & Web3 Mining Rigs',
+      subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets.',
+      discount: 'UP TO 35% OFF',
+      cta: 'Explore DePIN Rigs',
+      category: 'Mining Hardware',
+      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+      enabled: true,
+    },
+    {
+      id: 'hb-2',
+      badge: 'NEW ARRIVALS • WEB3 APPAREL',
+      title: 'TetherMart Official Cyberpunk Merch',
+      subtitle: 'Exclusive hoodies, embroidered polo tees & custom cap collections crafted with premium cotton blends.',
+      discount: 'BUY 1 GET 1 20% OFF',
+      cta: 'Shop Web3 Apparel',
+      category: 'Apparel & Merch',
+      image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80',
+      enabled: true,
+    },
+    {
+      id: 'hb-3',
+      badge: 'MILITARY-GRADE COLD STORAGE',
+      title: 'Unhackable Hardware Wallets & Vaults',
+      subtitle: 'Keep your USDT, Bitcoin & Ethereum bulletproof with certified offline storage devices & physical seed cards.',
+      discount: 'FREE EXPRESS AIR SHIPPING',
+      cta: 'Explore Cold Storage',
+      category: 'Hardware Wallets',
+      image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80',
+      enabled: true,
+    },
+    {
+      id: 'hb-4',
+      badge: 'HIGH-TECH CYBER GADGETS',
+      title: 'DePIN Electronics & Smart Devices',
+      subtitle: 'Encrypted communication gear, high-performance node power supplies, and Web3 smart electronics.',
+      discount: 'EARN UP TO 50% REBATE',
+      cta: 'Browse Gadgets',
+      category: 'Gadgets',
+      image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80',
+      enabled: true,
     },
   ],
 };
@@ -1310,10 +1358,35 @@ function loadFromSqlite() {
       }
     }
     ensureColorPredictionState();
+    ensureSpinWheelSettings();
 
     console.log(`✅ Loaded ${state.users.length} users, ${state.transactions.length} transactions from SQLite!`);
   } catch (err) {
     console.error('Failed to load from SQLite:', err);
+  }
+}
+
+function ensureSpinWheelSettings() {
+  const defaultProfitSlices: SpinReward[] = [
+    { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151' },
+    { id: 'sp-2', label: '$0.20 USDT', amount: 0.20, probability: 25, color: '#06b6d4' },
+    { id: 'sp-3', label: '$0.50 USDT', amount: 0.50, probability: 15, color: '#10b981' },
+    { id: 'sp-4', label: '$1.00 USDT', amount: 1.00, probability: 10, color: '#8b5cf6' },
+    { id: 'sp-5', label: '$2.00 USDT', amount: 2.00, probability: 3, color: '#f59e0b' },
+    { id: 'sp-6', label: '$5.00 USDT', amount: 5.00, probability: 1.5, color: '#ec4899' },
+    { id: 'sp-7', label: '$10.00 BIG', amount: 10.00, probability: 0.4, color: '#ef4444' },
+    { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.00, probability: 0.1, color: '#eab308' },
+  ];
+
+  if (!state.settings) {
+    state.settings = { ...defaultSettings };
+  }
+
+  const rewards = state.settings.spinWheelRewards;
+  if (!Array.isArray(rewards) || rewards.length === 0) {
+    state.settings.spinWheelRewards = defaultProfitSlices;
+    state.settings.spinTicketPrice = 1.0;
+    saveStore();
   }
 }
 
@@ -1334,6 +1407,7 @@ function loadStoreJson() {
     }
     ensureLuckyDrawPrizes();
     ensureColorPredictionState();
+    ensureSpinWheelSettings();
   } catch (err) {
     console.error('Failed to load JSON store:', err);
   }
@@ -1353,38 +1427,46 @@ function ensureColorPredictionState() {
   }
 }
 
-// Helper to deduct bet amount prioritizing Deposit Wallet first, then Winning Wallet, then Main Wallet
+// Helper to deduct bet amount prioritizing Winning Wallet first, then Deposit/Main Wallet
 function deductBetBalance(user: User, amount: number): boolean {
-  const depBal = user.depositBalance || 0;
-  const winBal = user.winningBalance || 0;
-  const mainBal = user.balance || 0;
-  const totalAvail = depBal + winBal + mainBal;
+  if (!user || amount <= 0) return false;
+
+  const winBal = Math.max(0, user.winningBalance || 0);
+  const depBal = Math.max(0, user.depositBalance || 0);
+  const mainBal = Math.max(0, user.balance || 0);
+  const totalAvail = winBal + depBal + mainBal;
 
   if (totalAvail < amount) {
     return false;
   }
 
   let rem = amount;
-  // 1. Deduct from Deposit Wallet first
-  if ((user.depositBalance || 0) >= rem) {
-    user.depositBalance -= rem;
+
+  // 1. Deduct from Winning Wallet FIRST
+  if (winBal >= rem) {
+    user.winningBalance = winBal - rem;
     rem = 0;
-  } else {
-    rem -= (user.depositBalance || 0);
-    user.depositBalance = 0;
+  } else if (winBal > 0) {
+    rem -= winBal;
+    user.winningBalance = 0;
+  }
 
-    // 2. Deduct remaining from Winning Wallet
-    if ((user.winningBalance || 0) >= rem) {
-      user.winningBalance -= rem;
+  // 2. Deduct remaining from Deposit Wallet (user.depositBalance)
+  if (rem > 0) {
+    const currentDep = Math.max(0, user.depositBalance || 0);
+    if (currentDep >= rem) {
+      user.depositBalance = currentDep - rem;
       rem = 0;
-    } else {
-      rem -= (user.winningBalance || 0);
-      user.winningBalance = 0;
-
-      // 3. Deduct remaining from Main Balance
-      user.balance = Math.max(0, (user.balance || 0) - rem);
-      rem = 0;
+    } else if (currentDep > 0) {
+      rem -= currentDep;
+      user.depositBalance = 0;
     }
+  }
+
+  // 3. Deduct remaining from Main Balance (user.balance / Deposit Wallet)
+  if (rem > 0) {
+    user.balance = Math.max(0, (user.balance || 0) - rem);
+    rem = 0;
   }
 
   return true;
@@ -2192,6 +2274,10 @@ app.post('/api/packages/buy', (req: Request, res: Response) => {
   user.packageActivatedAt = new Date().toISOString();
   user.packageExpiryDays = pkg.durationDays || 100;
 
+  // Award Bonus Spin Credits based on Package Value (1 spin per $10)
+  const pkgSpinBonus = Math.max(1, Math.floor(pkg.price / 10));
+  user.spinCredits = (user.spinCredits || 0) + pkgSpinBonus;
+
   // Create Package Purchase Transaction
   const pkgTx: Transaction = {
     id: `tx-${Date.now()}-pkg`,
@@ -2775,6 +2861,49 @@ app.post('/api/spin', (req: Request, res: Response) => {
   res.json({ success: true, winningReward, user });
 });
 
+// 8b. Buy Spin Tickets Endpoint
+app.post('/api/spin/buy-ticket', (req: Request, res: Response) => {
+  const user = getUserFromReq(req);
+  if (!user) return res.status(400).json({ error: 'User not logged in' });
+
+  const qty = parseInt(req.body.qty) || 1;
+  if (qty < 1 || qty > 100) {
+    return res.status(400).json({ error: 'Invalid quantity! Please select between 1 and 100 spin tickets.' });
+  }
+
+  const ticketPrice = state.settings.spinTicketPrice !== undefined ? Number(state.settings.spinTicketPrice) : 1.0;
+  const totalCost = qty * ticketPrice;
+
+  if ((user.balance || 0) < totalCost) {
+    return res.status(400).json({
+      error: `Insufficient balance! Total cost for ${qty} spin ticket(s) is $${totalCost.toFixed(2)}, but your current main balance is $${(user.balance || 0).toFixed(2)}.`,
+    });
+  }
+
+  // Deduct main balance and add spin credits
+  user.balance -= totalCost;
+  user.spinCredits = (user.spinCredits || 0) + qty;
+
+  state.transactions.unshift({
+    id: `tx-spin-buy-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'admin_adjust' as any,
+    amount: -totalCost,
+    status: 'completed',
+    notes: `Purchased ${qty} Spin Ticket(s) ($${totalCost.toFixed(2)}) @ $${ticketPrice.toFixed(2)}/spin`,
+    createdAt: new Date().toISOString(),
+  });
+
+  saveStore();
+  res.json({
+    success: true,
+    message: `Successfully purchased ${qty} Spin Credit(s)!`,
+    balance: user.balance,
+    spinCredits: user.spinCredits,
+  });
+});
+
 // Helper function to get team members up to depth level
 function getTeamMembersUpToLevel(rootUserId: string, maxLevelDepth: number = 0): { user: User; level: number }[] {
   const result: { user: User; level: number }[] = [];
@@ -2921,7 +3050,11 @@ function getReservedLast5Digits(): string | null {
 app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
   const { userId, quantity, customNumbers } = req.body;
   const qty = parseInt(quantity) || 1;
-  const user = state.users.find((u) => u.id === userId || u.id === state.activeUserId);
+  const reqUserId = userId || (req.headers['x-user-id'] as string);
+  const user = (reqUserId && state.users.find((u) => u.id === reqUserId || u.nodeId.toLowerCase() === reqUserId.toLowerCase()))
+               || getUserFromReq(req)
+               || state.users.find((u) => u.id === state.activeUserId)
+               || state.users[0];
 
   if (!user) return res.status(400).json({ error: 'User not found' });
   if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
@@ -2931,11 +3064,16 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
 
   const reservedLast5 = getReservedLast5Digits();
 
+  const existingTicketNumbers = new Set((state.luckyDraw.tickets || []).map((t) => t.ticketNumber));
+
   // Validate custom numbers if supplied
   const chosenNumbers: string[] = Array.isArray(customNumbers) ? customNumbers : [];
   for (const num of chosenNumbers) {
     if (num && !/^\d{6}$/.test(num)) {
       return res.status(400).json({ error: `Invalid coupon number '${num}'. Must be exactly 6 digits (000000 to 999999).` });
+    }
+    if (num && existingTicketNumbers.has(num)) {
+      return res.status(400).json({ error: `Coupon #${num} is already purchased! Please select a different 6-digit number.` });
     }
     if (num && reservedLast5 && num.endsWith(reservedLast5)) {
       return res.status(400).json({
@@ -2952,7 +3090,6 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
     });
   }
 
-  const existingTicketNumbers = new Set(state.luckyDraw.tickets.map((t) => t.ticketNumber));
   const newTickets: LuckyDrawTicket[] = [];
 
   for (let i = 0; i < qty; i++) {
@@ -3142,7 +3279,7 @@ app.get('/api/referral/agency-stats', (req: Request, res: Response) => {
   // Get recent turnover commission logs
   const turnoverLogs = state.transactions
     .filter((t) => t.userId === user.id && t.type === ('bet_turnover_commission' as any))
-    .slice(0, 30);
+    .slice(0, 50);
 
   res.json({
     success: true,
@@ -3485,7 +3622,7 @@ app.post('/api/color-prediction/bet', (req: Request, res: Response) => {
 
   if (!deductBetBalance(user, totalBet)) {
     const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
-    return res.status(400).json({ error: `Insufficient balance ($${totalAvail.toFixed(2)} total available). Deposit wallet is required for bets.` });
+    return res.status(400).json({ error: `Insufficient balance ($${totalAvail.toFixed(2)} USDT available).` });
   }
 
   const newBet: ColorPredictionBet = {
@@ -3642,7 +3779,7 @@ app.post('/api/aviator/bet', (req: Request, res: Response) => {
 
   if (!deductBetBalance(user, numAmount)) {
     const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
-    return res.status(400).json({ error: `Insufficient wallet balance ($${totalAvail.toFixed(2)} USDT available). Deposit or Winning wallet is required for bets.` });
+    return res.status(400).json({ error: `Insufficient wallet balance ($${totalAvail.toFixed(2)} USDT available).` });
   }
 
   const newBet: AviatorBet = {
@@ -3816,7 +3953,7 @@ app.post('/api/dragon-tiger/bet', (req: Request, res: Response) => {
   }
   if (!deductBetBalance(user, numAmount)) {
     const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
-    return res.status(400).json({ error: `Insufficient wallet balance ($${totalAvail.toFixed(2)} USDT available). Deposit wallet is required for bets.` });
+    return res.status(400).json({ error: `Insufficient wallet balance ($${totalAvail.toFixed(2)} USDT available).` });
   }
 
   // Determine winner based on Admin Control Settings
@@ -4070,6 +4207,30 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
     ...newSettings,
   };
 
+  if (newSettings.walletAddresses) {
+    mergedSettings.walletAddresses = {
+      ...state.settings.walletAddresses,
+      ...newSettings.walletAddresses,
+    };
+  }
+  if (newSettings.rates) {
+    mergedSettings.rates = {
+      ...state.settings.rates,
+      ...newSettings.rates,
+    };
+  }
+  if (newSettings.specialSponsorBonus) {
+    mergedSettings.specialSponsorBonus = {
+      ...state.settings.specialSponsorBonus,
+      ...newSettings.specialSponsorBonus,
+      enabled: Boolean(newSettings.specialSponsorBonus.enabled),
+      targetLevel: parseInt(newSettings.specialSponsorBonus.targetLevel as any) || 7,
+      matchingPercent: parseFloat(newSettings.specialSponsorBonus.matchingPercent as any) || 100,
+      requiredSelfPackagePrice: parseFloat(newSettings.specialSponsorBonus.requiredSelfPackagePrice as any) || 0,
+      requiredDirectsCount: parseInt(newSettings.specialSponsorBonus.requiredDirectsCount as any) || 0,
+    };
+  }
+
   // Sanitize spin wheel rewards
   if (Array.isArray(mergedSettings.spinWheelRewards)) {
     mergedSettings.spinWheelRewards = mergedSettings.spinWheelRewards.map((r, i) => ({
@@ -4080,6 +4241,21 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
       probability: typeof r.probability === 'number' ? r.probability : parseFloat(r.probability as any) || 0,
       minLevel: typeof r.minLevel === 'number' ? r.minLevel : parseInt(r.minLevel as any) || 0,
       color: r.color || '#10b981',
+    }));
+  }
+
+  // Sanitize hero banners
+  if (Array.isArray(mergedSettings.heroBanners)) {
+    mergedSettings.heroBanners = mergedSettings.heroBanners.map((b, i) => ({
+      id: b.id || `hb-${Date.now()}-${i}`,
+      badge: b.badge || 'PROMO BANNER',
+      title: b.title || 'Special Offer',
+      subtitle: b.subtitle || '',
+      discount: b.discount || '',
+      cta: b.cta || 'Explore',
+      category: b.category || 'All',
+      image: b.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+      enabled: b.enabled !== false,
     }));
   }
 
@@ -4123,6 +4299,9 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
   }
   if (mergedSettings.spinCreditsPerReset !== undefined) {
     mergedSettings.spinCreditsPerReset = parseInt(mergedSettings.spinCreditsPerReset as any) || 1;
+  }
+  if (mergedSettings.spinTicketPrice !== undefined) {
+    mergedSettings.spinTicketPrice = parseFloat(mergedSettings.spinTicketPrice as any) || 1.0;
   }
 
   if (mergedSettings.withdrawalFeePercent !== undefined) {
@@ -4307,6 +4486,10 @@ app.post('/api/admin/deposit/action', (req: Request, res: Response) => {
     if (user) {
       user.depositBalance = (user.depositBalance || 0) + dep.amount;
       user.hasFirstDepositApproved = true;
+
+      // Grant Deposit Bonus Spin Credits (1 spin per $10 deposited)
+      const depSpinBonus = Math.max(1, Math.floor(dep.amount / 10));
+      user.spinCredits = (user.spinCredits || 0) + depSpinBonus;
 
       state.transactions.unshift({
         id: `tx-${Date.now()}-dep-app`,

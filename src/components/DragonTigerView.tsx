@@ -141,8 +141,9 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
       return;
     }
 
-    if ((user?.balance || 0) < chipAmount) {
-      showToast(`Insufficient balance! Required: $${chipAmount.toFixed(2)} USDT`, 'error');
+    const totalAvail = (user?.balance || 0) + (user?.winningBalance || 0) + (user?.depositBalance || 0);
+    if (totalAvail < chipAmount) {
+      showToast(`Insufficient balance! Required: $${chipAmount.toFixed(2)} USDT (Available: $${totalAvail.toFixed(2)})`, 'error');
       return;
     }
 
@@ -151,7 +152,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
     setGameState('dealing');
 
     try {
-      const storedId = user?.id || localStorage.getItem('tp_user_id') || '';
+      const storedId = user?.id || user?.nodeId || localStorage.getItem('tp_user_id') || '';
       const res = await fetch('/api/dragon-tiger/bet', {
         method: 'POST',
         headers: {
@@ -225,10 +226,27 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
 
     // Deduct user balance locally & trigger state update
     if (isWin) {
-      user.balance += payout - chipAmount;
-      user.totalEarned += payout - chipAmount;
+      user.winningBalance = (user.winningBalance || 0) + (payout - chipAmount);
+      user.totalEarned = (user.totalEarned || 0) + (payout - chipAmount);
     } else {
-      user.balance -= chipAmount;
+      let rem = chipAmount;
+      if ((user.winningBalance || 0) >= rem) {
+        user.winningBalance = (user.winningBalance || 0) - rem;
+        rem = 0;
+      } else if ((user.winningBalance || 0) > 0) {
+        rem -= user.winningBalance;
+        user.winningBalance = 0;
+      }
+      if (rem > 0 && (user.depositBalance || 0) >= rem) {
+        user.depositBalance = (user.depositBalance || 0) - rem;
+        rem = 0;
+      } else if (rem > 0 && (user.depositBalance || 0) > 0) {
+        rem -= user.depositBalance;
+        user.depositBalance = 0;
+      }
+      if (rem > 0) {
+        user.balance = Math.max(0, (user.balance || 0) - rem);
+      }
     }
 
     const newHist: DragonTigerHistory = {

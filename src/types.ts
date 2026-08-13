@@ -210,6 +210,18 @@ export interface SpinReward {
   minLevel?: number;
 }
 
+export interface HeroBannerSlide {
+  id: string;
+  badge: string;
+  title: string;
+  subtitle: string;
+  discount: string;
+  cta: string;
+  category: string;
+  image: string;
+  enabled?: boolean;
+}
+
 export interface SystemSettings {
   packages: Package[];
   levelIncomePercentages: LevelIncomeConfig[];
@@ -237,7 +249,9 @@ export interface SystemSettings {
   spinWheelRewards: SpinReward[];
   spinWheelIntervalHours?: number;
   spinCreditsPerReset?: number;
+  spinTicketPrice?: number; // Cost per spin ticket in USDT (e.g., $1.00)
   specialSponsorBonus?: SpecialSponsorBonusConfig;
+  heroBanners?: HeroBannerSlide[];
   ranks: RankConfig[];
   smtp?: {
     host?: string;

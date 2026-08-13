@@ -6,6 +6,7 @@ import {
   Ticket,
   Users,
   ShoppingBag,
+  Disc,
   Menu,
 } from 'lucide-react';
 
@@ -31,6 +32,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       icon: LayoutDashboard,
     },
     {
+      id: 'spinwheel',
+      label: 'Spin Wheel',
+      icon: Disc,
+      isGold: true,
+      badge: user?.spinCredits ? `${user.spinCredits} SP` : 'WIN',
+    },
+    {
       id: 'colorprediction',
       label: 'WinGo',
       icon: Dices,
@@ -40,7 +48,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       id: 'dragontiger',
       label: 'Dragon/Tiger',
       icon: Flame,
-      isGold: true,
       badge: '2X',
     },
     {
@@ -73,7 +80,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       <div className="flex items-center justify-between max-w-lg mx-auto gap-0.5 overflow-x-auto no-scrollbar">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive =
+            activeTab === item.id ||
+            (item.id === 'spinwheel' && activeTab === 'rewards');
 
           return (
             <button

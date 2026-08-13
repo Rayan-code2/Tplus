@@ -585,15 +585,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 6. RECENT TRANSACTIONS ACTIVITY LOG */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-cyan-400" />
-          Recent Transaction Logs
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-cyan-400" />
+            Recent Transaction Logs
+          </h3>
+          <span className="text-xs text-slate-400 font-mono">
+            Showing {Math.min(userTransactions.length, 50)} of {userTransactions.length} Records
+          </span>
+        </div>
 
         <div className="bg-[#0b1424] border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-[#050911] text-slate-400 uppercase text-[10px]">
+              <thead className="bg-[#050911] text-slate-400 uppercase text-[10px] sticky top-0 z-10">
                 <tr>
                   <th className="p-3">Type</th>
                   <th className="p-3">Amount ($)</th>
@@ -610,7 +615,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  userTransactions.slice(0, 8).map((tx) => (
+                  userTransactions.slice(0, 50).map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-800/40">
                       <td className="p-3 font-semibold capitalize text-cyan-400">
                         {tx.type.replace('_', ' ')}

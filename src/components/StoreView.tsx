@@ -117,27 +117,83 @@ export const StoreView: React.FC<StoreViewProps> = ({
     }
   }, [quickViewProduct, checkoutProduct, isCartOpen]);
 
+  // Hero Carousel Banners Data (Dynamic from Admin Settings with fallback)
+  const configuredBanners = (settings?.heroBanners || []).filter((b) => b.enabled !== false);
+  const heroSlides = configuredBanners.length > 0
+    ? configuredBanners.map((b, i) => {
+        const colorGradients = [
+          { tagColor: 'border-cyan-500/40 text-cyan-300', btnGradient: 'from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)]' },
+          { tagColor: 'border-amber-500/40 text-amber-300', btnGradient: 'from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]' },
+          { tagColor: 'border-emerald-500/40 text-emerald-300', btnGradient: 'from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]' },
+          { tagColor: 'border-purple-500/40 text-purple-300', btnGradient: 'from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]' },
+        ];
+        const style = colorGradients[i % colorGradients.length];
+        return {
+          badge: b.badge || 'OFFICIAL PROMO • TETHER MART',
+          title: b.title || 'Exclusive Web3 Offer',
+          subtitle: b.subtitle || 'Discover premium items with instant USDT rewards and global shipping.',
+          discount: b.discount || 'SPECIAL OFFER',
+          cta: b.cta || 'Shop Now',
+          category: b.category || 'All',
+          image: b.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+          tagColor: style.tagColor,
+          btnGradient: style.btnGradient,
+        };
+      })
+    : [
+        {
+          badge: 'OFFICIAL CYBER MALL • TETHER MART',
+          title: 'Next-Gen DePIN & Web3 Mining Rigs',
+          subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets with instant USDT rewards.',
+          discount: 'UP TO 35% OFF',
+          cta: 'Explore DePIN Rigs',
+          category: 'Mining Hardware',
+          image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+          tagColor: 'border-cyan-500/40 text-cyan-300',
+          btnGradient: 'from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)]',
+        },
+        {
+          badge: 'NEW ARRIVALS • WEB3 APPAREL',
+          title: 'TetherMart Official Cyberpunk Merch',
+          subtitle: 'Exclusive hoodies, embroidered polo tees & custom cap collections crafted with premium cotton blends.',
+          discount: 'BUY 1 GET 1 20% OFF',
+          cta: 'Shop Web3 Apparel',
+          category: 'Apparel & Merch',
+          image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80',
+          tagColor: 'border-amber-500/40 text-amber-300',
+          btnGradient: 'from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]',
+        },
+        {
+          badge: 'MILITARY-GRADE COLD STORAGE',
+          title: 'Unhackable Hardware Wallets & Vaults',
+          subtitle: 'Keep your USDT, Bitcoin & Ethereum bulletproof with certified offline storage devices & physical seed cards.',
+          discount: 'FREE EXPRESS AIR SHIPPING',
+          cta: 'Explore Cold Storage',
+          category: 'Hardware Wallets',
+          image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80',
+          tagColor: 'border-emerald-500/40 text-emerald-300',
+          btnGradient: 'from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]',
+        },
+        {
+          badge: 'HIGH-TECH CYBER GADGETS',
+          title: 'DePIN Electronics & Smart Devices',
+          subtitle: 'Encrypted communication gear, high-performance node power supplies, and Web3 smart electronics.',
+          discount: 'EARN UP TO 50% REBATE',
+          cta: 'Browse Gadgets',
+          category: 'Gadgets',
+          image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80',
+          tagColor: 'border-purple-500/40 text-purple-300',
+          btnGradient: 'from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]',
+        },
+      ];
+
   // Auto Hero Slide Timer
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentHeroSlide((prev) => (prev + 1) % 3);
-    }, 6000);
+      setCurrentHeroSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
     return () => clearInterval(timer);
-  }, []);
-
-  // Auto Sliding Product Images Timer (Top Compact Banner)
-  useEffect(() => {
-    if (!products || products.length === 0) return;
-    const timer = setInterval(() => {
-      setProductSlideIndex((prev) => (prev + 1) % products.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [products]);
-
-  const currentSlidingProduct = products && products.length > 0 ? products[productSlideIndex % products.length] : null;
-  const slidingInrPrice = currentSlidingProduct
-    ? currentSlidingProduct.priceInr || currentSlidingProduct.priceUsdt * (settings.rates.usdtToInr || 100)
-    : 0;
+  }, [heroSlides.length]);
 
   const categories = [
     'All',
@@ -147,40 +203,6 @@ export const StoreView: React.FC<StoreViewProps> = ({
     'Gadgets',
     'DePIN Electronics',
     'Apparel & Merch',
-  ];
-
-  // Hero Carousel Banners Data
-  const heroSlides = [
-    {
-      badge: 'OFFICIAL CYBER MALL • EXCLUSIVE DEALS',
-      title: 'Next-Gen DePIN & Mining Hardware',
-      subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets.',
-      discount: 'UP TO 35% OFF',
-      cta: 'Explore DePIN Rigs',
-      bgGradient: 'from-cyan-950 via-[#0c182c] to-[#050911]',
-      accentColor: 'text-cyan-400',
-      category: 'Mining Hardware',
-    },
-    {
-      badge: 'NEW APPAREL COLLECTION',
-      title: 'TetherMart Official Web3 Merch',
-      subtitle: 'Cyberpunk hoodies, embroidered polo tees & custom caps crafted with premium cotton blends.',
-      discount: 'BUY 1 GET 1 20% OFF',
-      cta: 'Shop Merch',
-      bgGradient: 'from-amber-950 via-[#1f1508] to-[#050911]',
-      accentColor: 'text-amber-400',
-      category: 'Apparel & Merch',
-    },
-    {
-      badge: 'COLD STORAGE SECURITY',
-      title: 'Military-Grade Cold Wallets',
-      subtitle: 'Keep your USDT, Bitcoin & Ethereum unhackable with Ledger, Trezor & Keystone vaults.',
-      discount: 'FREE EXPRESS AIR SHIPPING',
-      cta: 'View Cold Storage',
-      bgGradient: 'from-emerald-950 via-[#0a1e16] to-[#050911]',
-      accentColor: 'text-emerald-400',
-      category: 'Hardware Wallets',
-    },
   ];
 
   // Filter & Sort Logic
@@ -398,108 +420,100 @@ export const StoreView: React.FC<StoreViewProps> = ({
         </div>
       </div>
 
-      {/* 2. AMAZON-STYLE FULL-BLEED SLIDING PRODUCT IMAGE BANNER BOX */}
-      {products.length > 0 && (
-        <div className="relative w-full h-48 sm:h-64 md:h-72 lg:h-80 rounded-2xl overflow-hidden border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.18)] bg-[#050911] group">
-          {/* Sliding Product Image Background */}
-          {currentSlidingProduct && (
-            <div
-              key={currentSlidingProduct.id}
-              className="relative w-full h-full cursor-pointer transition-all duration-700 ease-in-out"
-              onClick={() => handleOpenQuickView(currentSlidingProduct)}
-            >
-              {/* Product Image full fill */}
-              <img
-                src={currentSlidingProduct.image}
-                alt={currentSlidingProduct.title}
-                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
-              />
+      {/* 2. DUMMY PROMO HERO BANNER SLIDER BOX (NO DYNAMIC PRODUCT DATA FETCHING) */}
+      <div className="relative w-full h-52 sm:h-64 md:h-72 lg:h-80 rounded-2xl overflow-hidden border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.18)] bg-[#050911] group">
+        {heroSlides.map((slide, idx) => (
+          <div
+            key={idx}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+              idx === currentHeroSlide ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            {/* Background Dummy Promo Banner Image */}
+            <img
+              src={slide.image}
+              alt={slide.title}
+              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000"
+            />
 
-              {/* Gradient Dark Overlays for Amazon Aesthetic */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/60 pointer-events-none" />
+            {/* Dark Aesthetic Overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/30 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent pointer-events-none" />
 
-              {/* Floating Price & Product Title Tag (Bottom Left) */}
-              <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 space-y-1 font-mono max-w-[65%] pointer-events-none">
-                <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-black/75 backdrop-blur-md rounded-lg border border-cyan-500/40 text-cyan-300 text-[10px] sm:text-xs font-bold uppercase shadow-lg">
-                  <Sparkles className="w-3 h-3 text-amber-400" />
-                  <span>{currentSlidingProduct.category}</span>
+            {/* Banner Content (Badge, Title, Subtitle, Discount, CTA) */}
+            <div className="absolute inset-0 p-5 sm:p-8 flex flex-col justify-between z-10 font-mono">
+              {/* Top Row: Badge & Discount Pill */}
+              <div className="flex items-center justify-between gap-2">
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 bg-black/75 backdrop-blur-md rounded-lg border text-[10px] sm:text-xs font-bold uppercase tracking-wider ${slide.tagColor}`}>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{slide.badge}</span>
                 </div>
-                <h3 className="text-sm sm:text-lg md:text-xl font-black text-white line-clamp-1 drop-shadow-md">
-                  {currentSlidingProduct.title}
-                </h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-base sm:text-xl font-black text-emerald-400 drop-shadow">
-                    ${currentSlidingProduct.priceUsdt} USDT
-                  </span>
-                  <span className="text-xs text-slate-400 line-through hidden xs:inline">
-                    ${(currentSlidingProduct.priceUsdt * 1.25).toFixed(0)}
-                  </span>
+                <div className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-lg">
+                  {slide.discount}
                 </div>
               </div>
 
-              {/* Floating Buy Now Button (Bottom Right) */}
-              <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-20 font-mono">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenCheckout(currentSlidingProduct);
-                  }}
-                  className="px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs sm:text-sm rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.5)] flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 uppercase tracking-wider border border-amber-300/50"
-                >
-                  <span>Buy Now</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+              {/* Bottom Row: Title, Subtitle & Action Button */}
+              <div className="space-y-2 max-w-xl">
+                <h2 className="text-base sm:text-xl md:text-2xl font-black text-white leading-tight drop-shadow-md">
+                  {slide.title}
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 leading-relaxed font-sans">
+                  {slide.subtitle}
+                </p>
+                <div className="pt-1 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(slide.category);
+                      setActiveSubTab('store');
+                    }}
+                    className={`px-5 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 ${slide.btnGradient}`}
+                  >
+                    <span>{slide.cta}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
-          )}
-
-          {/* Left / Right Slide Navigation Arrow Buttons */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setProductSlideIndex((prev) => (prev - 1 + products.length) % products.length);
-            }}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-70 group-hover:opacity-100 transition shadow-lg"
-            title="Previous Product Image"
-          >
-            ‹
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setProductSlideIndex((prev) => (prev + 1) % products.length);
-            }}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-70 group-hover:opacity-100 transition shadow-lg"
-            title="Next Product Image"
-          >
-            ›
-          </button>
-
-          {/* Slide Dots Indicator Top Right */}
-          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-            {products.slice(0, 8).map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProductSlideIndex(idx);
-                }}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  productSlideIndex % products.length === idx
-                    ? 'w-4 bg-amber-400'
-                    : 'w-1.5 bg-white/40 hover:bg-white/70'
-                }`}
-              />
-            ))}
           </div>
+        ))}
+
+        {/* Previous / Next Slide Controls */}
+        <button
+          type="button"
+          onClick={() => setCurrentHeroSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)}
+          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-80 group-hover:opacity-100 transition shadow-lg text-lg font-bold"
+          title="Previous Banner"
+        >
+          ‹
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentHeroSlide((prev) => (prev + 1) % heroSlides.length)}
+          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-80 group-hover:opacity-100 transition shadow-lg text-lg font-bold"
+          title="Next Banner"
+        >
+          ›
+        </button>
+
+        {/* Slide Indicators */}
+        <div className="absolute bottom-3 right-4 z-20 flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+          {heroSlides.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setCurrentHeroSlide(idx)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                currentHeroSlide === idx
+                  ? 'w-5 bg-cyan-400'
+                  : 'w-1.5 bg-white/40 hover:bg-white/70'
+              }`}
+            />
+          ))}
         </div>
-      )}
+      </div>
 
       {/* MAIN STORE CONTENT VIEW */}
 
