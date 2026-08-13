@@ -839,7 +839,6 @@ async function initSqlite() {
         balance REAL,
         depositBalance REAL,
         upgradeBalance REAL,
-        sponsorAddress TEXT,
         winningBalance REAL,
         winningEarned REAL,
         totalEarned REAL,
@@ -926,43 +925,83 @@ async function initSqlite() {
       const userCols = db.exec("PRAGMA table_info(users)");
       if (userCols.length > 0) {
         const existingColNames = userCols[0].values.map((v: any) => v[1]);
-        const requiredCols: [string, string][] = [
-          ['password', 'TEXT DEFAULT "123456"'],
-          ['walletAddress', 'TEXT DEFAULT ""'],
-          ['sponsorId', 'TEXT DEFAULT ""'],
-          ['activePackageId', 'TEXT DEFAULT ""'],
-          ['packageActivatedAt', 'TEXT DEFAULT ""'],
-          ['packageExpiryDays', 'INTEGER DEFAULT 100'],
-          ['balance', 'REAL DEFAULT 0'],
-          ['depositBalance', 'REAL DEFAULT 0'],
-          ['upgradeBalance', 'REAL DEFAULT 0'],
-          ['winningBalance', 'REAL DEFAULT 0'],
-          ['winningEarned', 'REAL DEFAULT 0'],
-          ['totalEarned', 'REAL DEFAULT 0'],
-          ['roiEarned', 'REAL DEFAULT 0'],
-          ['levelEarned', 'REAL DEFAULT 0'],
-          ['sponsorEarned', 'REAL DEFAULT 0'],
-          ['rankEarned', 'REAL DEFAULT 0'],
-          ['boostingEarned', 'REAL DEFAULT 0'],
-          ['spinEarned', 'REAL DEFAULT 0'],
-          ['directReferralsCount', 'INTEGER DEFAULT 0'],
-          ['teamCount', 'INTEGER DEFAULT 0'],
-          ['teamVolume', 'REAL DEFAULT 0'],
-          ['rank', 'TEXT DEFAULT "Member"'],
-          ['status', 'TEXT DEFAULT "active"'],
-          ['registeredAt', 'TEXT DEFAULT ""'],
-          ['lastRoiClaimAt', 'TEXT DEFAULT ""'],
-          ['spinCredits', 'INTEGER DEFAULT 0'],
-          ['lastSpinAt', 'TEXT DEFAULT ""'],
-        ];
+        if (existingColNames.includes('sponsorAddress') || existingColNames.length !== 31) {
+          console.log('🔧 SQLite users table column mismatch detected. Recreating table structure...');
+          db.run('DROP TABLE IF EXISTS users;');
+          db.run(`
+            CREATE TABLE users (
+              id TEXT PRIMARY KEY,
+              nodeId TEXT,
+              name TEXT,
+              email TEXT,
+              password TEXT,
+              walletAddress TEXT,
+              sponsorId TEXT,
+              activePackageId TEXT,
+              packageActivatedAt TEXT,
+              packageExpiryDays INTEGER,
+              balance REAL,
+              depositBalance REAL,
+              upgradeBalance REAL,
+              winningBalance REAL,
+              winningEarned REAL,
+              totalEarned REAL,
+              roiEarned REAL,
+              levelEarned REAL,
+              sponsorEarned REAL,
+              rankEarned REAL,
+              boostingEarned REAL,
+              spinEarned REAL,
+              directReferralsCount INTEGER,
+              teamCount INTEGER,
+              teamVolume REAL,
+              rank TEXT,
+              status TEXT,
+              registeredAt TEXT,
+              lastRoiClaimAt TEXT,
+              spinCredits INTEGER,
+              lastSpinAt TEXT
+            );
+          `);
+        } else {
+          const requiredCols: [string, string][] = [
+            ['password', 'TEXT DEFAULT "123456"'],
+            ['walletAddress', 'TEXT DEFAULT ""'],
+            ['sponsorId', 'TEXT DEFAULT ""'],
+            ['activePackageId', 'TEXT DEFAULT ""'],
+            ['packageActivatedAt', 'TEXT DEFAULT ""'],
+            ['packageExpiryDays', 'INTEGER DEFAULT 100'],
+            ['balance', 'REAL DEFAULT 0'],
+            ['depositBalance', 'REAL DEFAULT 0'],
+            ['upgradeBalance', 'REAL DEFAULT 0'],
+            ['winningBalance', 'REAL DEFAULT 0'],
+            ['winningEarned', 'REAL DEFAULT 0'],
+            ['totalEarned', 'REAL DEFAULT 0'],
+            ['roiEarned', 'REAL DEFAULT 0'],
+            ['levelEarned', 'REAL DEFAULT 0'],
+            ['sponsorEarned', 'REAL DEFAULT 0'],
+            ['rankEarned', 'REAL DEFAULT 0'],
+            ['boostingEarned', 'REAL DEFAULT 0'],
+            ['spinEarned', 'REAL DEFAULT 0'],
+            ['directReferralsCount', 'INTEGER DEFAULT 0'],
+            ['teamCount', 'INTEGER DEFAULT 0'],
+            ['teamVolume', 'REAL DEFAULT 0'],
+            ['rank', 'TEXT DEFAULT "Member"'],
+            ['status', 'TEXT DEFAULT "active"'],
+            ['registeredAt', 'TEXT DEFAULT ""'],
+            ['lastRoiClaimAt', 'TEXT DEFAULT ""'],
+            ['spinCredits', 'INTEGER DEFAULT 0'],
+            ['lastSpinAt', 'TEXT DEFAULT ""'],
+          ];
 
-        for (const [colName, colType] of requiredCols) {
-          if (!existingColNames.includes(colName)) {
-            try {
-              db.run(`ALTER TABLE users ADD COLUMN ${colName} ${colType};`);
-              console.log(`🔧 Auto-migrated: Added missing column ${colName} to users table in SQLite.`);
-            } catch (colErr) {
-              // Ignore if already exists
+          for (const [colName, colType] of requiredCols) {
+            if (!existingColNames.includes(colName)) {
+              try {
+                db.run(`ALTER TABLE users ADD COLUMN ${colName} ${colType};`);
+                console.log(`🔧 Auto-migrated: Added missing column ${colName} to users table in SQLite.`);
+              } catch (colErr) {
+                // Ignore if already exists
+              }
             }
           }
         }
