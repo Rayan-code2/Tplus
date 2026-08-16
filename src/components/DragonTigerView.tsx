@@ -10,6 +10,11 @@ import {
   RotateCcw,
   Sparkles,
   Zap,
+  CheckCircle2,
+  XCircle,
+  ArrowUpRight,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -44,8 +49,11 @@ export interface DragonTigerBet {
   roundId: string;
   choice: BetChoice;
   amount: number;
+  dragonCard?: Card;
+  tigerCard?: Card;
   winner?: 'dragon' | 'tiger' | 'tie';
   payout: number;
+  cashbackAwarded?: number;
   status: 'pending' | 'won' | 'lost';
   createdAt: string;
 }
@@ -107,12 +115,66 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
     winAmount: number;
     betAmount: number;
     roundId: string;
+    cashbackAwarded?: number;
   } | null>(null);
 
   // Real total winnings calculated from actual won bets in Dragon Tiger
   const totalGameWinnings = myBets
     .filter((b) => b.status === 'won')
     .reduce((acc, b) => acc + (b.payout || 0), 0);
+
+  const getChoiceBadge = (choice: BetChoice) => {
+    switch (choice) {
+      case 'dragon':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-500/20 text-rose-300 border border-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.3)]">
+            <span className="text-sm">🐉</span>
+            <span>DRAGON</span>
+            <span className="text-[10px] text-rose-400 font-bold bg-rose-950/80 px-1.5 py-0.5 rounded">2.0X</span>
+          </span>
+        );
+      case 'tiger':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+            <span className="text-sm">🐅</span>
+            <span>TIGER</span>
+            <span className="text-[10px] text-amber-400 font-bold bg-amber-950/80 px-1.5 py-0.5 rounded">2.0X</span>
+          </span>
+        );
+      case 'tie':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+            <span className="text-sm">👔</span>
+            <span>TIE</span>
+            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/80 px-1.5 py-0.5 rounded">8.0X</span>
+          </span>
+        );
+    }
+  };
+
+  const getWinnerBadge = (winChoice?: 'dragon' | 'tiger' | 'tie') => {
+    if (!winChoice) return <span className="text-slate-500 font-mono">—</span>;
+    switch (winChoice) {
+      case 'dragon':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/40">
+            <span>🐉</span> Dragon
+          </span>
+        );
+      case 'tiger':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            <span>🐅</span> Tiger
+          </span>
+        );
+      case 'tie':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+            <span>👔</span> Tie (8X)
+          </span>
+        );
+    }
+  };
 
   // Fetch or setup local state
   useEffect(() => {
@@ -182,9 +244,12 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
             winAmount: data.isWin ? (data.payout || 0) : 0,
             betAmount: chipAmount,
             roundId: data.roundId || roundId,
+            cashbackAwarded: data.cashbackAwarded,
           });
           if (data.isWin) {
             showToast(`🎉 WINNER! You won $${data.payout.toFixed(2)} USDT on ${choice.toUpperCase()}!`, 'success');
+          } else if (data.cashbackAwarded > 0) {
+            showToast(`🛡️ 50% First 3 Bets Loss Shield Activated! +$${data.cashbackAwarded.toFixed(2)} USDT refunded!`, 'success');
           } else {
             showToast(`Round finished! Result: ${data.winner.toUpperCase()} won.`, 'error');
           }
@@ -263,6 +328,8 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
       roundId,
       choice,
       amount: chipAmount,
+      dragonCard: dCard,
+      tigerCard: tCard,
       winner: win,
       payout,
       status: isWin ? 'won' : 'lost',
@@ -675,54 +742,65 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
         </div>
       </div>
 
-      {/* Navigation Tabs (History / My Bets / Rules) */}
+      {/* Navigation Tabs (Round History / My Bets & Win-Loss / Rules) */}
       <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
         <button
           onClick={() => setActiveTab('game')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
             activeTab === 'game'
               ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
           }`}
         >
           <History className="w-4 h-4 text-rose-400" />
-          Round History
+          <span>Round History</span>
+          <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">
+            {history.length}
+          </span>
         </button>
 
         <button
           onClick={() => setActiveTab('mybets')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
             activeTab === 'mybets'
-              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
           }`}
         >
           <Trophy className="w-4 h-4 text-amber-400" />
-          My Bets ({myBets.length})
+          <span>My Bets & Win/Loss</span>
+          <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono">
+            {myBets.length}
+          </span>
+          {myBets.filter((b) => b.status === 'won').length > 0 && (
+            <span className="text-[10px] bg-emerald-500 text-black font-black px-2 py-0.5 rounded-full shadow">
+              {myBets.filter((b) => b.status === 'won').length} WON
+            </span>
+          )}
         </button>
 
         <button
           onClick={() => setActiveTab('rules')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
             activeTab === 'rules'
-              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
           }`}
         >
           <HelpCircle className="w-4 h-4 text-cyan-400" />
-          Card Rankings & Rules
+          <span>Card Rankings & Rules</span>
         </button>
       </div>
 
-      {/* Tab 1: Round History */}
+      {/* Tab 1: Round History with User Bet Tracking */}
       {activeTab === 'game' && (
         <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <History className="w-4 h-4 text-rose-400" />
-              Recent Rounds History
+              Recent Rounds History (Live Results)
             </h3>
-            <span className="text-xs text-slate-400 font-sans">Last 30 rounds</span>
+            <span className="text-xs text-slate-400 font-sans">Shows winner & your win/loss status</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -733,44 +811,107 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                   <th className="p-3">Dragon Card</th>
                   <th className="p-3">Tiger Card</th>
                   <th className="p-3">Winner Result</th>
+                  <th className="p-3">Your Bet & Outcome</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-200">
                 {history.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-slate-500 font-sans">
-                      No game history recorded yet.
+                    <td colSpan={5} className="p-8 text-center text-slate-500 font-sans">
+                      No game history recorded yet. Place a bet to start!
                     </td>
                   </tr>
                 ) : (
-                  history.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-800/30 transition">
-                      <td className="p-3 font-bold text-slate-300">#{row.roundId}</td>
-                      <td className="p-3 font-bold text-rose-400">
-                        {row.dragonCard.value} ({row.dragonCard.suit})
-                      </td>
-                      <td className="p-3 font-bold text-amber-400">
-                        {row.tigerCard.value} ({row.tigerCard.suit})
-                      </td>
-                      <td className="p-3">
-                        {row.winner === 'dragon' && (
-                          <span className="bg-rose-500/20 text-rose-400 border border-rose-500/40 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                            🐉 Dragon
+                  history.map((row) => {
+                    // Check if current user participated in this round
+                    const userBet = myBets.find((b) => b.roundId === row.roundId);
+                    const diff = Math.abs(row.dragonCard.rank - row.tigerCard.rank);
+
+                    return (
+                      <tr key={row.id} className="hover:bg-slate-800/30 transition">
+                        <td className="p-3 font-bold text-slate-300 whitespace-nowrap">
+                          #{row.roundId}
+                        </td>
+                        <td className="p-3 font-bold">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-mono ${
+                              row.dragonCard.color === 'red'
+                                ? 'bg-rose-950/30 border-rose-500/40 text-rose-400'
+                                : 'bg-slate-900 border-slate-700 text-slate-200'
+                            }`}
+                          >
+                            <span className="text-sm font-extrabold">{row.dragonCard.value}</span>
+                            <span className="text-base">{row.dragonCard.suit}</span>
+                            <span className="text-[10px] text-slate-400 opacity-80">({row.dragonCard.rank}pt)</span>
                           </span>
-                        )}
-                        {row.winner === 'tiger' && (
-                          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                            🐅 Tiger
+                        </td>
+                        <td className="p-3 font-bold">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-mono ${
+                              row.tigerCard.color === 'red'
+                                ? 'bg-amber-950/30 border-amber-500/40 text-amber-400'
+                                : 'bg-slate-900 border-slate-700 text-slate-200'
+                            }`}
+                          >
+                            <span className="text-sm font-extrabold">{row.tigerCard.value}</span>
+                            <span className="text-base">{row.tigerCard.suit}</span>
+                            <span className="text-[10px] text-slate-400 opacity-80">({row.tigerCard.rank}pt)</span>
                           </span>
-                        )}
-                        {row.winner === 'tie' && (
-                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                            👔 Tie (8x)
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {row.winner === 'dragon' && (
+                            <span className="bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                              🐉 Dragon Won {diff > 0 && <span className="text-[10px] text-rose-400 font-mono">(+{diff})</span>}
+                            </span>
+                          )}
+                          {row.winner === 'tiger' && (
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                              🐅 Tiger Won {diff > 0 && <span className="text-[10px] text-amber-400 font-mono">(+{diff})</span>}
+                            </span>
+                          )}
+                          {row.winner === 'tie' && (
+                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                              👔 Tie Match (8X)
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {userBet ? (
+                            userBet.status === 'won' ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-2.5 py-1 rounded-full text-xs font-black inline-flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                  YOU WON +${userBet.payout.toFixed(2)}
+                                </span>
+                                <span className="text-[10px] text-slate-400 uppercase font-bold">
+                                  (Bet: {userBet.choice})
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="bg-rose-500/20 text-rose-400 border border-rose-500/40 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                                    <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                    LOST -${userBet.amount.toFixed(2)}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 uppercase font-bold">
+                                    (Bet: {userBet.choice})
+                                  </span>
+                                </div>
+                                {userBet.cashbackAwarded && userBet.cashbackAwarded > 0 ? (
+                                  <span className="text-[10px] text-purple-300 font-bold flex items-center gap-1 pl-1">
+                                    🛡️ 50% Shield Refunded: +${userBet.cashbackAwarded.toFixed(2)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            )
+                          ) : (
+                            <span className="text-slate-500 text-xs italic">— No bet placed</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -778,64 +919,226 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
         </div>
       )}
 
-      {/* Tab 2: My Bets Log */}
+      {/* Tab 2: My Bets Log & Detailed Win/Loss Analysis */}
       {activeTab === 'mybets' && (
-        <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-400" />
-              My Bet Log & Wins
-            </h3>
-            <span className="text-xs text-slate-400 font-sans">Recent bets</span>
-          </div>
+        <div className="space-y-4">
+          {/* Real-time Performance & Win/Loss Summary Metrics */}
+          {(() => {
+            const totalBets = myBets.length;
+            const wonBets = myBets.filter((b) => b.status === 'won').length;
+            const lostBets = myBets.filter((b) => b.status === 'lost').length;
+            const winRate = totalBets > 0 ? ((wonBets / totalBets) * 100).toFixed(1) : '0.0';
+            const totalWagered = myBets.reduce((acc, b) => acc + (b.amount || 0), 0);
+            const totalPaid = myBets.filter((b) => b.status === 'won').reduce((acc, b) => acc + (b.payout || 0), 0);
+            const totalShieldRefunded = myBets.reduce((acc, b) => acc + (b.cashbackAwarded || 0), 0);
+            const netProfit = totalPaid + totalShieldRefunded - totalWagered;
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-[#070d18] text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                <tr>
-                  <th className="p-3">Round ID</th>
-                  <th className="p-3">Bet Choice</th>
-                  <th className="p-3">Stake</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Payout</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-200">
-                {myBets.length === 0 ? (
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-sans">
+                {/* Total Bets */}
+                <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                    <span>Total Bets</span>
+                    <History className="w-3.5 h-3.5 text-cyan-400" />
+                  </div>
+                  <div className="mt-2">
+                    <div className="text-xl sm:text-2xl font-black text-white font-mono">{totalBets}</div>
+                    <div className="text-[11px] text-slate-400 font-mono">Wagered: ${totalWagered.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                {/* Win Rate */}
+                <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                    <span>Wins & Win Rate</span>
+                    <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  </div>
+                  <div className="mt-2">
+                    <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono flex items-center gap-1.5">
+                      <span>{wonBets}</span>
+                      <span className="text-xs text-amber-300 font-bold bg-amber-500/20 px-1.5 py-0.5 rounded">
+                        {winRate}%
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono">Lost: {lostBets} bets</div>
+                  </div>
+                </div>
+
+                {/* Total Payout Won */}
+                <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                    <span>Total Payout Won</span>
+                    <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                  </div>
+                  <div className="mt-2">
+                    <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
+                      +${totalPaid.toFixed(2)}
+                    </div>
+                    <div className="text-[11px] text-purple-300 font-mono flex items-center gap-1">
+                      <Shield className="w-3 h-3 text-purple-400 inline" /> Shield: +${totalShieldRefunded.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Net Profit / Loss */}
+                <div className={`border rounded-2xl p-3.5 flex flex-col justify-between ${
+                  netProfit >= 0
+                    ? 'bg-emerald-950/20 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                    : 'bg-rose-950/20 border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.15)]'
+                }`}>
+                  <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                    <span>Net Profit / Loss</span>
+                    {netProfit >= 0 ? (
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <div className={`text-xl sm:text-2xl font-black font-mono ${
+                      netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {netProfit >= 0 ? `+$${netProfit.toFixed(2)}` : `-$${Math.abs(netProfit).toFixed(2)}`}
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono">
+                      {netProfit >= 0 ? 'In Profit 🚀' : 'Net Deficit'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Detailed Bet Log Table */}
+          <div className="bg-[#0b1320] border border-slate-800 rounded-2xl p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-400" />
+                My Bet History & Detailed Win/Loss Records
+              </h3>
+              <span className="text-xs text-slate-400 font-sans">Sorted by latest deal</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-[#070d18] text-slate-400 uppercase tracking-wider border-b border-slate-800">
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500 font-sans">
-                      You haven't placed any bets yet in Dragon vs Tiger.
-                    </td>
+                    <th className="p-3">Round ID & Time</th>
+                    <th className="p-3">Your Selection</th>
+                    <th className="p-3">Deal Cards & Result</th>
+                    <th className="p-3">Stake</th>
+                    <th className="p-3">Win / Loss Status</th>
+                    <th className="p-3">Payout & Return</th>
                   </tr>
-                ) : (
-                  myBets.map((bet) => (
-                    <tr key={bet.id} className="hover:bg-slate-800/30 transition">
-                      <td className="p-3 font-bold text-slate-300">#{bet.roundId}</td>
-                      <td className="p-3 uppercase font-extrabold text-cyan-300">{bet.choice}</td>
-                      <td className="p-3 font-bold text-white">${bet.amount.toFixed(2)}</td>
-                      <td className="p-3">
-                        {bet.status === 'won' ? (
-                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                            WON
-                          </span>
-                        ) : (
-                          <span className="bg-slate-800 text-slate-400 border border-slate-700 px-2.5 py-0.5 rounded-full text-xs font-medium">
-                            Lost
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3 font-bold">
-                        {bet.status === 'won' ? (
-                          <span className="text-emerald-400 font-extrabold">+${bet.payout.toFixed(2)}</span>
-                        ) : (
-                          <span className="text-slate-500">$0.00</span>
-                        )}
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                  {myBets.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-500 font-sans">
+                        You haven't placed any bets yet in Dragon vs Tiger. Place a bet on Dragon, Tiger, or Tie!
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    myBets.map((bet) => {
+                      const formattedTime = bet.createdAt
+                        ? new Date(bet.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                        : 'Recent';
+
+                      return (
+                        <tr key={bet.id} className="hover:bg-slate-800/30 transition">
+                          {/* Round ID & Time */}
+                          <td className="p-3">
+                            <div className="font-bold text-slate-200">#{bet.roundId}</div>
+                            <div className="text-[10px] text-slate-400 font-sans">{formattedTime}</div>
+                          </td>
+
+                          {/* Your Selection */}
+                          <td className="p-3">
+                            {getChoiceBadge(bet.choice)}
+                          </td>
+
+                          {/* Cards & Outcome */}
+                          <td className="p-3">
+                            {bet.dragonCard && bet.tigerCard ? (
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5 font-mono text-xs">
+                                  <span className={bet.dragonCard.color === 'red' ? 'text-rose-400 font-bold' : 'text-slate-200 font-bold'}>
+                                    🐉 {bet.dragonCard.value}{bet.dragonCard.suit} ({bet.dragonCard.rank})
+                                  </span>
+                                  <span className="text-slate-500">vs</span>
+                                  <span className={bet.tigerCard.color === 'red' ? 'text-amber-400 font-bold' : 'text-slate-200 font-bold'}>
+                                    🐅 {bet.tigerCard.value}{bet.tigerCard.suit} ({bet.tigerCard.rank})
+                                  </span>
+                                </div>
+                                <div className="text-[11px]">
+                                  {getWinnerBadge(bet.winner)}
+                                </div>
+                              </div>
+                            ) : (
+                              <div>{getWinnerBadge(bet.winner)}</div>
+                            )}
+                          </td>
+
+                          {/* Stake */}
+                          <td className="p-3 font-bold text-white font-mono">
+                            ${bet.amount.toFixed(2)}
+                          </td>
+
+                          {/* Win / Loss Status */}
+                          <td className="p-3">
+                            {bet.status === 'won' ? (
+                              <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-3 py-1 rounded-full text-xs font-black inline-flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                🏆 WON
+                              </span>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                <span className="bg-rose-500/20 text-rose-400 border border-rose-500/40 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5">
+                                  <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                  LOST
+                                </span>
+                                {bet.cashbackAwarded && bet.cashbackAwarded > 0 ? (
+                                  <span className="text-[10px] bg-purple-950/60 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                                    🛡️ 50% Shield Refunded: +${bet.cashbackAwarded.toFixed(2)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Payout & Return */}
+                          <td className="p-3 font-mono">
+                            {bet.status === 'won' ? (
+                              <div>
+                                <div className="text-emerald-400 font-black text-sm">
+                                  +${bet.payout.toFixed(2)}
+                                </div>
+                                <div className="text-[10px] text-emerald-300/80 font-bold">
+                                  Profit: +${(bet.payout - bet.amount).toFixed(2)}
+                                </div>
+                              </div>
+                            ) : bet.cashbackAwarded && bet.cashbackAwarded > 0 ? (
+                              <div>
+                                <div className="text-rose-400 font-bold text-xs line-through">
+                                  -${bet.amount.toFixed(2)}
+                                </div>
+                                <div className="text-purple-300 font-black text-xs">
+                                  +${bet.cashbackAwarded.toFixed(2)} Refund
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-rose-400 font-bold text-xs">
+                                -${bet.amount.toFixed(2)}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -949,13 +1252,19 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="bg-slate-900/80 border-2 border-slate-700/80 rounded-3xl p-6 space-y-2">
+                <div className="bg-slate-900/80 border-2 border-slate-700/80 rounded-3xl p-6 space-y-3">
                   <p className="text-xl md:text-2xl font-black text-rose-400 uppercase tracking-widest">
                     NO WIN THIS ROUND
                   </p>
                   <p className="text-xs md:text-sm text-slate-300 font-medium">
-                    Spin again in the next round for a chance to win big rewards!
+                    Play again in the next round for a chance to win big rewards!
                   </p>
+                  {resultModal.cashbackAwarded && resultModal.cashbackAwarded > 0 ? (
+                    <div className="bg-purple-950/60 border border-purple-500/50 rounded-2xl p-3.5 flex items-center justify-center gap-2.5 text-purple-300 text-xs md:text-sm font-bold">
+                      <Shield className="w-5 h-5 text-purple-400 shrink-0" />
+                      <span>🛡️ First 3 Bets 50% Loss Shield: +${resultModal.cashbackAwarded.toFixed(2)} USDT Refunded!</span>
+                    </div>
+                  ) : null}
                 </div>
               )}
 

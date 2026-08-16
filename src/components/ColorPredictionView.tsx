@@ -282,6 +282,30 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
         </div>
       </div>
 
+      {/* 50% Loss Shield Promo Card */}
+      <div className="bg-gradient-to-r from-purple-900/30 via-indigo-900/20 to-cyan-900/30 border border-purple-500/40 rounded-2xl p-3.5 px-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
+        <div className="flex items-center gap-3 text-center sm:text-left">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)] shrink-0">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs font-black text-purple-300 uppercase tracking-wide flex items-center justify-center sm:justify-start gap-1.5">
+              <span>🛡️ VIP Player Protection: 50% Loss Shield</span>
+              <span className="text-[10px] bg-purple-500 text-white font-black px-1.5 py-0.2 rounded-full">ACTIVE</span>
+            </div>
+            <div className="text-[11px] text-slate-300 font-sans">
+              Play worry-free! If your prediction misses on your first 3 loss bets, <b>50% of your stake is instantly refunded</b> back to your Fund Wallet.
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => setActiveTab('rules')}
+          className="text-xs font-bold text-cyan-400 hover:text-cyan-300 underline underline-offset-4 whitespace-nowrap"
+        >
+          View Rules →
+        </button>
+      </div>
+
       {/* Main Game Stage Card */}
       <div className="bg-[#0b1320] border border-cyan-500/20 rounded-3xl p-4 md:p-6 space-y-6 shadow-xl relative overflow-hidden">
         
@@ -621,14 +645,23 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
                           </span>
                         )}
                         {bet.status === 'lost' && (
-                          <span className="bg-slate-800 text-slate-400 border border-slate-700 px-2.5 py-0.5 rounded-full text-xs font-medium">
-                            Lost
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="bg-slate-800 text-slate-400 border border-slate-700 px-2.5 py-0.5 rounded-full text-xs font-medium w-max">
+                              Lost
+                            </span>
+                            {bet.cashbackAwarded && bet.cashbackAwarded > 0 && (
+                              <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-md font-bold flex items-center gap-1 w-max">
+                                🛡️ +${bet.cashbackAwarded.toFixed(2)} Shield Refund
+                              </span>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="p-3 font-bold">
                         {bet.status === 'won' ? (
                           <span className="text-emerald-400 font-extrabold">+${bet.payout.toFixed(2)}</span>
+                        ) : bet.cashbackAwarded && bet.cashbackAwarded > 0 ? (
+                          <span className="text-purple-400 font-bold">+${bet.cashbackAwarded.toFixed(2)} (50% Refund)</span>
                         ) : bet.status === 'pending' ? (
                           <span className="text-slate-500">Calculating...</span>
                         ) : (
@@ -657,7 +690,18 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+            {/* 50% Loss Shield Rule Box */}
+            <div className="md:col-span-2 bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-purple-950/40 border border-purple-500/40 rounded-xl p-4 space-y-2">
+              <div className="text-purple-300 font-bold text-sm flex items-center gap-2">
+                <Shield className="w-4 h-4 text-purple-400" />
+                🛡️ 50% LOSS SHIELD (FIRST 3 LOSSES PROTECTION)
+              </div>
+              <p className="text-slate-200 font-sans leading-relaxed text-xs">
+                To ensure a risk-free gaming experience for new players, if any of your <strong>first 3 losing bets</strong> misses, the platform automatically credits <strong>50% of your lost bet back to your Fund Wallet</strong> as a safety shield bonus!
+              </p>
+            </div>
+
             <div className="bg-[#070d18] border border-emerald-500/30 rounded-xl p-4 space-y-2">
               <div className="text-emerald-400 font-bold text-sm flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-emerald-500" />
@@ -916,6 +960,16 @@ export const ColorPredictionView: React.FC<ColorPredictionViewProps> = ({
                   <span className="text-slate-400 font-semibold">Total Bet Placed:</span>
                   <span className="text-white font-extrabold">${resultPopup.bet.totalBet.toFixed(2)} USDT</span>
                 </div>
+
+                {resultPopup.bet.cashbackAwarded && resultPopup.bet.cashbackAwarded > 0 && (
+                  <div className="bg-purple-500/20 border border-purple-500/40 rounded-xl p-2.5 flex items-center justify-between text-xs text-purple-200 mt-2">
+                    <span className="font-bold flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-purple-400" />
+                      50% Loss Shield Activated
+                    </span>
+                    <span className="font-extrabold text-purple-300">+${resultPopup.bet.cashbackAwarded.toFixed(2)} Refunded</span>
+                  </div>
+                )}
               </div>
 
               {/* Action Button */}

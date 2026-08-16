@@ -32,6 +32,8 @@ interface DashboardViewProps {
   onOpenDeposit: () => void;
   onOpenWithdraw: () => void;
   onSelectTab?: (tab: string) => void;
+  onDailyCheckin?: () => Promise<void>;
+  onOpenTournament?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -43,11 +45,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenDeposit,
   onOpenWithdraw,
   onSelectTab,
+  onDailyCheckin,
+  onOpenTournament,
 }) => {
   const [copiedRef, setCopiedRef] = useState(false);
   const [buyingPkgId, setBuyingPkgId] = useState<string | null>(null);
   const [claimingRoi, setClaimingRoi] = useState(false);
   const [liveAccruedRoi, setLiveAccruedRoi] = useState<number>(0);
+  const [checkingIn, setCheckingIn] = useState(false);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const lastCheckinDate = user.lastDailyCheckinAt ? new Date(user.lastDailyCheckinAt).toISOString().split('T')[0] : null;
+  const isAlreadyCheckedInToday = lastCheckinDate === todayStr;
+
+  const handleCheckinClick = async () => {
+    if (isAlreadyCheckedInToday || checkingIn || !onDailyCheckin) return;
+    setCheckingIn(true);
+    try {
+      await onDailyCheckin();
+    } finally {
+      setCheckingIn(false);
+    }
+  };
 
   const activePackage = settings?.packages?.find((p) => p.id === user?.activePackageId);
 
@@ -101,6 +120,73 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-8 font-mono pb-12">
+      {/* 0. PROMINENT DAILY CHECK-IN & TOURNAMENT POT DASHBOARD BANNER */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Daily Check-In Banner */}
+        <div className="bg-gradient-to-r from-[#0d1f35] to-[#071321] border border-cyan-500/40 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[0_0_20px_rgba(6,182,212,0.15)] relative overflow-hidden">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="bg-cyan-500/20 text-cyan-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border border-cyan-500/40">
+                Daily Free Spin
+              </span>
+              <span className="text-[11px] text-amber-400 font-bold">
+                🔥 Streak: {user.dailyCheckinStreak || 0} Days
+              </span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black text-white">
+              Daily Check-In: <span className="text-cyan-400">1 Free Spin Ticket</span>
+            </h3>
+            <p className="text-[11px] text-slate-300 font-sans">
+              Claim your free spin daily to win up to $50.00 USDT instant!
+            </p>
+          </div>
+
+          <button
+            onClick={handleCheckinClick}
+            disabled={isAlreadyCheckedInToday || checkingIn}
+            className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition shrink-0 ${
+              isAlreadyCheckedInToday
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-pulse'
+            }`}
+          >
+            {checkingIn ? 'Claiming...' : isAlreadyCheckedInToday ? '✓ Claimed Today' : '🎁 Claim Free Spin'}
+          </button>
+        </div>
+
+        {/* Daily Top Bettor Tournament & Live Pot Widget */}
+        <div
+          onClick={onOpenTournament}
+          className="bg-gradient-to-r from-[#201503] via-[#2d1e05] to-[#120b02] border border-amber-500/50 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[0_0_20px_rgba(245,158,11,0.2)] cursor-pointer hover:border-amber-400 transition group"
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="bg-amber-500/20 text-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border border-amber-500/40 flex items-center gap-1">
+                <Trophy className="w-3 h-3 text-amber-400" />
+                Live 24h Championship
+              </span>
+              <span className="text-[10px] text-yellow-300 font-mono animate-pulse">● LIVE</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black text-white group-hover:text-yellow-300 transition">
+              Daily Top Bettor Tournament
+            </h3>
+            <p className="text-[11px] text-amber-200/80 font-sans">
+              Guaranteed Pot $250+ | Live Leaderboard & Instant Prizes
+            </p>
+          </div>
+
+          <div className="text-right shrink-0">
+            <span className="text-[9px] text-amber-400 font-bold uppercase block">Total Pot</span>
+            <div className="text-lg sm:text-xl font-black text-white">
+              $250+ <span className="text-xs text-amber-400">USDT</span>
+            </div>
+            <span className="text-[10px] text-amber-300 font-bold group-hover:translate-x-1 inline-flex items-center gap-0.5 transition">
+              View Pot →
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* 1. TOP WALLET CARDS OVERVIEW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Deposit Wallet (Fund Balance) */}

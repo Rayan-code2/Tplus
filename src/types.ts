@@ -43,6 +43,9 @@ export interface User {
   hasFirstDepositApproved?: boolean;
   levelTurnover?: { l1: number; l2: number; l3: number; l4: number; l5: number };
   levelCommission?: { l1: number; l2: number; l3: number; l4: number; l5: number };
+  lastDailyCheckinAt?: string | null;
+  dailyCheckinStreak?: number;
+  totalDeposited?: number;
 }
 
 export interface Package {
@@ -222,6 +225,20 @@ export interface HeroBannerSlide {
   enabled?: boolean;
 }
 
+export interface TournamentPrizeTier {
+  rank: number;
+  percent: number;
+}
+
+export interface DailyTournamentConfig {
+  enabled: boolean;
+  basePot: number; // e.g. 250 USDT
+  turnoverContributionPercent: number; // e.g. 5%
+  minWagerToQualify: number; // e.g. 10 USDT
+  title?: string;
+  prizeDistribution: TournamentPrizeTier[];
+}
+
 export interface SystemSettings {
   packages: Package[];
   levelIncomePercentages: LevelIncomeConfig[];
@@ -253,6 +270,7 @@ export interface SystemSettings {
   specialSponsorBonus?: SpecialSponsorBonusConfig;
   heroBanners?: HeroBannerSlide[];
   ranks: RankConfig[];
+  dailyTournament?: DailyTournamentConfig;
   smtp?: {
     host?: string;
     port?: number;
@@ -340,6 +358,7 @@ export interface ColorPredictionBet {
   totalBet: number;
   payout: number;
   status: 'pending' | 'won' | 'lost';
+  cashbackAwarded?: number;
   createdAt: string;
 }
 
@@ -356,9 +375,59 @@ export interface ColorPredictionState {
   periodDurationSeconds: number; // 60s (1 min Win Go)
   startTime: number; // Date.now() when period started
   forcedNextNumber: number | null; // Admin forced result (0-9)
-  adminMode?: 'lowest_payout' | 'random' | 'manual'; // Risk management mode
+  adminMode?: 'lowest_payout' | 'smart_retention_60_40' | 'random' | 'manual'; // Risk management mode
   bets: ColorPredictionBet[];
   history: ColorPredictionResult[];
+}
+
+export interface DragonTigerCard {
+  suit: '♠' | '♥' | '♦' | '♣';
+  value: string; // 'A', '2'...'10', 'J', 'Q', 'K'
+  rank: number; // 1 to 13
+  color: 'red' | 'black';
+}
+
+export interface DragonTigerBet {
+  id: string;
+  userId?: string;
+  userNodeId?: string;
+  userName?: string;
+  roundId: string;
+  choice: 'dragon' | 'tiger' | 'tie';
+  amount: number;
+  dragonCard?: DragonTigerCard;
+  tigerCard?: DragonTigerCard;
+  winner?: 'dragon' | 'tiger' | 'tie';
+  payout: number;
+  cashbackAwarded?: number;
+  status: 'pending' | 'won' | 'lost';
+  createdAt: string;
+}
+
+export interface DragonTigerHistory {
+  id: string;
+  roundId: string;
+  dragonCard: DragonTigerCard;
+  tigerCard: DragonTigerCard;
+  winner: 'dragon' | 'tiger' | 'tie';
+  completedAt: string;
+}
+
+export interface DragonTigerAdminStats {
+  adminMode: 'lowest_payout' | 'smart_retention_60_40' | 'random' | 'manual';
+  forcedWinner: 'dragon' | 'tiger' | 'tie' | null;
+  totalStakes: number;
+  dragonStakes: number;
+  tigerStakes: number;
+  tieStakes: number;
+  dragonPayout: number;
+  tigerPayout: number;
+  tiePayout: number;
+  projectedLowestWinner: 'dragon' | 'tiger' | 'tie';
+  projectedLowestPayout: number;
+  projected6040Winner: 'dragon' | 'tiger' | 'tie';
+  projected6040Payout: number;
+  recentBetsCount: number;
 }
 
 export interface AviatorBet {
@@ -386,4 +455,37 @@ export interface AviatorState {
   forcedNextCrash: number | null;
   adminMode: 'lowest_payout' | 'random' | 'manual';
 }
+
+export interface TournamentLeaderboardItem {
+  rank: number;
+  userId: string;
+  userNodeId: string;
+  userName: string;
+  totalWagered: number;
+  betsCount: number;
+  totalWon: number;
+  projectedPrize: number;
+  badge?: string;
+}
+
+export interface DailyTournamentState {
+  tournamentId: string;
+  date: string;
+  title: string;
+  totalPot: number; // dynamically grows with wager turnover
+  basePot: number;
+  participantCount: number;
+  totalBetsPlaced: number;
+  totalWagerVolume: number;
+  endsAt: string; // ISO string for end of day countdown
+  leaderboard: TournamentLeaderboardItem[];
+  prizeBreakdown: { rank: number; percent: number; minPrize: number }[];
+  userStats?: {
+    rank: number | null;
+    totalWagered: number;
+    betsCount: number;
+    projectedPrize: number;
+  };
+}
+
 

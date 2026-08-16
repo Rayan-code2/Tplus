@@ -21,6 +21,7 @@ import {
   Menu,
   PlusCircle,
   ArrowUpRight,
+  MoreVertical,
 } from 'lucide-react';
 import { User, SystemSettings } from '../types';
 
@@ -54,6 +55,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onToggleMobileDrawer,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [showThreeDotMenu, setShowThreeDotMenu] = useState(false);
 
   // Change Password Modal State
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -77,14 +79,19 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
     try {
       const res = await fetch('/api/user/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
         body: JSON.stringify({
+          userId: user.id,
           currentPassword: currentPassInput,
           newPassword: newPassInput,
         }),
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Failed to change password');
+      user.password = newPassInput.trim();
       setPassSuccess(data.message || 'Password changed successfully!');
       setTimeout(() => {
         setShowPasswordModal(false);
@@ -204,8 +211,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             </button>
           )}
 
-          {/* Account Security & Logout Button */}
-          <div className="flex items-center gap-1.5 font-mono text-xs">
+          {/* Account Security & 3-Dot Options Menu */}
+          <div className="flex items-center gap-1.5 font-mono text-xs relative">
             <button
               onClick={() => setShowPasswordModal(true)}
               className="p-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 transition flex items-center justify-center"
@@ -214,10 +221,89 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               <Key className="w-4 h-4 text-cyan-400" />
             </button>
 
+            {/* 3-Dot Overflow Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowThreeDotMenu(!showThreeDotMenu)}
+                className={`p-1.5 rounded-xl border transition flex items-center justify-center ${
+                  showThreeDotMenu
+                    ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                    : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:border-slate-600'
+                }`}
+                title="Account & Session Menu"
+              >
+                <MoreVertical className="w-4 h-4 text-cyan-400" />
+              </button>
+
+              {/* 3-Dot Dropdown Overlay & Popup */}
+              {showThreeDotMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowThreeDotMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-56 bg-[#080e18] border border-cyan-500/40 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] py-2 z-50 font-mono text-xs backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3 py-2 border-b border-slate-800/80 mb-1">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Node Account</span>
+                      <span className="text-cyan-400 font-bold truncate block">{user.nodeId}</span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        onOpenDeposit();
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-emerald-500/10 hover:text-emerald-300 text-slate-300 flex items-center gap-2.5 transition"
+                    >
+                      <Wallet className="w-4 h-4 text-emerald-400" />
+                      <span>Deposit Funds</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        onOpenWithdraw();
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-cyan-500/10 hover:text-cyan-300 text-slate-300 flex items-center gap-2.5 transition"
+                    >
+                      <ArrowUpRight className="w-4 h-4 text-cyan-400" />
+                      <span>Withdraw Funds</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        setShowPasswordModal(true);
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-slate-800 hover:text-cyan-300 text-slate-300 flex items-center gap-2.5 transition"
+                    >
+                      <Key className="w-4 h-4 text-amber-400" />
+                      <span>Change Password</span>
+                    </button>
+
+                    {onLogout && (
+                      <div className="pt-1 mt-1 border-t border-slate-800/80">
+                        <button
+                          onClick={() => {
+                            setShowThreeDotMenu(false);
+                            onLogout();
+                          }}
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-red-500/20 text-red-400 font-bold flex items-center gap-2.5 transition"
+                        >
+                          <LogOut className="w-4 h-4 text-red-400" />
+                          <span>Logout Account</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
             {onLogout && (
               <button
                 onClick={onLogout}
-                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/40 transition shadow-[0_0_10px_rgba(239,68,68,0.15)]"
+                className="hidden sm:flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/40 transition shadow-[0_0_10px_rgba(239,68,68,0.15)]"
                 title="Logout"
               >
                 <LogOut className="w-3.5 h-3.5" />

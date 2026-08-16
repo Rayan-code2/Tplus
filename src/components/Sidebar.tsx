@@ -13,6 +13,8 @@ import {
   Dices,
   Flame,
   X,
+  Trophy,
+  LogOut,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -23,6 +25,8 @@ interface SidebarProps {
   isAdminView: boolean;
   isMobileDrawerOpen?: boolean;
   onCloseMobileDrawer?: () => void;
+  onOpenTournament?: () => void;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -32,6 +36,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isAdminView,
   isMobileDrawerOpen,
   onCloseMobileDrawer,
+  onOpenTournament,
+  onLogout,
 }) => {
   const navItems = [
     {
@@ -39,6 +45,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Dashboard',
       icon: LayoutDashboard,
       badge: 'Mine ROI',
+    },
+    {
+      id: 'tournament',
+      label: 'Daily Tournament',
+      icon: Trophy,
+      badge: '$250+ Pot',
+      highlight: true,
+      customAction: true,
     },
     {
       id: 'matrix',
@@ -102,6 +116,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const handleSelect = (tabId: string) => {
+    if (tabId === 'tournament') {
+      if (onOpenTournament) onOpenTournament();
+      if (onCloseMobileDrawer) onCloseMobileDrawer();
+      return;
+    }
     setActiveTab(tabId);
     if (onCloseMobileDrawer) onCloseMobileDrawer();
   };
@@ -208,8 +227,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Network Status Footer */}
-      <div className="pt-6 border-t border-slate-800/80 text-[11px] text-slate-500 space-y-1">
+      {/* Network Status Footer & Logout */}
+      <div className="pt-4 border-t border-slate-800/80 text-[11px] text-slate-500 space-y-2">
         <div className="flex justify-between items-center">
           <span>Uptime:</span>
           <span className="text-emerald-400 font-bold">99.99%</span>
@@ -218,6 +237,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span>Contract:</span>
           <span className="text-cyan-400 truncate max-w-[100px]">Verified</span>
         </div>
+
+        {onLogout && (
+          <button
+            onClick={() => {
+              if (onCloseMobileDrawer) onCloseMobileDrawer();
+              onLogout();
+            }}
+            className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold transition shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout Account</span>
+          </button>
+        )}
       </div>
     </div>
   );

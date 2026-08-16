@@ -28,6 +28,7 @@ import { LiveWinnerTicker } from './components/LiveWinnerTicker';
 import { AdminPanel } from './components/AdminPanel';
 import { DepositModal } from './components/DepositModal';
 import { WithdrawModal } from './components/WithdrawModal';
+import { DailyTournamentModal } from './components/DailyTournamentModal';
 import { AuthModal } from './components/AuthModal';
 import { AuthView } from './components/AuthView';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -52,6 +53,7 @@ export default function App() {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isTournamentOpen, setIsTournamentOpen] = useState(false);
 
   // Toast Banner State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -74,16 +76,17 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setCurrentUser(data.currentUser);
-        if (data.currentUser?.id && !localStorage.getItem('tp_user_id')) {
-          localStorage.setItem('tp_user_id', data.currentUser.id);
+        if (storedId && data.currentUser) {
+          setCurrentUser(data.currentUser);
+        } else {
+          setCurrentUser(null);
         }
-        setUsers(data.users);
-        setSettings(data.settings);
-        setTransactions(data.transactions);
-        setDepositRequests(data.depositRequests);
-        setWithdrawalRequests(data.withdrawalRequests);
-        setBoostingQueue(data.boostingQueue);
+        setUsers(data.users || []);
+        setSettings(data.settings || null);
+        setTransactions(data.transactions || []);
+        setDepositRequests(data.depositRequests || []);
+        setWithdrawalRequests(data.withdrawalRequests || []);
+        setBoostingQueue(data.boostingQueue || []);
         setProducts(data.products || []);
         setProductOrders(data.productOrders || []);
       }
@@ -251,6 +254,24 @@ export default function App() {
     }
   };
 
+  const handleDailyCheckin = async () => {
+    try {
+      const res = await fetch('/api/daily-checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Failed to claim daily check-in', 'error');
+        return;
+      }
+      showToast(data.message || '🎉 Claimed 1 Free Lucky Spin Ticket!', 'success');
+      await fetchState();
+    } catch (err) {
+      showToast('Network error claiming daily check-in', 'error');
+    }
+  };
+
   const handleClaimRankBonus = async (rankId: string) => {
     try {
       const res = await fetch('/api/rank/claim', {
@@ -296,12 +317,18 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSettings),
       });
-      if (res.ok) {
-        await fetchState();
-        showToast('System Settings updated successfully!');
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update settings');
       }
-    } catch (err) {
-      showToast('Failed to update settings', 'error');
+      if (data.settings) {
+        setSettings(data.settings);
+      }
+      await fetchState();
+      showToast('System Settings updated & permanently saved to database!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update settings', 'error');
+      throw err;
     }
   };
 
@@ -616,6 +643,8 @@ export default function App() {
           isAdminView={isAdminView}
           isMobileDrawerOpen={isMobileDrawerOpen}
           onCloseMobileDrawer={() => setIsMobileDrawerOpen(false)}
+          onOpenTournament={() => setIsTournamentOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Main Content Area */}
@@ -715,6 +744,8 @@ export default function App() {
               settings={settings}
               onSpinWheel={handleSpinWheel}
               onBuySpinTicket={handleBuySpinTicket}
+              onDailyCheckin={handleDailyCheckin}
+              onOpenTournament={() => setIsTournamentOpen(true)}
             />
           ) : activeTab === 'rankrewards' ? (
             <RankRewardsView
@@ -731,6 +762,8 @@ export default function App() {
               onClaimRoi={handleClaimRoi}
               onOpenDeposit={() => setIsDepositOpen(true)}
               onOpenWithdraw={() => setIsWithdrawOpen(true)}
+              onDailyCheckin={handleDailyCheckin}
+              onOpenTournament={() => setIsTournamentOpen(true)}
               onSelectTab={(tab) => {
                 setActiveTab(tab);
                 setIsAdminView(false);
@@ -769,6 +802,16 @@ export default function App() {
           setIsWithdrawOpen(false);
           setActiveTab('dashboard');
           setIsAdminView(false);
+        }}
+      />
+
+      <DailyTournamentModal
+        isOpen={isTournamentOpen}
+        onClose={() => setIsTournamentOpen(false)}
+        currentUser={currentUser}
+        onSelectGame={(gameTab) => {
+          setIsTournamentOpen(false);
+          setActiveTab(gameTab);
         }}
       />
 

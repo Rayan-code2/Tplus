@@ -238,16 +238,16 @@
       "activePackageId": "pkg-1000",
       "packageActivatedAt": "2026-06-27T15:56:23.737Z",
       "packageExpiryDays": 100,
-      "balance": 14524.029999999999,
+      "balance": 14522.305999999988,
       "depositBalance": 0,
       "upgradeBalance": 1200,
-      "totalEarned": 49227.03,
+      "totalEarned": 49228.30600000002,
       "roiEarned": 3000,
       "levelEarned": 18500,
-      "sponsorEarned": 8401,
+      "sponsorEarned": 8402.150000000001,
       "rankEarned": 10000,
       "boostingEarned": 9000,
-      "spinEarned": 0,
+      "spinEarned": 5,
       "directReferralsCount": 3,
       "teamCount": 148,
       "teamVolume": 245010,
@@ -255,25 +255,29 @@
       "status": "active",
       "registeredAt": "2026-04-28T15:56:23.737Z",
       "lastRoiClaimAt": "2026-07-27T14:56:23.737Z",
-      "spinCredits": 5,
-      "lastSpinAt": "",
+      "spinCredits": 3,
+      "lastSpinAt": "2026-08-15T17:17:59.310Z",
       "isUpgraded": false,
-      "totalBetTurnover": 25,
+      "totalBetTurnover": 79,
       "levelTurnover": {
-        "l1": 0,
+        "l1": 21,
         "l2": 10,
         "l3": 0,
         "l4": 0,
         "l5": 0
       },
       "levelCommission": {
-        "l1": 0,
+        "l1": 0.12600000000000003,
         "l2": 0.03,
         "l3": 0,
         "l4": 0,
         "l5": 0
       },
-      "referralCommissionEarned": 0.03
+      "referralCommissionEarned": 0.15600000000000006,
+      "lastDailyCheckinAt": "2026-08-15T16:24:41.472Z",
+      "dailyCheckinStreak": 1,
+      "winningBalance": 34,
+      "winningEarned": 84
     },
     {
       "id": "usr-cyber1",
@@ -478,7 +482,7 @@
       "activePackageId": "pkg-10",
       "packageActivatedAt": "2026-07-31T22:34:36.481Z",
       "packageExpiryDays": 100,
-      "balance": 20.5,
+      "balance": 18.5,
       "depositBalance": 0,
       "upgradeBalance": 2.8000000000000003,
       "totalEarned": 14.5,
@@ -487,7 +491,7 @@
       "sponsorEarned": 3,
       "rankEarned": 0,
       "boostingEarned": 0,
-      "spinEarned": 0,
+      "spinEarned": 7,
       "directReferralsCount": 3,
       "teamCount": 0,
       "teamVolume": 30,
@@ -495,9 +499,14 @@
       "status": "active",
       "registeredAt": "2026-07-31T22:31:31.494Z",
       "lastRoiClaimAt": "2026-07-31T22:31:31.494Z",
-      "spinCredits": 1,
-      "lastSpinAt": "",
-      "isUpgraded": true
+      "spinCredits": 0,
+      "lastSpinAt": "2026-08-15T17:11:07.823Z",
+      "isUpgraded": true,
+      "totalBetTurnover": 21,
+      "lastDailyCheckinAt": "2026-08-15T16:59:00.977Z",
+      "dailyCheckinStreak": 1,
+      "winningBalance": 5,
+      "winningEarned": 23
     },
     {
       "id": "usr-1785537410379",
@@ -744,6 +753,876 @@
     }
   ],
   "transactions": [
+    {
+      "id": "tx-1786814279310-spin",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "spin_reward",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Daily Spin Wheel Reward: $1 USDT ($1 to Winning Wallet)",
+      "createdAt": "2026-08-15T17:17:59.310Z"
+    },
+    {
+      "id": "tx-1786814265953-spin",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "spin_reward",
+      "amount": 2,
+      "status": "completed",
+      "notes": "Daily Spin Wheel Reward: $2 USDT ($2 to Winning Wallet)",
+      "createdAt": "2026-08-15T17:17:45.953Z"
+    },
+    {
+      "id": "tx-1786813867823-spin",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "spin_reward",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Daily Spin Wheel Reward: $1 USDT ($1 to Winning Wallet)",
+      "createdAt": "2026-08-15T17:11:07.823Z"
+    },
+    {
+      "id": "tx-spwin-1786813867823-5030",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.05,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Spin Wheel Win ($1.00)",
+      "createdAt": "2026-08-15T17:11:07.823Z"
+    },
+    {
+      "id": "tx-spin-buy-1786813863747-86",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "admin_adjust",
+      "amount": -1,
+      "status": "completed",
+      "notes": "Purchased 1 Spin Ticket(s) ($1.00) @ $1.00/spin",
+      "createdAt": "2026-08-15T17:11:03.747Z"
+    },
+    {
+      "id": "tx-1786813825704-spin",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "spin_reward",
+      "amount": 2,
+      "status": "completed",
+      "notes": "Daily Spin Wheel Reward: $2 USDT ($2 to Winning Wallet)",
+      "createdAt": "2026-08-15T17:10:25.704Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813321398-235",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:02:01.398Z"
+    },
+    {
+      "id": "tx-dt-1786813321398",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-961267 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:02:01.398Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813312465-123",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:52.465Z"
+    },
+    {
+      "id": "tx-dt-1786813312465",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-903906 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:52.465Z"
+    },
+    {
+      "id": "tx-spwin-1786813312465-8331",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.1,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Dragon vs Tiger Win ($2.00)",
+      "createdAt": "2026-08-15T17:01:52.465Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813307426-654",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:47.426Z"
+    },
+    {
+      "id": "tx-dt-1786813307426",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-806470 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:47.426Z"
+    },
+    {
+      "id": "tx-spwin-1786813307426-4623",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.1,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Dragon vs Tiger Win ($2.00)",
+      "createdAt": "2026-08-15T17:01:47.426Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813300984-956",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:40.984Z"
+    },
+    {
+      "id": "tx-dt-1786813300984",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-699858 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:40.984Z"
+    },
+    {
+      "id": "tx-spwin-1786813300984-9550",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.1,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Dragon vs Tiger Win ($2.00)",
+      "createdAt": "2026-08-15T17:01:40.984Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813293703-709",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:33.703Z"
+    },
+    {
+      "id": "tx-dt-1786813293703",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-971086 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:33.703Z"
+    },
+    {
+      "id": "tx-spwin-1786813293703-7064",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.1,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Dragon vs Tiger Win ($2.00)",
+      "createdAt": "2026-08-15T17:01:33.703Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813289376-390",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:29.376Z"
+    },
+    {
+      "id": "tx-dt-1786813289376",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-242489 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:29.376Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813285186-628",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:25.186Z"
+    },
+    {
+      "id": "tx-dt-1786813285186",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIE] Round #DT-390106 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:25.186Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813280895-621",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:20.895Z"
+    },
+    {
+      "id": "tx-dt-1786813280895",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-314617 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:20.895Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813276226-790",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:16.226Z"
+    },
+    {
+      "id": "tx-dt-1786813276226",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-976175 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:16.226Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813271559-428",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:11.559Z"
+    },
+    {
+      "id": "tx-dt-1786813271559",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-988850 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:11.559Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813266897-625",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:01:06.897Z"
+    },
+    {
+      "id": "tx-dt-1786813266897",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIE] Round #DT-221435 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:01:06.897Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813259561-415",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:00:59.561Z"
+    },
+    {
+      "id": "tx-dt-1786813259561",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-642936 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:59.561Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813252820-220",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:00:52.820Z"
+    },
+    {
+      "id": "tx-dt-1786813252820",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-339669 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:52.820Z"
+    },
+    {
+      "id": "tx-spwin-1786813252820-8955",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.1,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Dragon vs Tiger Win ($2.00)",
+      "createdAt": "2026-08-15T17:00:52.820Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813247584-629",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:00:47.584Z"
+    },
+    {
+      "id": "tx-dt-1786813247584",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-589234 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:47.584Z"
+    },
+    {
+      "id": "tx-spwin-1786813247584-6657",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.1,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Dragon vs Tiger Win ($2.00)",
+      "createdAt": "2026-08-15T17:00:47.584Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813241908-502",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:00:41.908Z"
+    },
+    {
+      "id": "tx-dt-1786813241908",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-377088 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:41.908Z"
+    },
+    {
+      "id": "tx-spwin-1786813241908-5394",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.1,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Dragon vs Tiger Win ($2.00)",
+      "createdAt": "2026-08-15T17:00:41.908Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813236542-151",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:00:36.542Z"
+    },
+    {
+      "id": "tx-dt-1786813236542",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-162758 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:36.542Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813226344-848",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:00:26.344Z"
+    },
+    {
+      "id": "tx-dt-1786813226344",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-302295 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:26.344Z"
+    },
+    {
+      "id": "tx-spwin-1786813226344-5749",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.1,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Dragon vs Tiger Win ($2.00)",
+      "createdAt": "2026-08-15T17:00:26.344Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813217655-5",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:00:17.655Z"
+    },
+    {
+      "id": "tx-dt-1786813217655",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIE] Round #DT-543684 (LOST (50% Shield Refunded $0.50))",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:17.655Z"
+    },
+    {
+      "id": "tx-dt-shield-1786813217655",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "admin_adjust",
+      "amount": 0.5,
+      "notes": "🛡️ Dragon vs Tiger 50% First 3 Bets Loss Protection Shield Refund (Bet #2)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:17.655Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786813209700-112",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Dragon vs Tiger",
+      "createdAt": "2026-08-15T17:00:09.700Z"
+    },
+    {
+      "id": "tx-dt-1786813209700",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-750638 (LOST (50% Shield Refunded $0.50))",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:09.700Z"
+    },
+    {
+      "id": "tx-dt-shield-1786813209700",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "admin_adjust",
+      "amount": 0.5,
+      "notes": "🛡️ Dragon vs Tiger 50% First 3 Bets Loss Protection Shield Refund (Bet #1)",
+      "status": "completed",
+      "createdAt": "2026-08-15T17:00:09.700Z"
+    },
+    {
+      "id": "tx-1786813168554-spin",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "spin_reward",
+      "amount": 5,
+      "status": "completed",
+      "notes": "Daily Spin Wheel Reward: $5 USDT ($5 to Winning Wallet)",
+      "createdAt": "2026-08-15T16:59:28.554Z"
+    },
+    {
+      "id": "tx-spwin-1786813168554-2491",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.25,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Spin Wheel Win ($5.00)",
+      "createdAt": "2026-08-15T16:59:28.554Z"
+    },
+    {
+      "id": "tx-1786813160586-spin",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "spin_reward",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Daily Spin Wheel Reward: $1 USDT ($1 to Winning Wallet)",
+      "createdAt": "2026-08-15T16:59:20.586Z"
+    },
+    {
+      "id": "tx-spwin-1786813160586-7917",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "sponsor_game_win_bonus",
+      "amount": 0.05,
+      "status": "completed",
+      "notes": "5% Sponsor Game Win Royalty from neha's Spin Wheel Win ($1.00)",
+      "createdAt": "2026-08-15T16:59:20.586Z"
+    },
+    {
+      "id": "tx-checkin-1786813140977-886",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "admin_adjust",
+      "amount": 0,
+      "status": "completed",
+      "notes": "🎁 Daily Check-in Bonus: +1 Free Lucky Spin(s) (Day 1 Streak)",
+      "createdAt": "2026-08-15T16:59:00.977Z"
+    },
+    {
+      "id": "tx-dt-1786812668869",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-726041 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:51:08.869Z"
+    },
+    {
+      "id": "tx-dt-1786812664073",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIE] Round #DT-872691 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:51:04.073Z"
+    },
+    {
+      "id": "tx-dt-1786812657596",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-917915 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:50:57.596Z"
+    },
+    {
+      "id": "tx-dt-1786812586713",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 10,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-986897 (WON $20.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:49:46.713Z"
+    },
+    {
+      "id": "tx-dt-1786812581000",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 10,
+      "notes": "Dragon vs Tiger Bet on [TIE] Round #DT-766842 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:49:41.000Z"
+    },
+    {
+      "id": "tx-dt-1786812575337",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 10,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-297413 (WON $20.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:49:35.337Z"
+    },
+    {
+      "id": "tx-dt-1786812569338",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 10,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-642962 (WON $20.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:49:29.339Z"
+    },
+    {
+      "id": "tx-dt-1786812522417",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-760884 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:48:42.417Z"
+    },
+    {
+      "id": "tx-dt-1786812512589",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-830538 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:48:32.589Z"
+    },
+    {
+      "id": "tx-dt-1786812504824",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-100718 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:48:24.824Z"
+    },
+    {
+      "id": "tx-dt-1786812498818",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIE] Round #DT-828184 (LOST (50% Shield Refunded $0.50))",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:48:18.818Z"
+    },
+    {
+      "id": "tx-dt-shield-1786812498818",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "admin_adjust",
+      "amount": 0.5,
+      "notes": "🛡️ Dragon vs Tiger 50% First 3 Bets Loss Protection Shield Refund (Bet #3)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:48:18.818Z"
+    },
+    {
+      "id": "tx-dt-1786812492190",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [TIGER] Round #DT-654092 (LOST (50% Shield Refunded $0.50))",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:48:12.190Z"
+    },
+    {
+      "id": "tx-dt-shield-1786812492190",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "admin_adjust",
+      "amount": 0.5,
+      "notes": "🛡️ Dragon vs Tiger 50% First 3 Bets Loss Protection Shield Refund (Bet #2)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:48:12.190Z"
+    },
+    {
+      "id": "tx-dt-1786812482178",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-333837 (WON $2.00)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:48:02.178Z"
+    },
+    {
+      "id": "tx-dt-1786812086225",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "dragon_tiger_bet",
+      "amount": 1,
+      "notes": "Dragon vs Tiger Bet on [DRAGON] Round #DT-971865 (LOST)",
+      "status": "completed",
+      "createdAt": "2026-08-15T16:41:26.225Z"
+    },
+    {
+      "id": "tx-cpcashback-1786812056572-370",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "bonus",
+      "amount": 0.5,
+      "status": "completed",
+      "notes": "🛡️ Win Go 50% Loss Shield: 50% of 1.00 (0.50) returned to Fund Wallet (First Loss 2 of 3)",
+      "createdAt": "2026-08-15T16:40:56.572Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786812025667-920",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Win Go 1m Color Prediction",
+      "createdAt": "2026-08-15T16:40:25.667Z"
+    },
+    {
+      "id": "tx-cpbet-1786812025667-507",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608151161 on [4]",
+      "createdAt": "2026-08-15T16:40:25.667Z"
+    },
+    {
+      "id": "tx-cpcashback-1786811996538-242",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "bonus",
+      "amount": 0.5,
+      "status": "completed",
+      "notes": "🛡️ Win Go 50% Loss Shield: 50% of 1.00 (0.50) returned to Fund Wallet (First Loss 1 of 3)",
+      "createdAt": "2026-08-15T16:39:56.538Z"
+    },
+    {
+      "id": "tx-turnover-l1-1786811965035-949",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "bet_turnover_commission",
+      "amount": 0.006,
+      "status": "completed",
+      "notes": "🏆 Level 1 Bet Turnover Commission ($0.0060) from neha's $1.00 Bet on Win Go 1m Color Prediction",
+      "createdAt": "2026-08-15T16:39:25.035Z"
+    },
+    {
+      "id": "tx-cpbet-1786811965035-974",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608151160 on [1]",
+      "createdAt": "2026-08-15T16:39:25.035Z"
+    },
+    {
+      "id": "tx-cpbet-1786811345277-1",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608151150 on [2]",
+      "createdAt": "2026-08-15T16:29:05.277Z"
+    },
+    {
+      "id": "tx-cpbet-1786811284949-195",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608151149 on [1]",
+      "createdAt": "2026-08-15T16:28:04.949Z"
+    },
+    {
+      "id": "tx-cpbet-1786811231033-721",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608151148 on [9]",
+      "createdAt": "2026-08-15T16:27:11.033Z"
+    },
+    {
+      "id": "tx-cpwin-1786811215820-283",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_win",
+      "amount": 9,
+      "status": "completed",
+      "notes": "Win Go 1m Win - Period #202608151147 Result: 0 (9.00 to Winning Wallet)",
+      "createdAt": "2026-08-15T16:26:55.820Z"
+    },
+    {
+      "id": "tx-cpbet-1786811208620-978",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "color_prediction_bet",
+      "amount": 1,
+      "status": "completed",
+      "notes": "Win Go 1m Bet - Period #202608151147 on [0]",
+      "createdAt": "2026-08-15T16:26:48.620Z"
+    },
+    {
+      "id": "tx-checkin-1786811081472-19",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "admin_adjust",
+      "amount": 0,
+      "status": "completed",
+      "notes": "🎁 Daily Check-in Bonus: +1 Free Lucky Spin(s) (Day 1 Streak)",
+      "createdAt": "2026-08-15T16:24:41.472Z"
+    },
     {
       "id": "tx-turnover-l2-1786633318504-121",
       "userId": "usr-root",
@@ -1936,11 +2815,97 @@
     "historyCleared": true
   },
   "colorPrediction": {
-    "currentPeriodId": "202608131098",
+    "currentPeriodId": "202608151224",
     "periodDurationSeconds": 60,
-    "startTime": 1786633582495,
+    "startTime": 1786815780628,
     "forcedNextNumber": null,
     "bets": [
+      {
+        "id": "bet-cp-1786812025667-4452",
+        "userId": "usr-1785537091494",
+        "userName": "neha",
+        "userNodeId": "NX-SQXCVC",
+        "periodId": "202608151161",
+        "selection": "4",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-15T16:40:25.667Z",
+        "cashbackAwarded": 0.5
+      },
+      {
+        "id": "bet-cp-1786811965035-6500",
+        "userId": "usr-1785537091494",
+        "userName": "neha",
+        "userNodeId": "NX-SQXCVC",
+        "periodId": "202608151160",
+        "selection": "1",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-15T16:39:25.035Z",
+        "cashbackAwarded": 0.5
+      },
+      {
+        "id": "bet-cp-1786811345277-2785",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608151150",
+        "selection": "2",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-15T16:29:05.277Z"
+      },
+      {
+        "id": "bet-cp-1786811284949-9441",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608151149",
+        "selection": "1",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-15T16:28:04.949Z"
+      },
+      {
+        "id": "bet-cp-1786811231033-5616",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608151148",
+        "selection": "9",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 0,
+        "status": "lost",
+        "createdAt": "2026-08-15T16:27:11.033Z"
+      },
+      {
+        "id": "bet-cp-1786811208620-2994",
+        "userId": "usr-root",
+        "userName": "Sovereign Nexus (Root Master)",
+        "userNodeId": "NX-ROOT01",
+        "periodId": "202608151147",
+        "selection": "0",
+        "amount": 1,
+        "contractCount": 1,
+        "totalBet": 1,
+        "payout": 9,
+        "status": "won",
+        "createdAt": "2026-08-15T16:26:48.620Z"
+      },
       {
         "id": "bet-cp-1786457894255-8557",
         "userId": "usr-root",
@@ -2070,736 +3035,736 @@
     ],
     "history": [
       {
-        "periodId": "202608131097",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-13T15:06:22.495Z"
-      },
-      {
-        "periodId": "202608131096",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-13T15:05:22.458Z"
-      },
-      {
-        "periodId": "202608131095",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-13T15:04:22.431Z"
-      },
-      {
-        "periodId": "202608131094",
+        "periodId": "202608151223",
         "number": 5,
         "color": "violet-green",
         "size": "big",
-        "completedAt": "2026-08-13T15:03:22.398Z"
+        "completedAt": "2026-08-15T17:43:00.628Z"
       },
       {
-        "periodId": "202608131093",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T15:02:22.374Z"
-      },
-      {
-        "periodId": "202608131092",
+        "periodId": "202608151222",
         "number": 2,
         "color": "red",
         "size": "small",
-        "completedAt": "2026-08-13T15:01:22.341Z"
+        "completedAt": "2026-08-15T17:42:00.576Z"
       },
       {
-        "periodId": "202608131091",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-13T15:00:22.313Z"
-      },
-      {
-        "periodId": "202608131090",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:59:22.278Z"
-      },
-      {
-        "periodId": "202608131089",
-        "number": 9,
+        "periodId": "202608151221",
+        "number": 7,
         "color": "green",
         "size": "big",
-        "completedAt": "2026-08-13T14:58:21.845Z"
+        "completedAt": "2026-08-15T17:41:00.518Z"
       },
       {
-        "periodId": "202608131088",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-13T14:57:21.815Z"
-      },
-      {
-        "periodId": "202608131087",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T14:56:21.778Z"
-      },
-      {
-        "periodId": "202608131086",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-13T14:55:21.742Z"
-      },
-      {
-        "periodId": "202608131085",
-        "number": 9,
+        "periodId": "202608151220",
+        "number": 7,
         "color": "green",
         "size": "big",
-        "completedAt": "2026-08-13T14:54:21.710Z"
+        "completedAt": "2026-08-15T17:40:00.485Z"
       },
       {
-        "periodId": "202608131084",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-13T14:53:21.676Z"
-      },
-      {
-        "periodId": "202608131083",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T14:52:21.553Z"
-      },
-      {
-        "periodId": "202608131082",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:51:21.513Z"
-      },
-      {
-        "periodId": "202608131081",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-13T14:50:21.469Z"
-      },
-      {
-        "periodId": "202608131080",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-13T14:49:21.430Z"
-      },
-      {
-        "periodId": "202608131079",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T14:48:21.388Z"
-      },
-      {
-        "periodId": "202608131078",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:47:21.339Z"
-      },
-      {
-        "periodId": "202608131077",
+        "periodId": "202608151219",
         "number": 5,
         "color": "violet-green",
         "size": "big",
-        "completedAt": "2026-08-13T14:46:21.304Z"
+        "completedAt": "2026-08-15T17:39:00.451Z"
       },
       {
-        "periodId": "202608131076",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:45:21.273Z"
-      },
-      {
-        "periodId": "202608131075",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:44:21.242Z"
-      },
-      {
-        "periodId": "202608131074",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T14:43:21.213Z"
-      },
-      {
-        "periodId": "202608131073",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:42:21.190Z"
-      },
-      {
-        "periodId": "202608131072",
+        "periodId": "202608151218",
         "number": 2,
         "color": "red",
         "size": "small",
-        "completedAt": "2026-08-13T14:41:21.164Z"
+        "completedAt": "2026-08-15T17:38:00.410Z"
       },
       {
-        "periodId": "202608131071",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:40:21.145Z"
-      },
-      {
-        "periodId": "202608131070",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-13T14:39:21.120Z"
-      },
-      {
-        "periodId": "202608131069",
+        "periodId": "202608151217",
         "number": 7,
         "color": "green",
         "size": "big",
-        "completedAt": "2026-08-13T14:38:21.084Z"
+        "completedAt": "2026-08-15T17:37:00.373Z"
       },
       {
-        "periodId": "202608131068",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-13T14:37:21.039Z"
-      },
-      {
-        "periodId": "202608131067",
-        "number": 9,
-        "color": "green",
+        "periodId": "202608151216",
+        "number": 8,
+        "color": "red",
         "size": "big",
-        "completedAt": "2026-08-13T14:36:21.000Z"
+        "completedAt": "2026-08-15T17:36:00.335Z"
       },
       {
-        "periodId": "202608131066",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T14:35:20.958Z"
-      },
-      {
-        "periodId": "202608131065",
+        "periodId": "202608151215",
         "number": 4,
         "color": "red",
         "size": "small",
-        "completedAt": "2026-08-13T14:34:20.928Z"
+        "completedAt": "2026-08-15T17:35:00.293Z"
       },
       {
-        "periodId": "202608131064",
+        "periodId": "202608151214",
         "number": 0,
         "color": "violet-red",
         "size": "small",
-        "completedAt": "2026-08-13T14:33:20.891Z"
+        "completedAt": "2026-08-15T17:34:00.260Z"
       },
       {
-        "periodId": "202608131063",
-        "number": 1,
-        "color": "green",
+        "periodId": "202608151213",
+        "number": 2,
+        "color": "red",
         "size": "small",
-        "completedAt": "2026-08-13T14:32:20.844Z"
+        "completedAt": "2026-08-15T17:33:00.218Z"
       },
       {
-        "periodId": "202608131062",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T14:31:20.796Z"
-      },
-      {
-        "periodId": "202608131061",
+        "periodId": "202608151212",
         "number": 6,
         "color": "red",
         "size": "big",
-        "completedAt": "2026-08-13T14:30:20.750Z"
+        "completedAt": "2026-08-15T17:32:00.182Z"
       },
       {
-        "periodId": "202608131060",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:29:20.721Z"
-      },
-      {
-        "periodId": "202608131059",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-13T14:28:20.692Z"
-      },
-      {
-        "periodId": "202608131058",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T14:27:20.669Z"
-      },
-      {
-        "periodId": "202608131057",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T04:13:55.178Z"
-      },
-      {
-        "periodId": "202608131056",
+        "periodId": "202608151211",
         "number": 5,
         "color": "violet-green",
         "size": "big",
-        "completedAt": "2026-08-13T04:12:55.165Z"
+        "completedAt": "2026-08-15T17:31:00.154Z"
       },
       {
-        "periodId": "202608131055",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T04:11:55.155Z"
-      },
-      {
-        "periodId": "202608131054",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T04:10:55.142Z"
-      },
-      {
-        "periodId": "202608131053",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T04:09:55.120Z"
-      },
-      {
-        "periodId": "202608131052",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-13T04:08:55.104Z"
-      },
-      {
-        "periodId": "202608131051",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-13T04:07:55.087Z"
-      },
-      {
-        "periodId": "202608131050",
+        "periodId": "202608151210",
         "number": 2,
         "color": "red",
         "size": "small",
-        "completedAt": "2026-08-13T04:06:55.071Z"
+        "completedAt": "2026-08-15T17:30:00.119Z"
       },
       {
-        "periodId": "202608131049",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T04:05:55.054Z"
-      },
-      {
-        "periodId": "202608131048",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T04:04:54.536Z"
-      },
-      {
-        "periodId": "202608131047",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-13T04:03:54.523Z"
-      },
-      {
-        "periodId": "202608131046",
+        "periodId": "202608151209",
         "number": 4,
         "color": "red",
         "size": "small",
-        "completedAt": "2026-08-13T04:02:54.505Z"
+        "completedAt": "2026-08-15T17:28:59.770Z"
       },
       {
-        "periodId": "202608131045",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-13T04:01:54.487Z"
-      },
-      {
-        "periodId": "202608131044",
+        "periodId": "202608151208",
         "number": 8,
         "color": "red",
         "size": "big",
-        "completedAt": "2026-08-13T04:00:54.468Z"
+        "completedAt": "2026-08-15T17:27:59.741Z"
       },
       {
-        "periodId": "202608111043",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-13T03:59:54.448Z"
-      },
-      {
-        "periodId": "202608111042",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T14:32:22.992Z"
-      },
-      {
-        "periodId": "202608111041",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-11T14:31:22.940Z"
-      },
-      {
-        "periodId": "202608111040",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:30:22.889Z"
-      },
-      {
-        "periodId": "202608111039",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T14:29:22.836Z"
-      },
-      {
-        "periodId": "202608111038",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:28:22.781Z"
-      },
-      {
-        "periodId": "202608111037",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-11T14:27:22.731Z"
-      },
-      {
-        "periodId": "202608111036",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:26:22.691Z"
-      },
-      {
-        "periodId": "202608111035",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-11T14:25:22.648Z"
-      },
-      {
-        "periodId": "202608111034",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:24:22.181Z"
-      },
-      {
-        "periodId": "202608111033",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T14:23:22.137Z"
-      },
-      {
-        "periodId": "202608111032",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-11T14:22:22.090Z"
-      },
-      {
-        "periodId": "202608111031",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:21:22.039Z"
-      },
-      {
-        "periodId": "202608111030",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:20:21.983Z"
-      },
-      {
-        "periodId": "202608111029",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:19:21.943Z"
-      },
-      {
-        "periodId": "202608111028",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:18:21.891Z"
-      },
-      {
-        "periodId": "202608111027",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:17:21.838Z"
-      },
-      {
-        "periodId": "202608111026",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T14:16:21.791Z"
-      },
-      {
-        "periodId": "202608111025",
+        "periodId": "202608151207",
         "number": 5,
         "color": "violet-green",
         "size": "big",
-        "completedAt": "2026-08-11T14:15:21.742Z"
+        "completedAt": "2026-08-15T17:26:59.710Z"
       },
       {
-        "periodId": "202608111024",
+        "periodId": "202608151206",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T17:25:59.673Z"
+      },
+      {
+        "periodId": "202608151205",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T17:24:59.631Z"
+      },
+      {
+        "periodId": "202608151204",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T17:23:59.593Z"
+      },
+      {
+        "periodId": "202608151203",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T17:22:59.558Z"
+      },
+      {
+        "periodId": "202608151202",
         "number": 3,
         "color": "green",
         "size": "small",
-        "completedAt": "2026-08-11T14:14:21.323Z"
+        "completedAt": "2026-08-15T17:21:59.525Z"
       },
       {
-        "periodId": "202608111023",
+        "periodId": "202608151201",
         "number": 2,
         "color": "red",
         "size": "small",
-        "completedAt": "2026-08-11T14:13:21.275Z"
+        "completedAt": "2026-08-15T17:20:59.502Z"
       },
       {
-        "periodId": "202608111022",
+        "periodId": "202608151200",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T17:19:59.476Z"
+      },
+      {
+        "periodId": "202608151199",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T17:18:59.442Z"
+      },
+      {
+        "periodId": "202608151198",
         "number": 1,
         "color": "green",
         "size": "small",
-        "completedAt": "2026-08-11T14:12:21.233Z"
+        "completedAt": "2026-08-15T17:17:59.408Z"
       },
       {
-        "periodId": "202608111021",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T14:11:21.192Z"
-      },
-      {
-        "periodId": "202608111020",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-11T14:10:21.155Z"
-      },
-      {
-        "periodId": "202608111019",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:09:21.100Z"
-      },
-      {
-        "periodId": "202608111018",
+        "periodId": "202608151197",
         "number": 4,
         "color": "red",
         "size": "small",
-        "completedAt": "2026-08-11T14:08:21.057Z"
+        "completedAt": "2026-08-15T17:16:59.366Z"
       },
       {
-        "periodId": "202608111017",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T14:07:21.009Z"
-      },
-      {
-        "periodId": "202608111016",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:06:20.964Z"
-      },
-      {
-        "periodId": "202608111015",
-        "number": 3,
+        "periodId": "202608151196",
+        "number": 1,
         "color": "green",
         "size": "small",
-        "completedAt": "2026-08-11T14:05:20.910Z"
+        "completedAt": "2026-08-15T17:15:59.325Z"
       },
       {
-        "periodId": "202608111014",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:04:20.868Z"
-      },
-      {
-        "periodId": "202608111013",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T14:03:20.812Z"
-      },
-      {
-        "periodId": "202608111012",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-11T14:02:20.763Z"
-      },
-      {
-        "periodId": "202608111011",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-11T14:01:20.697Z"
-      },
-      {
-        "periodId": "202608111010",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-11T14:00:20.660Z"
-      },
-      {
-        "periodId": "202608111009",
+        "periodId": "202608151195",
         "number": 5,
         "color": "violet-green",
         "size": "big",
-        "completedAt": "2026-08-11T13:59:20.614Z"
+        "completedAt": "2026-08-15T17:14:58.468Z"
       },
       {
-        "periodId": "202608111008",
+        "periodId": "202608151194",
         "number": 7,
         "color": "green",
         "size": "big",
-        "completedAt": "2026-08-11T13:58:20.578Z"
+        "completedAt": "2026-08-15T17:13:58.435Z"
       },
       {
-        "periodId": "202608111007",
+        "periodId": "202608151193",
         "number": 3,
         "color": "green",
         "size": "small",
-        "completedAt": "2026-08-11T13:57:20.530Z"
+        "completedAt": "2026-08-15T17:12:58.400Z"
       },
       {
-        "periodId": "202608111006",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T13:56:20.489Z"
-      },
-      {
-        "periodId": "202608111005",
+        "periodId": "202608151192",
         "number": 7,
         "color": "green",
         "size": "big",
-        "completedAt": "2026-08-11T13:55:20.428Z"
+        "completedAt": "2026-08-15T17:11:58.375Z"
       },
       {
-        "periodId": "202608111004",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T13:54:20.377Z"
-      },
-      {
-        "periodId": "202608111003",
+        "periodId": "202608151191",
         "number": 8,
         "color": "red",
         "size": "big",
-        "completedAt": "2026-08-11T13:53:20.320Z"
+        "completedAt": "2026-08-15T17:10:58.347Z"
       },
       {
-        "periodId": "202608111002",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T13:52:20.270Z"
-      },
-      {
-        "periodId": "202608111001",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-11T13:51:20.220Z"
-      },
-      {
-        "periodId": "202608111000",
+        "periodId": "202608151190",
         "number": 7,
         "color": "green",
         "size": "big",
-        "completedAt": "2026-08-11T13:49:20.173Z"
+        "completedAt": "2026-08-15T17:09:58.312Z"
       },
       {
-        "periodId": "202608110999",
+        "periodId": "202608151189",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T17:08:58.289Z"
+      },
+      {
+        "periodId": "202608151188",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T17:07:58.259Z"
+      },
+      {
+        "periodId": "202608151187",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T17:06:58.234Z"
+      },
+      {
+        "periodId": "202608151186",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T17:05:58.200Z"
+      },
+      {
+        "periodId": "202608151185",
         "number": 2,
         "color": "red",
         "size": "small",
-        "completedAt": "2026-08-11T13:48:20.173Z"
+        "completedAt": "2026-08-15T17:04:58.174Z"
       },
       {
-        "periodId": "202608110998",
+        "periodId": "202608151184",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T17:03:58.146Z"
+      },
+      {
+        "periodId": "202608151183",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T17:02:58.120Z"
+      },
+      {
+        "periodId": "202608151182",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T17:01:58.085Z"
+      },
+      {
+        "periodId": "202608151181",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T17:00:58.053Z"
+      },
+      {
+        "periodId": "202608151180",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:59:58.022Z"
+      },
+      {
+        "periodId": "202608151179",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:58:57.989Z"
+      },
+      {
+        "periodId": "202608151178",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:57:57.949Z"
+      },
+      {
+        "periodId": "202608151177",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:56:57.644Z"
+      },
+      {
+        "periodId": "202608151176",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:55:57.608Z"
+      },
+      {
+        "periodId": "202608151175",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:54:57.574Z"
+      },
+      {
+        "periodId": "202608151174",
         "number": 0,
         "color": "violet-red",
         "size": "small",
-        "completedAt": "2026-08-11T13:47:20.173Z"
+        "completedAt": "2026-08-15T16:53:57.533Z"
+      },
+      {
+        "periodId": "202608151173",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:52:57.505Z"
+      },
+      {
+        "periodId": "202608151172",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:51:57.475Z"
+      },
+      {
+        "periodId": "202608151171",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:50:57.448Z"
+      },
+      {
+        "periodId": "202608151170",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:49:57.423Z"
+      },
+      {
+        "periodId": "202608151169",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:48:57.388Z"
+      },
+      {
+        "periodId": "202608151168",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:47:57.362Z"
+      },
+      {
+        "periodId": "202608151167",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:46:57.334Z"
+      },
+      {
+        "periodId": "202608151166",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:45:56.748Z"
+      },
+      {
+        "periodId": "202608151165",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:44:56.720Z"
+      },
+      {
+        "periodId": "202608151164",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:43:56.689Z"
+      },
+      {
+        "periodId": "202608151163",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:42:56.653Z"
+      },
+      {
+        "periodId": "202608151162",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:41:56.615Z"
+      },
+      {
+        "periodId": "202608151161",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:40:56.572Z"
+      },
+      {
+        "periodId": "202608151160",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:39:56.538Z"
+      },
+      {
+        "periodId": "202608151159",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:38:56.513Z"
+      },
+      {
+        "periodId": "202608151158",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:37:56.482Z"
+      },
+      {
+        "periodId": "202608151157",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:36:56.454Z"
+      },
+      {
+        "periodId": "202608151156",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:35:56.423Z"
+      },
+      {
+        "periodId": "202608151155",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:34:56.391Z"
+      },
+      {
+        "periodId": "202608151154",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:33:56.017Z"
+      },
+      {
+        "periodId": "202608151153",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:32:55.984Z"
+      },
+      {
+        "periodId": "202608151152",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:31:55.965Z"
+      },
+      {
+        "periodId": "202608151151",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:30:55.930Z"
+      },
+      {
+        "periodId": "202608151150",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:29:55.901Z"
+      },
+      {
+        "periodId": "202608151149",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:28:55.869Z"
+      },
+      {
+        "periodId": "202608151148",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:27:55.847Z"
+      },
+      {
+        "periodId": "202608151147",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:26:55.820Z"
+      },
+      {
+        "periodId": "202608151146",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:25:55.791Z"
+      },
+      {
+        "periodId": "202608151145",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:24:55.765Z"
+      },
+      {
+        "periodId": "202608151144",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:23:55.733Z"
+      },
+      {
+        "periodId": "202608151143",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:22:55.692Z"
+      },
+      {
+        "periodId": "202608151142",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:21:55.663Z"
+      },
+      {
+        "periodId": "202608151141",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:20:55.636Z"
+      },
+      {
+        "periodId": "202608151140",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:19:55.602Z"
+      },
+      {
+        "periodId": "202608151139",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:18:55.563Z"
+      },
+      {
+        "periodId": "202608151138",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:17:54.868Z"
+      },
+      {
+        "periodId": "202608151137",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:16:54.844Z"
+      },
+      {
+        "periodId": "202608151136",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:15:54.806Z"
+      },
+      {
+        "periodId": "202608151135",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:14:54.771Z"
+      },
+      {
+        "periodId": "202608151134",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:13:54.004Z"
+      },
+      {
+        "periodId": "202608151133",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:12:53.979Z"
+      },
+      {
+        "periodId": "202608151132",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:11:53.941Z"
+      },
+      {
+        "periodId": "202608151131",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-15T16:10:53.909Z"
+      },
+      {
+        "periodId": "202608151130",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:09:53.881Z"
+      },
+      {
+        "periodId": "202608151129",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-15T16:08:53.854Z"
+      },
+      {
+        "periodId": "202608151128",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:07:53.824Z"
+      },
+      {
+        "periodId": "202608151127",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:06:53.795Z"
+      },
+      {
+        "periodId": "202608151126",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:05:53.766Z"
+      },
+      {
+        "periodId": "202608151125",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-15T16:04:53.735Z"
+      },
+      {
+        "periodId": "202608151124",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-15T16:03:53.707Z"
       }
     ],
-    "adminMode": "lowest_payout"
+    "adminMode": "smart_retention_60_40"
   },
   "aviator": {
-    "currentRoundId": "AV-1786633601416",
+    "currentRoundId": "AV-1786815797807",
     "status": "waiting",
     "currentMultiplier": 1,
-    "targetCrashMultiplier": 3.52,
-    "startTime": 1786633601416,
+    "targetCrashMultiplier": 5.27,
+    "startTime": 1786815797807,
     "bets": [],
     "history": [
-      3.52,
-      6.09,
-      1.92,
-      5.92,
-      8.08,
-      2.91,
-      1.84,
-      8.47,
-      7.27,
-      2.63,
-      4.93,
-      1.42,
-      7.21,
-      6.67,
-      5.91,
-      8.15,
-      8.62,
-      1.91,
+      5.27,
+      1.72,
+      1.77,
+      6.27,
+      3.14,
+      6.81,
+      8.52,
+      6.35,
+      8.99,
+      1.23,
+      7.88,
+      6.06,
+      7.65,
+      7.42,
+      7.67,
+      4.14,
+      3.84,
       1.58,
-      7.16
+      2.65,
+      4.92
     ],
     "forcedNextCrash": null,
     "adminMode": "lowest_payout"

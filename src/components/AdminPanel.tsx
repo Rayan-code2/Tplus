@@ -46,6 +46,9 @@ import {
   Shuffle,
   Plane,
   Image,
+  ShieldCheck,
+  CheckCircle2,
+  Percent,
 } from 'lucide-react';
 import {
   User,
@@ -110,12 +113,126 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onDeleteUser,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'dragon_tiger' | 'aviator_game'
+    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'dragon_tiger' | 'aviator_game' | 'tournament'
   >('settings');
 
   const [colorStats, setColorStats] = useState<any>(null);
   const [aviatorStats, setAviatorStats] = useState<any>(null);
   const [dragonTigerStats, setDragonTigerStats] = useState<any>(null);
+  const [tournamentData, setTournamentData] = useState<any>(null);
+  const [loadingTournament, setLoadingTournament] = useState(false);
+  const [distributingTournament, setDistributingTournament] = useState(false);
+  const [tournamentDistributeResult, setTournamentDistributeResult] = useState<any>(null);
+
+  // Web3 SafePal Hot Wallet State
+  const [web3Status, setWeb3Status] = useState<any>(null);
+  const [loadingWeb3Status, setLoadingWeb3Status] = useState(false);
+  const [dispatchingWdId, setDispatchingWdId] = useState<string | null>(null);
+  const [verifyingDepId, setVerifyingDepId] = useState<string | null>(null);
+
+  const fetchWeb3Status = async () => {
+    setLoadingWeb3Status(true);
+    try {
+      const res = await fetch('/api/web3/status');
+      if (res.ok) {
+        const data = await res.json();
+        setWeb3Status(data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch Web3 status:', err);
+    } finally {
+      setLoadingWeb3Status(false);
+    }
+  };
+
+  const handleAutoDispatchWithdrawal = async (requestId: string) => {
+    if (!confirm('Execute instant automated blockchain payout from SafePal Hot Wallet now?')) return;
+    setDispatchingWdId(requestId);
+    try {
+      const res = await fetch('/api/admin/withdraw/auto-dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`🚀 Blockchain Payout Successful!\nTxHash: ${data.txHash}\nView on BscScan: ${data.bscscanUrl}`);
+        window.location.reload();
+      } else {
+        alert(`⚠️ Payout Error: ${data.error || 'Failed to dispatch transaction'}`);
+      }
+    } catch (err: any) {
+      alert(`Network error: ${err.message}`);
+    } finally {
+      setDispatchingWdId(null);
+    }
+  };
+
+  const handleAutoVerifyDeposit = async (requestId: string, txHash: string) => {
+    setVerifyingDepId(requestId);
+    try {
+      const res = await fetch('/api/web3/verify-deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, txHash }),
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        alert(`🎉 Deposit Auto-Verified on BSC Blockchain!\nAmount: ${data.blockchainData?.amount || ''} USDT\nSender: ${data.blockchainData?.from || ''}`);
+        window.location.reload();
+      } else {
+        alert(`⚠️ Verification note: ${data.error || 'Not confirmed yet on blockchain'}`);
+      }
+    } catch (err: any) {
+      alert(`Network error: ${err.message}`);
+    } finally {
+      setVerifyingDepId(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchWeb3Status();
+  }, []);
+
+  const fetchAdminTournament = async () => {
+    setLoadingTournament(true);
+    try {
+      const res = await fetch('/api/tournament/daily');
+      if (res.ok) {
+        const data = await res.json();
+        setTournamentData(data.tournament);
+      }
+    } catch (err) {
+      console.error('Failed to fetch tournament details', err);
+    } finally {
+      setLoadingTournament(false);
+    }
+  };
+
+  const handleDistributeTournamentRewards = async () => {
+    if (!confirm("Are you sure you want to distribute today's Top Bettor Tournament prize pool to qualifying champions now? Rewards will be directly credited to their Game Winning Balances.")) {
+      return;
+    }
+    setDistributingTournament(true);
+    try {
+      const res = await fetch('/api/admin/tournament/distribute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTournamentDistributeResult(data);
+        alert(data.message || 'Prizes distributed successfully!');
+        fetchAdminTournament();
+      } else {
+        alert(data.error || 'Failed to distribute prizes');
+      }
+    } catch (err) {
+      alert('Error distributing tournament rewards');
+    } finally {
+      setDistributingTournament(false);
+    }
+  };
 
   const fetchDragonTigerStats = async () => {
     try {
@@ -129,7 +246,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleSetDragonTigerMode = async (mode: 'lowest_payout' | 'random' | 'manual') => {
+  const handleSetDragonTigerMode = async (mode: 'lowest_payout' | 'smart_retention_60_40' | 'random' | 'manual') => {
     try {
       const res = await fetch('/api/admin/dragon-tiger/mode', {
         method: 'POST',
@@ -242,7 +359,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleSetColorPredictionMode = async (mode: 'lowest_payout' | 'random' | 'manual') => {
+  const handleSetColorPredictionMode = async (mode: 'lowest_payout' | 'smart_retention_60_40' | 'random' | 'manual') => {
     try {
       const res = await fetch('/api/admin/color-prediction/mode', {
         method: 'POST',
@@ -741,6 +858,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // Master Admin Password Change State
+  const [adminNewPassword, setAdminNewPassword] = useState('');
+  const [adminPassSaving, setAdminPassSaving] = useState(false);
+  const [adminPassMsg, setAdminPassMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const handleUpdateAdminMasterPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminNewPassword || adminNewPassword.trim().length < 4) {
+      setAdminPassMsg({ text: 'Password must be at least 4 characters long', type: 'error' });
+      return;
+    }
+    setAdminPassSaving(true);
+    setAdminPassMsg(null);
+    try {
+      const rootUser = users.find((u) => u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isAdmin) || users[0];
+      const res = await fetch('/api/admin/users/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: rootUser?.id || 'usr-root',
+          newPassword: adminNewPassword.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Failed to change admin password');
+      if (rootUser) {
+        rootUser.password = adminNewPassword.trim();
+      }
+      setAdminPassMsg({
+        text: `Admin Master Password updated successfully to "${adminNewPassword.trim()}"! This password is now permanently saved.`,
+        type: 'success',
+      });
+      setAdminNewPassword('');
+      setTimeout(() => {
+        setAdminPassMsg(null);
+      }, 5000);
+    } catch (err: any) {
+      setAdminPassMsg({ text: err.message || 'Failed to update admin password', type: 'error' });
+    } finally {
+      setAdminPassSaving(false);
+    }
+  };
+
   const handleUploadJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -968,11 +1128,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         maxMatrixLevels: typeof p.maxMatrixLevels === 'number' ? p.maxMatrixLevels : (parseInt(p.maxMatrixLevels as any) || 15),
       }));
 
+      const sanitizedTournament = editableSettings.dailyTournament ? {
+        enabled: editableSettings.dailyTournament.enabled !== false,
+        basePot: typeof editableSettings.dailyTournament.basePot === 'number' ? editableSettings.dailyTournament.basePot : (parseFloat(editableSettings.dailyTournament.basePot as any) || 250),
+        turnoverContributionPercent: typeof editableSettings.dailyTournament.turnoverContributionPercent === 'number' ? editableSettings.dailyTournament.turnoverContributionPercent : (parseFloat(editableSettings.dailyTournament.turnoverContributionPercent as any) || 5),
+        minWagerToQualify: typeof editableSettings.dailyTournament.minWagerToQualify === 'number' ? editableSettings.dailyTournament.minWagerToQualify : (parseFloat(editableSettings.dailyTournament.minWagerToQualify as any) || 10),
+        title: editableSettings.dailyTournament.title || 'Daily Top Bettor Championship 🏆',
+        prizeDistribution: (editableSettings.dailyTournament.prizeDistribution || []).map((p, idx) => ({
+          rank: p.rank || idx + 1,
+          percent: typeof p.percent === 'number' ? p.percent : (parseFloat(p.percent as any) || 0),
+        })),
+      } : undefined;
+
       const settingsToSave: SystemSettings = {
         ...editableSettings,
         spinWheelRewards: sanitizedRewards,
         levelIncomePercentages: sanitizedLevelIncome,
         packages: sanitizedPackages,
+        dailyTournament: sanitizedTournament,
         spinWheelIntervalHours: typeof editableSettings.spinWheelIntervalHours === 'number'
           ? editableSettings.spinWheelIntervalHours
           : (parseInt(editableSettings.spinWheelIntervalHours as any) || 24),
@@ -1165,6 +1338,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <Zap className="w-4 h-4 text-amber-400" />
           Dragon vs Tiger Control
         </button>
+        <button
+          onClick={() => {
+            setActiveTab('aviator_game');
+            fetchAviatorStats();
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+            activeTab === 'aviator_game'
+              ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-red-400" />
+          Aviator Game Control
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('tournament');
+            fetchAdminTournament();
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+            activeTab === 'tournament'
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Trophy className="w-4 h-4 text-yellow-400" />
+          Top Bettor Tournament
+        </button>
       </div>
 
       {/* TAB 1: SYSTEM SETTINGS CONFIG */}
@@ -1206,6 +1407,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {savingSettings ? 'Saving All Changes...' : 'Save All Settings'}
               </button>
             </div>
+          </div>
+
+          {/* SECTION 0: MASTER ADMIN SECURITY & PERMANENT PASSWORD CONTROLS */}
+          <div className="bg-[#0b1424] border border-amber-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_25px_rgba(245,158,11,0.15)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-amber-400" />
+                  Master Admin Password & Security Settings
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Set and update the Master Administrator password. Once changed, this new password is permanently saved to the database and will NOT revert to any default password.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400 font-mono">Current Master Password:</span>
+                <span className="font-mono text-amber-300 bg-amber-500/20 border border-amber-500/40 px-2.5 py-1 rounded-lg text-xs font-bold">
+                  {users.find((u) => u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isAdmin)?.password || '123456'}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateAdminMasterPassword} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase">Set New Master Admin Password</label>
+                  <div className="relative mt-1">
+                    <input
+                      type="text"
+                      value={adminNewPassword}
+                      onChange={(e) => setAdminNewPassword(e.target.value)}
+                      placeholder="Enter new master password (min 4 characters)"
+                      className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    disabled={adminPassSaving || !adminNewPassword.trim()}
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs rounded-xl transition shadow-[0_0_15px_rgba(245,158,11,0.3)] disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                    {adminPassSaving ? 'Updating Password...' : 'Save New Master Password'}
+                  </button>
+                </div>
+              </div>
+
+              {adminPassMsg && (
+                <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                  adminPassMsg.type === 'success'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                }`}>
+                  {adminPassMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-rose-400" />}
+                  <span>{adminPassMsg.text}</span>
+                </div>
+              )}
+            </form>
           </div>
 
           {/* SECTION 1: DAILY ROI & PACKAGE CAPPING MANAGER */}
@@ -1433,6 +1693,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             updated[idx].sponsorBonusPercent = 0;
                           }
                           setEditableSettings({ ...editableSettings, packages: updated });
+                          setIsSettingsDirty(true);
                         }}
                         className="w-4 h-4 accent-amber-500 cursor-pointer"
                       />
@@ -2011,6 +2272,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             const updated = [...(editableSettings.spinWheelRewards || [])];
                             updated[idx] = { ...updated[idx], color: e.target.value };
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                            setIsSettingsDirty(true);
                           }}
                           className="w-8 h-8 rounded-lg border border-slate-700 bg-[#0d1726] cursor-pointer p-0.5"
                         />
@@ -2021,6 +2283,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             const updated = [...(editableSettings.spinWheelRewards || [])];
                             updated[idx] = { ...updated[idx], color: e.target.value };
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
+                            setIsSettingsDirty(true);
                           }}
                           className="w-full bg-[#0d1726] border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 font-mono uppercase text-[10px]"
                         />
@@ -2482,6 +2745,130 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Daily Top Bettor Tournament Configuration */}
+            <div className="space-y-4 bg-[#0b1424] p-5 rounded-2xl border border-amber-500/30 md:col-span-2">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-yellow-400" />
+                  <div className="text-amber-400 font-bold uppercase text-xs">
+                    Daily Top Bettor Tournament & Prize Pot Engine
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Status:</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        dailyTournament: {
+                          ...(editableSettings.dailyTournament || {
+                            enabled: true,
+                            basePot: 250,
+                            turnoverContributionPercent: 5,
+                            minWagerToQualify: 10,
+                            title: 'Daily Top Bettor Championship 🏆',
+                            prizeDistribution: [],
+                          }),
+                          enabled: !(editableSettings.dailyTournament?.enabled ?? true),
+                        },
+                      })
+                    }
+                    className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
+                      (editableSettings.dailyTournament?.enabled ?? true)
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                        : 'bg-red-500/20 border-red-500/50 text-red-400'
+                    }`}
+                  >
+                    {(editableSettings.dailyTournament?.enabled ?? true) ? '● ACTIVE (ENABLED)' : '○ PAUSED'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <span className="text-slate-400 text-xs font-bold">Guaranteed Base Pot ($ USDT):</span>
+                  <input
+                    type="number"
+                    step="1"
+                    value={editableSettings.dailyTournament?.basePot ?? 250}
+                    onChange={(e) =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        dailyTournament: {
+                          ...(editableSettings.dailyTournament || {
+                            enabled: true,
+                            basePot: 250,
+                            turnoverContributionPercent: 5,
+                            minWagerToQualify: 10,
+                            title: 'Daily Top Bettor Championship 🏆',
+                            prizeDistribution: [],
+                          }),
+                          basePot: parseFloat(e.target.value) || 0,
+                        },
+                      })
+                    }
+                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-emerald-400 font-bold mt-1 text-sm"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Starting prize pool guaranteed by Admin every day.</p>
+                </div>
+
+                <div>
+                  <span className="text-slate-400 text-xs font-bold">Turnover Contribution (%):</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={editableSettings.dailyTournament?.turnoverContributionPercent ?? 5}
+                    onChange={(e) =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        dailyTournament: {
+                          ...(editableSettings.dailyTournament || {
+                            enabled: true,
+                            basePot: 250,
+                            turnoverContributionPercent: 5,
+                            minWagerToQualify: 10,
+                            title: 'Daily Top Bettor Championship 🏆',
+                            prizeDistribution: [],
+                          }),
+                          turnoverContributionPercent: parseFloat(e.target.value) || 0,
+                        },
+                      })
+                    }
+                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-sm"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">% of all platform bet turnover automatically added to pot.</p>
+                </div>
+
+                <div>
+                  <span className="text-slate-400 text-xs font-bold">Min Daily Wager to Qualify ($):</span>
+                  <input
+                    type="number"
+                    step="1"
+                    value={editableSettings.dailyTournament?.minWagerToQualify ?? 10}
+                    onChange={(e) =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        dailyTournament: {
+                          ...(editableSettings.dailyTournament || {
+                            enabled: true,
+                            basePot: 250,
+                            turnoverContributionPercent: 5,
+                            minWagerToQualify: 10,
+                            title: 'Daily Top Bettor Championship 🏆',
+                            prizeDistribution: [],
+                          }),
+                          minWagerToQualify: parseFloat(e.target.value) || 0,
+                        },
+                      })
+                    }
+                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-amber-300 font-bold mt-1 text-sm"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Minimum 24h turnover needed to receive leaderboard rewards.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -2586,7 +2973,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => openEditUserModal(u)}
+                          onClick={() => handleChangeUserPassword(u.id, u.password)}
                           className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[11px] font-bold flex items-center gap-1 transition"
                           title="Change User Password"
                         >
@@ -2891,11 +3278,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* TAB 3: PENDING DEPOSITS APPROVAL */}
       {activeTab === 'deposits' && (
-        <div className="bg-[#0b1424] border border-amber-500/30 rounded-2xl p-6 space-y-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
-            <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
-            Pending Deposit Verification Queue
-          </h3>
+        <div className="bg-[#0b1424] border border-amber-500/30 rounded-2xl p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+              <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
+              Pending Deposit Verification Queue
+            </h3>
+            <button
+              type="button"
+              onClick={fetchWeb3Status}
+              disabled={loadingWeb3Status}
+              className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 self-start transition"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingWeb3Status ? 'animate-spin' : ''}`} />
+              Refresh Hot Wallet
+            </button>
+          </div>
+
+          {/* Web3 Hot Wallet Live Status Card */}
+          <div className="bg-[#050911] border border-cyan-500/30 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase font-bold text-slate-400">🛡️ SafePal Receiver Address (BEP20)</div>
+              <div className="font-mono text-cyan-300 truncate" title={web3Status?.address || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679'}>
+                {web3Status?.address || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679'}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase font-bold text-slate-400">⛽ SafePal BNB Gas Balance</div>
+              <div className="font-bold font-mono flex items-center gap-2">
+                <span className={web3Status?.isGasReady ? 'text-emerald-400' : 'text-amber-400'}>
+                  {web3Status?.bnbBalance !== undefined ? `${web3Status.bnbBalance} BNB` : 'Checking...'}
+                </span>
+                {!web3Status?.isGasReady && (
+                  <span className="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    Add ~$5 BNB
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase font-bold text-slate-400">💵 SafePal USDT Balance</div>
+              <div className="font-bold font-mono text-emerald-400">
+                {web3Status?.usdtBalance !== undefined ? `${web3Status.usdtBalance.toFixed(2)} USDT` : 'Checking...'}
+              </div>
+            </div>
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
@@ -2944,6 +3371,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <td className="p-3 flex items-center gap-2">
                       {dep.status === 'pending' && (
                         <>
+                          {dep.network === 'BEP20' && dep.txHash?.startsWith('0x') && (
+                            <button
+                              type="button"
+                              onClick={() => handleAutoVerifyDeposit(dep.id, dep.txHash)}
+                              disabled={verifyingDepId === dep.id}
+                              className="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 rounded font-bold text-[10px] flex items-center gap-1 transition"
+                              title="Auto-Verify On Binance Smart Chain"
+                            >
+                              <Sparkles className="w-3 h-3 text-cyan-400" />
+                              {verifyingDepId === dep.id ? 'Scanning...' : '⚡ Auto-Verify'}
+                            </button>
+                          )}
                           <button
                             onClick={() => onDepositAction(dep.id, 'approve')}
                             className="px-3 py-1 bg-emerald-500 text-black font-bold rounded text-[10px]"
@@ -2969,11 +3408,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* TAB 4: PENDING WITHDRAWALS APPROVAL */}
       {activeTab === 'withdrawals' && (
-        <div className="bg-[#0b1424] border border-amber-500/30 rounded-2xl p-6 space-y-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
-            <ArrowUpRight className="w-4 h-4 text-cyan-400" />
-            Pending Withdrawal Queue
-          </h3>
+        <div className="bg-[#0b1424] border border-amber-500/30 rounded-2xl p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+              <ArrowUpRight className="w-4 h-4 text-cyan-400" />
+              Pending Withdrawal Queue (Hot Wallet Enabled)
+            </h3>
+            <button
+              type="button"
+              onClick={fetchWeb3Status}
+              disabled={loadingWeb3Status}
+              className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 self-start transition"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingWeb3Status ? 'animate-spin' : ''}`} />
+              Refresh Hot Wallet
+            </button>
+          </div>
+
+          {/* Web3 Hot Wallet Live Status Card */}
+          <div className="bg-[#050911] border border-amber-500/30 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase font-bold text-slate-400">🛡️ SafePal Hot Wallet (BEP20)</div>
+              <div className="font-mono text-amber-300 truncate" title={web3Status?.address || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679'}>
+                {web3Status?.address || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679'}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase font-bold text-slate-400">⛽ SafePal BNB Gas Status</div>
+              <div className="font-bold font-mono flex items-center gap-2">
+                <span className={web3Status?.isGasReady ? 'text-emerald-400' : 'text-amber-400'}>
+                  {web3Status?.bnbBalance !== undefined ? `${web3Status.bnbBalance} BNB` : 'Checking...'}
+                </span>
+                {!web3Status?.isGasReady && (
+                  <span className="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    Add ~$5 BNB to SafePal for Auto-Payouts
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase font-bold text-slate-400">💵 SafePal USDT Balance</div>
+              <div className="font-bold font-mono text-emerald-400">
+                {web3Status?.usdtBalance !== undefined ? `${web3Status.usdtBalance.toFixed(2)} USDT` : 'Checking...'}
+              </div>
+            </div>
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
@@ -3023,6 +3502,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       {wd.status === 'pending' && (
                         <>
                           <button
+                            type="button"
+                            onClick={() => handleAutoDispatchWithdrawal(wd.id)}
+                            disabled={dispatchingWdId === wd.id}
+                            className="px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold rounded text-[10px] flex items-center gap-1 shadow-md shadow-amber-500/20 transition"
+                            title="Instant Blockchain Payout via SafePal Hot Wallet"
+                          >
+                            <Zap className={`w-3 h-3 ${dispatchingWdId === wd.id ? 'animate-spin' : ''}`} />
+                            {dispatchingWdId === wd.id ? 'Sending...' : '⚡ Auto-Dispatch'}
+                          </button>
+                          <button
                             onClick={() => onWithdrawAction(wd.id, 'approve')}
                             className="px-3 py-1 bg-emerald-500 text-black font-bold rounded text-[10px]"
                           >
@@ -3035,6 +3524,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             Reject
                           </button>
                         </>
+                      )}
+                      {wd.status === 'approved' && (
+                        <span className="text-emerald-400 font-bold text-[11px] flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Approved
+                        </span>
+                      )}
+                      {wd.status === 'rejected' && (
+                        <span className="text-red-400 font-bold text-[11px]">Rejected</span>
                       )}
                     </td>
                   </tr>
@@ -5387,8 +5884,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* Option 1: Automatic Lowest Payout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Option 1: Smart 60:40 Retention Mode */}
+              <button
+                type="button"
+                onClick={() => handleSetColorPredictionMode('smart_retention_60_40')}
+                className={`p-4 rounded-xl text-left border transition relative flex flex-col justify-between space-y-2 ${
+                  colorStats?.adminMode === 'smart_retention_60_40'
+                    ? 'bg-purple-500/10 border-purple-500 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
+                    <Shield className="w-4 h-4 text-purple-400" />
+                    Smart 60:40 Retention Mode
+                  </div>
+                  {colorStats?.adminMode === 'smart_retention_60_40' && (
+                    <span className="text-[10px] bg-purple-500 text-white font-black px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
+                </div>
+                <p className="text-xs font-sans leading-relaxed text-slate-300">
+                  <b>60% House Profit / 40% User Win Balance</b> + First 3 Bet <b>50% Loss Refund Shield</b> for maximum player trust and retention!
+                </p>
+              </button>
+
+              {/* Option 2: Automatic Lowest Payout */}
               <button
                 type="button"
                 onClick={() => handleSetColorPredictionMode('lowest_payout')}
@@ -5401,18 +5922,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4" />
-                    Automatic Mode (Lowest Bet Wins)
+                    Max Profit Mode (Lowest Bet)
                   </div>
                   {colorStats?.adminMode === 'lowest_payout' && (
                     <span className="text-[10px] bg-emerald-500 text-black font-black px-2 py-0.5 rounded-full">ACTIVE</span>
                   )}
                 </div>
                 <p className="text-xs font-sans leading-relaxed text-slate-300">
-                  System checks all active bets at round expiry and automatically selects the number (0-9) that results in the <b>LOWEST total payout</b> (Max System Profit).
+                  System automatically selects the number (0-9) that gives <b>LOWEST total payout</b> (100% Max House Margin).
                 </p>
               </button>
 
-              {/* Option 2: Standard Random */}
+              {/* Option 3: Standard Random */}
               <button
                 type="button"
                 onClick={() => handleSetColorPredictionMode('random')}
@@ -5432,11 +5953,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   )}
                 </div>
                 <p className="text-xs font-sans leading-relaxed text-slate-300">
-                  Standard 100% random mathematical draw between numbers 0 and 9 regardless of bet amounts.
+                  Standard 100% random mathematical draw between numbers 0 and 9 regardless of stakes.
                 </p>
               </button>
 
-              {/* Option 3: Manual Override */}
+              {/* Option 4: Manual Override */}
               <button
                 type="button"
                 onClick={() => handleSetColorPredictionMode('manual')}
@@ -5449,7 +5970,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
                     <Shield className="w-4 h-4" />
-                    Manual Forced Result Mode
+                    Manual Forced Mode
                   </div>
                   {(colorStats?.adminMode === 'manual' || colorStats?.forcedNextNumber !== null) && (
                     <span className="text-[10px] bg-amber-500 text-black font-black px-2 py-0.5 rounded-full">ACTIVE</span>
@@ -5463,26 +5984,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             {/* Live Projected Auto Outcome Box */}
             {colorStats?.numberPayoutProjections && (
-              <div className="bg-[#0b1426] border border-emerald-500/30 p-3.5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+              <div className={`p-3.5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs border ${
+                colorStats.adminMode === 'smart_retention_60_40'
+                  ? 'bg-[#130d24] border-purple-500/40 text-purple-200'
+                  : 'bg-[#0b1426] border-emerald-500/30'
+              }`}>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold">
-                    #{colorStats.projectedLowestNumber}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold border ${
+                    colorStats.adminMode === 'smart_retention_60_40'
+                      ? 'bg-purple-500/20 border-purple-500/40 text-purple-400'
+                      : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                  }`}>
+                    #{colorStats.adminMode === 'smart_retention_60_40' ? (colorStats.projected6040Number ?? colorStats.projectedLowestNumber) : colorStats.projectedLowestNumber}
                   </div>
                   <div>
-                    <div className="font-bold text-emerald-300">
-                      Auto-System Predicted Winner for Live Round: Number #{colorStats.projectedLowestNumber}
+                    <div className={`font-bold ${colorStats.adminMode === 'smart_retention_60_40' ? 'text-purple-300' : 'text-emerald-300'}`}>
+                      {colorStats.adminMode === 'smart_retention_60_40'
+                        ? `60:40 Retention Engine: Targeted Payout Candidate Number #${colorStats.projected6040Number ?? colorStats.projectedLowestNumber}`
+                        : `Auto Max Profit Predicted Winner: Number #${colorStats.projectedLowestNumber}`}
                     </div>
                     <div className="text-[11px] text-slate-400 font-sans">
-                      Estimated System Payout Liability: <span className="text-white font-bold">${colorStats.projectedLowestPayout?.toFixed(2)}</span>
-                      {' '}(Retains ${((colorStats.totalStakes || 0) - (colorStats.projectedLowestPayout || 0)).toFixed(2)} system profit)
+                      Estimated Round Payout: <span className="text-white font-bold">${(colorStats.adminMode === 'smart_retention_60_40' ? (colorStats.projected6040Payout ?? colorStats.projectedLowestPayout) : colorStats.projectedLowestPayout)?.toFixed(2)}</span>
+                      {' '}(Total Pool: ${(colorStats.totalStakes || 0).toFixed(2)})
                     </div>
                   </div>
                 </div>
                 <div className="text-[11px] text-slate-400 font-mono">
-                  {colorStats.adminMode === 'lowest_payout' ? (
+                  {colorStats.adminMode === 'smart_retention_60_40' ? (
+                    <span className="text-purple-300 font-bold">🛡️ 60:40 Mode Active + 50% First 3 Loss Shield Enabled</span>
+                  ) : colorStats.adminMode === 'lowest_payout' ? (
                     <span className="text-emerald-400 font-bold">🤖 Auto Mode will declare #{colorStats.projectedLowestNumber} when round ends</span>
                   ) : (
-                    <span className="text-amber-400">Switch to Automatic Mode above to enable this auto-profit selection</span>
+                    <span className="text-amber-400">Select Smart 60:40 or Automatic Mode above</span>
                   )}
                 </div>
               </div>
@@ -5547,7 +6080,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 Dragon vs Tiger Risk & Result Control Engine
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Set house profit risk algorithms or manually force Dragon (2X), Tiger (2X), or Tie (8X) as the next winning outcome.
+                Configure 60:40 Smart Retention, Automatic House Profit, Fair Random RNG, or manually force Dragon (2X), Tiger (2X), or Tie (8X).
               </p>
             </div>
             <button
@@ -5568,76 +6101,160 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="text-[10px] text-slate-500">{dragonTigerStats?.recentBetsCount || 0} bets placed</div>
             </div>
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
-              <div className="text-xs text-slate-400">🐉 Dragon Stakes</div>
+              <div className="text-xs text-slate-400">🐉 Dragon Stakes (2.0X)</div>
               <div className="text-2xl font-black text-rose-400">${dragonTigerStats?.dragonStakes?.toFixed(2) || '0.00'}</div>
-              <div className="text-[10px] text-slate-500">2.0X Payout Rate</div>
+              <div className="text-[10px] text-slate-500">Liability: ${(dragonTigerStats?.dragonPayout || (dragonTigerStats?.dragonStakes || 0) * 2).toFixed(2)}</div>
             </div>
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
-              <div className="text-xs text-slate-400">🐅 Tiger Stakes</div>
+              <div className="text-xs text-slate-400">🐅 Tiger Stakes (2.0X)</div>
               <div className="text-2xl font-black text-amber-400">${dragonTigerStats?.tigerStakes?.toFixed(2) || '0.00'}</div>
-              <div className="text-[10px] text-slate-500">2.0X Payout Rate</div>
+              <div className="text-[10px] text-slate-500">Liability: ${(dragonTigerStats?.tigerPayout || (dragonTigerStats?.tigerStakes || 0) * 2).toFixed(2)}</div>
             </div>
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
-              <div className="text-xs text-slate-400">👔 Tie Stakes</div>
+              <div className="text-xs text-slate-400">👔 Tie Stakes (8.0X)</div>
               <div className="text-2xl font-black text-emerald-400">${dragonTigerStats?.tieStakes?.toFixed(2) || '0.00'}</div>
-              <div className="text-[10px] text-slate-500">8.0X Mega Payout</div>
+              <div className="text-[10px] text-slate-500">Liability: ${(dragonTigerStats?.tiePayout || (dragonTigerStats?.tieStakes || 0) * 8).toFixed(2)}</div>
             </div>
           </div>
 
           {/* Risk Mode Selector */}
           <div className="bg-[#070d18] border border-amber-500/30 p-5 rounded-2xl space-y-4">
             <div className="text-sm font-bold text-amber-300">Select Platform Risk Algorithm</div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              {/* Option 1: Smart 60:40 Retention Mode */}
+              <button
+                type="button"
+                onClick={() => handleSetDragonTigerMode('smart_retention_60_40')}
+                className={`p-4 rounded-xl text-left border transition relative flex flex-col justify-between space-y-2 ${
+                  dragonTigerStats?.adminMode === 'smart_retention_60_40' && dragonTigerStats?.forcedWinner === null
+                    ? 'bg-purple-950/40 border-purple-500 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-purple-400 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" />
+                    Smart 60:40 Retention
+                  </div>
+                  {dragonTigerStats?.adminMode === 'smart_retention_60_40' && dragonTigerStats?.forcedWinner === null && (
+                    <span className="text-[10px] bg-purple-500 text-white font-black px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
+                </div>
+                <p className="text-xs font-sans leading-relaxed text-slate-300">
+                  Target 60% platform house profit + 40% user win cycle + 50% First 3 losses shield. Maximum player retention.
+                </p>
+              </button>
+
+              {/* Option 2: Lowest Payout Mode */}
               <button
                 type="button"
                 onClick={() => handleSetDragonTigerMode('lowest_payout')}
-                className={`p-4 rounded-xl text-left border transition ${
-                  dragonTigerStats?.adminMode === 'lowest_payout'
-                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-200'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                className={`p-4 rounded-xl text-left border transition relative flex flex-col justify-between space-y-2 ${
+                  dragonTigerStats?.adminMode === 'lowest_payout' && dragonTigerStats?.forcedWinner === null
+                    ? 'bg-emerald-950/40 border-emerald-500 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                 }`}
               >
-                <div className="font-bold text-sm text-emerald-400 flex items-center gap-2">
-                  <Bot className="w-4 h-4" /> Automatic House Profit (Lowest Payout)
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
+                    <Bot className="w-4 h-4" />
+                    Automatic House Profit
+                  </div>
+                  {dragonTigerStats?.adminMode === 'lowest_payout' && dragonTigerStats?.forcedWinner === null && (
+                    <span className="text-[10px] bg-emerald-500 text-white font-black px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-300 mt-1">
-                  Engine automatically calculates bets and picks the winning side that minimizes house payout loss.
+                <p className="text-xs font-sans leading-relaxed text-slate-300">
+                  Engine calculates stakes and picks the winning side that minimizes house payout liability.
                 </p>
               </button>
 
+              {/* Option 3: Fair Random Mode */}
               <button
                 type="button"
                 onClick={() => handleSetDragonTigerMode('random')}
-                className={`p-4 rounded-xl text-left border transition ${
-                  dragonTigerStats?.adminMode === 'random'
-                    ? 'bg-blue-500/10 border-blue-500 text-blue-200'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                className={`p-4 rounded-xl text-left border transition relative flex flex-col justify-between space-y-2 ${
+                  dragonTigerStats?.adminMode === 'random' && dragonTigerStats?.forcedWinner === null
+                    ? 'bg-blue-950/40 border-blue-500 text-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                 }`}
               >
-                <div className="font-bold text-sm text-blue-400 flex items-center gap-2">
-                  <Shuffle className="w-4 h-4" /> Standard Fair RNG (50/50 Random)
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-blue-400 flex items-center gap-1.5">
+                    <Shuffle className="w-4 h-4" />
+                    Standard Random Mode
+                  </div>
+                  {dragonTigerStats?.adminMode === 'random' && dragonTigerStats?.forcedWinner === null && (
+                    <span className="text-[10px] bg-blue-500 text-white font-black px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-300 mt-1">
-                  100% unbiased random cards distribution (45% Dragon, 45% Tiger, 10% Tie).
+                <p className="text-xs font-sans leading-relaxed text-slate-300">
+                  Standard 100% random cards distribution (45% Dragon, 45% Tiger, 10% Tie).
                 </p>
               </button>
 
+              {/* Option 4: Manual Override */}
               <button
                 type="button"
                 onClick={() => handleSetDragonTigerMode('manual')}
-                className={`p-4 rounded-xl text-left border transition ${
-                  dragonTigerStats?.adminMode === 'manual'
-                    ? 'bg-amber-500/10 border-amber-500 text-amber-200'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                className={`p-4 rounded-xl text-left border transition relative flex flex-col justify-between space-y-2 ${
+                  dragonTigerStats?.adminMode === 'manual' || dragonTigerStats?.forcedWinner !== null
+                    ? 'bg-amber-500/10 border-amber-500 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                 }`}
               >
-                <div className="font-bold text-sm text-amber-400 flex items-center gap-2">
-                  <Shield className="w-4 h-4" /> Manual Forced Winner Mode
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+                    <Shield className="w-4 h-4" />
+                    Manual Forced Mode
+                  </div>
+                  {(dragonTigerStats?.adminMode === 'manual' || dragonTigerStats?.forcedWinner !== null) && (
+                    <span className="text-[10px] bg-amber-500 text-black font-black px-2 py-0.5 rounded-full">ACTIVE</span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-300 mt-1">
-                  Admin forces a specific winner (Dragon, Tiger, or Tie) for the next card deal.
+                <p className="text-xs font-sans leading-relaxed text-slate-300">
+                  Admin manually picks Dragon, Tiger, or Tie to force win for the next round.
                 </p>
               </button>
+            </div>
+
+            {/* Live Projected Auto Outcome Box */}
+            <div className={`p-3.5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs border ${
+              dragonTigerStats?.adminMode === 'smart_retention_60_40'
+                ? 'bg-[#130d24] border-purple-500/40 text-purple-200'
+                : 'bg-[#0b1426] border-emerald-500/30'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold border text-sm uppercase ${
+                  dragonTigerStats?.adminMode === 'smart_retention_60_40'
+                    ? 'bg-purple-500/20 border-purple-500/40 text-purple-400'
+                    : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                }`}>
+                  {dragonTigerStats?.adminMode === 'smart_retention_60_40'
+                    ? (dragonTigerStats?.projected6040Winner === 'dragon' ? '🐉' : dragonTigerStats?.projected6040Winner === 'tiger' ? '🐅' : '👔')
+                    : (dragonTigerStats?.projectedLowestWinner === 'dragon' ? '🐉' : dragonTigerStats?.projectedLowestWinner === 'tiger' ? '🐅' : '👔')}
+                </div>
+                <div>
+                  <div className={`font-bold ${dragonTigerStats?.adminMode === 'smart_retention_60_40' ? 'text-purple-300' : 'text-emerald-300'}`}>
+                    {dragonTigerStats?.adminMode === 'smart_retention_60_40'
+                      ? `60:40 Retention Engine: Targeted Winner [${(dragonTigerStats?.projected6040Winner || 'DRAGON').toUpperCase()}]`
+                      : `Auto Max Profit Predicted Winner: [${(dragonTigerStats?.projectedLowestWinner || 'DRAGON').toUpperCase()}]`}
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-sans">
+                    Estimated Round Payout Liability: <span className="text-white font-bold">${(dragonTigerStats?.adminMode === 'smart_retention_60_40' ? (dragonTigerStats?.projected6040Payout ?? 0) : (dragonTigerStats?.projectedLowestPayout ?? 0)).toFixed(2)}</span>
+                    {' '}(Total Pool: ${(dragonTigerStats?.totalStakes || 0).toFixed(2)})
+                  </div>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono">
+                {dragonTigerStats?.adminMode === 'smart_retention_60_40' ? (
+                  <span className="text-purple-300 font-bold">🛡️ 60:40 Mode Active + 50% First 3 Loss Shield Enabled</span>
+                ) : dragonTigerStats?.adminMode === 'lowest_payout' ? (
+                  <span className="text-emerald-400 font-bold">🤖 Auto Mode will declare [{(dragonTigerStats?.projectedLowestWinner || 'DRAGON').toUpperCase()}]</span>
+                ) : (
+                  <span className="text-amber-400">Select Smart 60:40 or Automatic Mode above</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -5690,10 +6307,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <button
                 type="button"
-                onClick={() => handleForceDragonTigerResult(null)}
+                onClick={() => {
+                  handleForceDragonTigerResult(null);
+                  handleSetDragonTigerMode('smart_retention_60_40');
+                }}
                 className="py-3.5 px-4 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
               >
-                <span>🔄 Reset / Clear Force</span>
+                <span>🔄 Reset to 60:40 Mode</span>
               </button>
             </div>
 
@@ -5822,6 +6442,565 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 Clear
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: DAILY TOP BETTOR TOURNAMENT CONTROL */}
+      {activeTab === 'tournament' && (
+        <div className="space-y-6">
+          {/* Tournament Header Bar */}
+          <div className="bg-[#0b1424] border border-amber-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-6 h-6 text-yellow-400 animate-pulse" />
+                <h2 className="text-xl font-black text-white tracking-wide">
+                  {editableSettings.dailyTournament?.title || 'Daily Top Bettor Championship 🏆'}
+                </h2>
+              </div>
+              <p className="text-xs text-slate-400">
+                Configure prize pot size, turnover contribution %, qualification rules, and distribute daily rewards to champions.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchAdminTournament}
+                disabled={loadingTournament}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-2 border border-slate-700"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingTournament ? 'animate-spin text-amber-400' : ''}`} />
+                <span>{loadingTournament ? 'Refreshing...' : 'Refresh Stats'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black transition flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.3)] disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{savingSettings ? 'Saving...' : 'Save Settings'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDistributeTournamentRewards}
+                disabled={distributingTournament}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black text-xs font-black transition flex items-center gap-2 shadow-[0_0_20px_rgba(234,179,8,0.4)] disabled:opacity-50"
+              >
+                <Zap className="w-4 h-4" />
+                <span>{distributingTournament ? 'Distributing...' : '⚡ Distribute Rewards Now'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Live Pot & Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-[#070e1b] border border-amber-500/40 p-5 rounded-2xl relative overflow-hidden shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-amber-400 font-bold">Total Prize Pool</span>
+                <Trophy className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-3xl font-black text-amber-300 mt-2">
+                ${tournamentData?.totalPot?.toFixed(2) || (editableSettings.dailyTournament?.basePot ?? 250).toFixed(2)}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                Guaranteed: ${(editableSettings.dailyTournament?.basePot ?? 250).toFixed(2)} + Dynamic Turnover
+              </div>
+            </div>
+
+            <div className="bg-[#070e1b] border border-slate-800 p-5 rounded-2xl relative overflow-hidden shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-cyan-400 font-bold">Today's Bet Turnover</span>
+                <Zap className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="text-3xl font-black text-cyan-300 mt-2">
+                ${tournamentData?.totalWagerVolume?.toFixed(2) || '0.00'}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                +{editableSettings.dailyTournament?.turnoverContributionPercent ?? 5}% added to pot (${((tournamentData?.totalWagerVolume || 0) * ((editableSettings.dailyTournament?.turnoverContributionPercent ?? 5) / 100)).toFixed(2)})
+              </div>
+            </div>
+
+            <div className="bg-[#070e1b] border border-slate-800 p-5 rounded-2xl relative overflow-hidden shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-emerald-400 font-bold">Active Bettors</span>
+                <Users className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-3xl font-black text-emerald-300 mt-2">
+                {tournamentData?.participantCount || 0}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                {tournamentData?.totalBetsPlaced || 0} total bets placed today
+              </div>
+            </div>
+
+            <div className="bg-[#070e1b] border border-slate-800 p-5 rounded-2xl relative overflow-hidden shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-purple-400 font-bold">Min Wager Req.</span>
+                <ShieldCheck className="w-4 h-4 text-purple-400" />
+              </div>
+              <div className="text-3xl font-black text-purple-300 mt-2">
+                ${(editableSettings.dailyTournament?.minWagerToQualify ?? 10).toFixed(2)}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">
+                Turnover threshold to unlock rank prize
+              </div>
+            </div>
+          </div>
+
+          {/* Distribution Success Banner */}
+          {tournamentDistributeResult && (
+            <div className="bg-emerald-950/40 border border-emerald-500/50 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span>{tournamentDistributeResult.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTournamentDistributeResult(null)}
+                  className="text-xs text-slate-400 hover:text-white"
+                >
+                  ✕ Dismiss
+                </button>
+              </div>
+              {tournamentDistributeResult.winners && tournamentDistributeResult.winners.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-2 border-t border-emerald-500/20">
+                  {tournamentDistributeResult.winners.map((w: any) => (
+                    <div key={w.userId} className="bg-[#070e1b] border border-slate-800 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-amber-400">#{w.rank}</span> <span className="text-white font-medium">{w.name}</span> <span className="text-[10px] text-slate-400 font-mono">({w.nodeId})</span>
+                      </div>
+                      <span className="font-bold text-emerald-400">+${w.prizeAmount.toFixed(2)} USDT</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Main Tournament Management Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: Tournament Parameters & Prize Distribution (5 cols) */}
+            <div className="lg:col-span-5 space-y-6">
+              {/* Parameters Card */}
+              <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="text-sm font-bold text-amber-300 flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-amber-400" />
+                    Tournament Engine Parameters
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSettingsDirty(true);
+                      updateEditableSettings({
+                        ...editableSettings,
+                        dailyTournament: {
+                          ...(editableSettings.dailyTournament || {
+                            enabled: true,
+                            basePot: 250,
+                            turnoverContributionPercent: 5,
+                            minWagerToQualify: 10,
+                            title: 'Daily Top Bettor Championship 🏆',
+                            prizeDistribution: [],
+                          }),
+                          enabled: !(editableSettings.dailyTournament?.enabled ?? true),
+                        },
+                      });
+                    }}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
+                      (editableSettings.dailyTournament?.enabled ?? true)
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                        : 'bg-red-500/20 border-red-500/50 text-red-400'
+                    }`}
+                  >
+                    {(editableSettings.dailyTournament?.enabled ?? true) ? '● Active (Enabled)' : '○ Paused'}
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-300 font-bold block mb-1">Tournament Title:</label>
+                    <input
+                      type="text"
+                      value={editableSettings.dailyTournament?.title ?? 'Daily Top Bettor Championship 🏆'}
+                      onChange={(e) => {
+                        setIsSettingsDirty(true);
+                        updateEditableSettings({
+                          ...editableSettings,
+                          dailyTournament: {
+                            ...(editableSettings.dailyTournament || {
+                              enabled: true,
+                              basePot: 250,
+                              turnoverContributionPercent: 5,
+                              minWagerToQualify: 10,
+                              title: 'Daily Top Bettor Championship 🏆',
+                              prizeDistribution: [],
+                            }),
+                            title: e.target.value,
+                          },
+                        });
+                      }}
+                      className="w-full bg-[#070e1b] border border-slate-700 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-300 font-bold block mb-1">Guaranteed Base Pot ($):</label>
+                      <input
+                        type="number"
+                        step="10"
+                        min="0"
+                        value={editableSettings.dailyTournament?.basePot ?? 250}
+                        onChange={(e) => {
+                          setIsSettingsDirty(true);
+                          updateEditableSettings({
+                            ...editableSettings,
+                            dailyTournament: {
+                              ...(editableSettings.dailyTournament || {
+                                enabled: true,
+                                basePot: 250,
+                                turnoverContributionPercent: 5,
+                                minWagerToQualify: 10,
+                                title: 'Daily Top Bettor Championship 🏆',
+                                prizeDistribution: [],
+                              }),
+                              basePot: parseFloat(e.target.value) || 0,
+                            },
+                          });
+                        }}
+                        className="w-full bg-[#070e1b] border border-slate-700 rounded-xl px-3 py-2 text-emerald-400 font-bold text-sm focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-slate-300 font-bold block mb-1">Turnover Contribution (%):</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="50"
+                        value={editableSettings.dailyTournament?.turnoverContributionPercent ?? 5}
+                        onChange={(e) => {
+                          setIsSettingsDirty(true);
+                          updateEditableSettings({
+                            ...editableSettings,
+                            dailyTournament: {
+                              ...(editableSettings.dailyTournament || {
+                                enabled: true,
+                                basePot: 250,
+                                turnoverContributionPercent: 5,
+                                minWagerToQualify: 10,
+                                title: 'Daily Top Bettor Championship 🏆',
+                                prizeDistribution: [],
+                              }),
+                              turnoverContributionPercent: parseFloat(e.target.value) || 0,
+                            },
+                          });
+                        }}
+                        className="w-full bg-[#070e1b] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 font-bold text-sm focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-300 font-bold block mb-1">Min Daily Wager to Qualify ($ USDT):</label>
+                    <input
+                      type="number"
+                      step="5"
+                      min="0"
+                      value={editableSettings.dailyTournament?.minWagerToQualify ?? 10}
+                      onChange={(e) => {
+                        setIsSettingsDirty(true);
+                        updateEditableSettings({
+                          ...editableSettings,
+                          dailyTournament: {
+                            ...(editableSettings.dailyTournament || {
+                              enabled: true,
+                              basePot: 250,
+                              turnoverContributionPercent: 5,
+                              minWagerToQualify: 10,
+                              title: 'Daily Top Bettor Championship 🏆',
+                              prizeDistribution: [],
+                            }),
+                            minWagerToQualify: parseFloat(e.target.value) || 0,
+                          },
+                        });
+                      }}
+                      className="w-full bg-[#070e1b] border border-slate-700 rounded-xl px-3 py-2 text-amber-300 font-bold text-sm focus:border-amber-400"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Users with less than this turnover will not receive prize distribution.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Prize Tiers Configuration Card */}
+              <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-amber-300 flex items-center gap-2">
+                      <Percent className="w-4 h-4 text-amber-400" />
+                      Rank-Wise Prize Distribution
+                    </h3>
+                    <span className="text-[10px] text-slate-400">Configure percentage share of total pot for each rank</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSettingsDirty(true);
+                        const defaultDistribution = [
+                          { rank: 1, percent: 40 },
+                          { rank: 2, percent: 25 },
+                          { rank: 3, percent: 15 },
+                          { rank: 4, percent: 6 },
+                          { rank: 5, percent: 6 },
+                          { rank: 6, percent: 2 },
+                          { rank: 7, percent: 2 },
+                          { rank: 8, percent: 2 },
+                          { rank: 9, percent: 1 },
+                          { rank: 10, percent: 1 },
+                        ];
+                        updateEditableSettings({
+                          ...editableSettings,
+                          dailyTournament: {
+                            ...(editableSettings.dailyTournament || {
+                              enabled: true,
+                              basePot: 250,
+                              turnoverContributionPercent: 5,
+                              minWagerToQualify: 10,
+                              title: 'Daily Top Bettor Championship 🏆',
+                            }),
+                            prizeDistribution: defaultDistribution,
+                          },
+                        });
+                      }}
+                      className="text-[10px] px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-bold"
+                    >
+                      Top 10 Standard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSettingsDirty(true);
+                        const top3Distribution = [
+                          { rank: 1, percent: 50 },
+                          { rank: 2, percent: 30 },
+                          { rank: 3, percent: 20 },
+                        ];
+                        updateEditableSettings({
+                          ...editableSettings,
+                          dailyTournament: {
+                            ...(editableSettings.dailyTournament || {
+                              enabled: true,
+                              basePot: 250,
+                              turnoverContributionPercent: 5,
+                              minWagerToQualify: 10,
+                              title: 'Daily Top Bettor Championship 🏆',
+                            }),
+                            prizeDistribution: top3Distribution,
+                          },
+                        });
+                      }}
+                      className="text-[10px] px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-bold"
+                    >
+                      Top 3 Only
+                    </button>
+                  </div>
+                </div>
+
+                {/* Table of Ranks */}
+                <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                  {(editableSettings.dailyTournament?.prizeDistribution && editableSettings.dailyTournament.prizeDistribution.length > 0
+                    ? editableSettings.dailyTournament.prizeDistribution
+                    : [
+                        { rank: 1, percent: 40 },
+                        { rank: 2, percent: 25 },
+                        { rank: 3, percent: 15 },
+                        { rank: 4, percent: 6 },
+                        { rank: 5, percent: 6 },
+                        { rank: 6, percent: 2 },
+                        { rank: 7, percent: 2 },
+                        { rank: 8, percent: 2 },
+                        { rank: 9, percent: 1 },
+                        { rank: 10, percent: 1 },
+                      ]
+                  ).map((tier, idx) => {
+                    const currentPot = tournamentData?.totalPot || editableSettings.dailyTournament?.basePot || 250;
+                    const estimatedPrize = (currentPot * (tier.percent / 100)).toFixed(2);
+                    return (
+                      <div key={tier.rank} className="flex items-center justify-between bg-[#070e1b] border border-slate-800 rounded-xl p-2.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs ${
+                            tier.rank === 1 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' :
+                            tier.rank === 2 ? 'bg-slate-400/20 text-slate-300 border border-slate-400/40' :
+                            tier.rank === 3 ? 'bg-amber-700/20 text-amber-500 border border-amber-700/40' :
+                            'bg-slate-800 text-slate-400'
+                          }`}>
+                            #{tier.rank}
+                          </span>
+                          <span className="font-medium text-slate-300">
+                            {tier.rank === 1 ? '1st Champion' : tier.rank === 2 ? '2nd Runner Up' : tier.rank === 3 ? '3rd Place' : `Rank ${tier.rank}`}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              max="100"
+                              value={tier.percent}
+                              onChange={(e) => {
+                                setIsSettingsDirty(true);
+                                const newPercent = parseFloat(e.target.value) || 0;
+                                const currentList = editableSettings.dailyTournament?.prizeDistribution && editableSettings.dailyTournament.prizeDistribution.length > 0
+                                  ? [...editableSettings.dailyTournament.prizeDistribution]
+                                  : [
+                                      { rank: 1, percent: 40 },
+                                      { rank: 2, percent: 25 },
+                                      { rank: 3, percent: 15 },
+                                      { rank: 4, percent: 6 },
+                                      { rank: 5, percent: 6 },
+                                      { rank: 6, percent: 2 },
+                                      { rank: 7, percent: 2 },
+                                      { rank: 8, percent: 2 },
+                                      { rank: 9, percent: 1 },
+                                      { rank: 10, percent: 1 },
+                                    ];
+                                currentList[idx] = { rank: tier.rank, percent: newPercent };
+                                updateEditableSettings({
+                                  ...editableSettings,
+                                  dailyTournament: {
+                                    ...(editableSettings.dailyTournament || {
+                                      enabled: true,
+                                      basePot: 250,
+                                      turnoverContributionPercent: 5,
+                                      minWagerToQualify: 10,
+                                      title: 'Daily Top Bettor Championship 🏆',
+                                    }),
+                                    prizeDistribution: currentList,
+                                  },
+                                });
+                              }}
+                              className="w-16 bg-[#050911] border border-slate-700 rounded-lg px-2 py-1 text-center font-bold text-amber-300"
+                            />
+                            <span className="text-slate-400 font-bold">%</span>
+                          </div>
+
+                          <div className="w-24 text-right">
+                            <span className="text-emerald-400 font-bold font-mono">~${estimatedPrize}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Total Percentage:</span>
+                  <span className={`font-bold font-mono ${
+                    ((editableSettings.dailyTournament?.prizeDistribution || []).reduce((sum, t) => sum + t.percent, 0) || 100) === 100
+                      ? 'text-emerald-400'
+                      : 'text-amber-400'
+                  }`}>
+                    {((editableSettings.dailyTournament?.prizeDistribution || []).reduce((sum, t) => sum + t.percent, 0) || 100)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Live Leaderboard (7 cols) */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-amber-400" />
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Live Tournament Leaderboard (Today)</h3>
+                      <p className="text-[10px] text-slate-400">Real-time wagering rankings calculated across Color Prediction, Dragon Tiger & Aviator</p>
+                    </div>
+                  </div>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                    ● Live Tracking
+                  </span>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-[11px] text-slate-400 uppercase tracking-wider">
+                        <th className="pb-2 pl-2">Rank</th>
+                        <th className="pb-2">User / Node ID</th>
+                        <th className="pb-2 text-right">Wager Volume</th>
+                        <th className="pb-2 text-center">Bets</th>
+                        <th className="pb-2 text-right">Projected Prize</th>
+                        <th className="pb-2 text-center pr-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-mono">
+                      {tournamentData?.leaderboard && tournamentData.leaderboard.length > 0 ? (
+                        tournamentData.leaderboard.map((item: any) => (
+                          <tr key={item.userId} className="hover:bg-slate-800/30 transition">
+                            <td className="py-2.5 pl-2">
+                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg font-bold text-xs ${
+                                item.rank === 1 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' :
+                                item.rank === 2 ? 'bg-slate-300/20 text-slate-200 border border-slate-300/40' :
+                                item.rank === 3 ? 'bg-amber-600/20 text-amber-400 border border-amber-600/40' :
+                                'text-slate-400'
+                              }`}>
+                                #{item.rank}
+                              </span>
+                            </td>
+                            <td className="py-2.5">
+                              <div className="font-bold text-white">{item.userName}</div>
+                              <div className="text-[10px] text-amber-400/80">{item.userNodeId}</div>
+                            </td>
+                            <td className="py-2.5 text-right font-bold text-cyan-300">
+                              ${item.totalWagered.toFixed(2)}
+                            </td>
+                            <td className="py-2.5 text-center text-slate-400">
+                              {item.betsCount}
+                            </td>
+                            <td className="py-2.5 text-right">
+                              {item.projectedPrize > 0 ? (
+                                <span className="font-bold text-emerald-400">+${item.projectedPrize.toFixed(2)}</span>
+                              ) : (
+                                <span className="text-slate-400">$0.00</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 text-center pr-2">
+                              {item.qualified ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                  Qualified
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30" title={`Requires $${editableSettings.dailyTournament?.minWagerToQualify || 10} minimum turnover`}>
+                                  Below Min ($)
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-slate-400 font-sans text-xs">
+                            No bets recorded for today yet. Users placing bets on Color Prediction, Dragon Tiger, or Aviator will automatically appear here!
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>

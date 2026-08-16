@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Disc, ShoppingBag, Sparkles, ShieldCheck, Ticket, Gift, Clock, Flame } from 'lucide-react';
+import { Disc, ShoppingBag, Sparkles, ShieldCheck, Ticket, Gift, Clock, Flame, CalendarCheck, Trophy, CheckCircle2, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { User, SystemSettings, SpinReward } from '../types';
 
@@ -8,6 +8,8 @@ interface GamificationViewProps {
   settings: SystemSettings;
   onSpinWheel: () => Promise<SpinReward | null>;
   onBuySpinTicket?: (qty: number) => Promise<boolean>;
+  onDailyCheckin?: () => Promise<void>;
+  onOpenTournament?: () => void;
   onClaimRankBonus?: (rankId: string) => Promise<void>;
 }
 
@@ -16,16 +18,38 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
   settings,
   onSpinWheel,
   onBuySpinTicket,
+  onDailyCheckin,
+  onOpenTournament,
 }) => {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [wonReward, setWonReward] = useState<SpinReward | null>(null);
   const [buyQty, setBuyQty] = useState<number>(1);
   const [buying, setBuying] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
 
   const rewards = settings.spinWheelRewards || [];
   const ticketPrice = settings.spinTicketPrice !== undefined ? Number(settings.spinTicketPrice) : 1.0;
   const intervalHours = settings.spinWheelIntervalHours || 24;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const lastCheckinDate = user.lastDailyCheckinAt ? new Date(user.lastDailyCheckinAt).toISOString().split('T')[0] : null;
+  const isAlreadyCheckedInToday = lastCheckinDate === todayStr;
+
+  const handleCheckinClick = async () => {
+    if (isAlreadyCheckedInToday || checkingIn || !onDailyCheckin) return;
+    setCheckingIn(true);
+    try {
+      await onDailyCheckin();
+      confetti({
+        particleCount: 70,
+        spread: 60,
+        origin: { y: 0.7 },
+      });
+    } finally {
+      setCheckingIn(false);
+    }
+  };
 
   const handleSpinClick = async () => {
     if (user.spinCredits <= 0 || spinning) return;
@@ -101,10 +125,104 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
     setBuying(false);
   };
 
-  const totalProbWeight = rewards.reduce((sum, r) => sum + (r.probability || 0), 0);
-
   return (
     <div className="space-y-6 font-mono pb-12">
+      {/* 1. DAILY CHECK-IN (1 FREE SPIN) & TOURNAMENT ACTION BAR */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Daily Check-In Card */}
+        <div className="bg-gradient-to-br from-[#121c2d] to-[#0a111c] border border-cyan-500/40 rounded-3xl p-5 shadow-[0_0_25px_rgba(6,182,212,0.15)] flex flex-col justify-between gap-4 relative overflow-hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-black text-cyan-400 uppercase tracking-wider">
+                <CalendarCheck className="w-3.5 h-3.5" />
+                Daily Streak Bonus
+              </div>
+              <h3 className="text-lg font-black text-white">
+                Daily Check-In: <span className="text-cyan-400">1 Free Spin</span>
+              </h3>
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                Check in every day to claim your free lucky spin ticket! Maintain your daily streak for milestone multipliers.
+              </p>
+            </div>
+            <div className="text-right shrink-0 bg-[#060c16] border border-slate-800 rounded-2xl p-2.5">
+              <span className="text-[10px] text-slate-400 font-bold block uppercase">Streak</span>
+              <span className="text-xl font-black text-amber-400 flex items-center justify-end gap-1">
+                🔥 {user.dailyCheckinStreak || 0}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+            <span className="text-xs text-slate-400">
+              {isAlreadyCheckedInToday ? (
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" /> Checked in today!
+                </span>
+              ) : (
+                <span className="text-amber-400 font-bold flex items-center gap-1">
+                  <Zap className="w-4 h-4" /> Ready to claim today's spin!
+                </span>
+              )}
+            </span>
+
+            <button
+              onClick={handleCheckinClick}
+              disabled={isAlreadyCheckedInToday || checkingIn}
+              className={`px-5 py-2.5 rounded-xl font-black text-xs transition shadow-md flex items-center gap-1.5 ${
+                isAlreadyCheckedInToday
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-pulse'
+              }`}
+            >
+              {checkingIn ? (
+                'Claiming...'
+              ) : isAlreadyCheckedInToday ? (
+                'Claimed (Come Back Tomorrow)'
+              ) : (
+                '🎁 Claim 1 Free Spin Now'
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Daily Top Bettor Tournament Teaser Card */}
+        <div className="bg-gradient-to-br from-[#201503] via-[#2a1a04] to-[#140e03] border border-amber-500/50 rounded-3xl p-5 shadow-[0_0_25px_rgba(245,158,11,0.2)] flex flex-col justify-between gap-4 relative overflow-hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-black text-amber-300 uppercase tracking-wider">
+                <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                Live 24h Championship
+              </div>
+              <h3 className="text-lg font-black text-white">
+                Daily Top Bettor <span className="text-amber-400">Tournament</span>
+              </h3>
+              <p className="text-xs text-amber-200/80 font-sans leading-relaxed">
+                Compete on Color Prediction, Dragon vs Tiger & Aviator. Top 10 bettors win instant shares of the progressive daily pot!
+              </p>
+            </div>
+            <div className="text-right shrink-0 bg-black/60 border border-amber-500/30 rounded-2xl p-2.5">
+              <span className="text-[10px] text-amber-400 font-bold block uppercase">Guaranteed Pot</span>
+              <span className="text-xl font-black text-white">
+                $250+ <span className="text-[10px] text-amber-400">USDT</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 pt-2 border-t border-amber-500/20">
+            <span className="text-xs text-amber-300/90 font-mono">
+              Live Standings & Participant Counter
+            </span>
+            <button
+              onClick={onOpenTournament}
+              className="px-5 py-2.5 rounded-xl font-black text-xs transition bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center gap-1.5 shrink-0"
+            >
+              <Trophy className="w-4 h-4" />
+              View Leaderboard & Pot →
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* INTERACTIVE SPIN WHEEL HEADER */}
       <div className="bg-gradient-to-r from-[#0d1728] via-[#091220] to-[#0d1728] border border-pink-500/30 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-[0_0_30px_rgba(236,72,153,0.15)]">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -371,11 +489,11 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
         <div className="bg-[#0b1320] border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-pink-400" />
-              Wheel Slices & Winning Probability
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              Wheel Slices & Reward Payouts
             </h3>
-            <span className="text-[10px] text-pink-400 font-bold bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-md">
-              100% Provably Fair
+            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+              Instant Credit
             </span>
           </div>
 
@@ -384,29 +502,21 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
               <thead>
                 <tr className="border-b border-slate-800 text-[10px] uppercase text-slate-500 font-semibold">
                   <th className="py-2 px-1">Slice Reward</th>
-                  <th className="py-2 px-1">Payout ($)</th>
-                  <th className="py-2 px-1 text-right">Probability Weight</th>
+                  <th className="py-2 px-1 text-right">Payout ($)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50 text-[11px]">
-                {rewards.map((r) => {
-                  const probPercent = totalProbWeight > 0 ? ((r.probability / totalProbWeight) * 100).toFixed(1) : '0';
-
-                  return (
-                    <tr key={r.id} className="hover:bg-slate-800/30">
-                      <td className="py-2.5 px-1 font-bold flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                        <span className="text-white">{r.label}</span>
-                      </td>
-                      <td className="py-2.5 px-1 font-mono font-bold text-emerald-400">
-                        {r.amount > 0 ? `$${r.amount.toFixed(2)}` : '$0.00'}
-                      </td>
-                      <td className="py-2.5 px-1 font-mono text-right font-extrabold text-pink-400">
-                        {probPercent}%
-                      </td>
-                    </tr>
-                  );
-                })}
+                {rewards.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-800/30">
+                    <td className="py-2.5 px-1 font-bold flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                      <span className="text-white">{r.label}</span>
+                    </td>
+                    <td className="py-2.5 px-1 font-mono font-bold text-emerald-400 text-right">
+                      {r.amount > 0 ? `$${r.amount.toFixed(2)}` : '$0.00'}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

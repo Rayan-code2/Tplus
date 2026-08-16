@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Ticket,
   Sparkles,
@@ -20,6 +20,9 @@ import {
   FileSpreadsheet,
   ListFilter,
   Trash2,
+  Volume2,
+  VolumeX,
+  Lock,
 } from 'lucide-react';
 import { User, LuckyDrawState } from '../types';
 
@@ -46,18 +49,177 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   const [customCouponInput, setCustomCouponInput] = useState<string>('');
   const [customCouponList, setCustomCouponList] = useState<string[]>([]);
   
-  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
+    days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0,
   });
 
-  // Roller animation states
+  // 10-Second Roller animation states
+  const ROLL_TOTAL_MS = 10000; // Minimum 10 full seconds!
   const [isRolling, setIsRolling] = useState(false);
+  const [rollSecondsLeft, setRollSecondsLeft] = useState<number>(10.0);
+  const [rollProgress, setRollProgress] = useState<number>(0);
+  const [lockedReelMask, setLockedReelMask] = useState<boolean[]>([false, false, false, false, false, false]);
   const [displayDigits, setDisplayDigits] = useState<string[]>(['7', '3', '9', '2', '1', '0']);
   const [winnerAnnouncedList, setWinnerAnnouncedList] = useState<any[] | null>(null);
   const [winnerTierFilter, setWinnerTierFilter] = useState<'all' | '1st' | '2nd' | '3rd'>('all');
   const [lastSeenRollTime, setLastSeenRollTime] = useState<number>(0);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+
+  // Active animation refs
+  const rollIntervalRef = useRef<any>(null);
+  const soundEnabledRef = useRef<boolean>(true);
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  // Web Audio Synth Helpers
+  const playElectricTick = () => {
+    if (!soundEnabledRef.current) return;
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(650 + Math.random() * 500, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.025, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.04);
+    } catch {}
+  };
+
+  const playReelLockSound = (reelIdx: number) => {
+    if (!soundEnabledRef.current) return;
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      const freqs = [392, 440, 523, 587, 659, 784];
+      osc.frequency.setValueAtTime(freqs[reelIdx] || 523, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.22);
+    } catch {}
+  };
+
+  const playJackpotFanfare = () => {
+    if (!soundEnabledRef.current) return;
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.12);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.12 + 0.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + i * 0.12);
+        osc.stop(audioCtx.currentTime + i * 0.12 + 0.6);
+      });
+    } catch {}
+  };
+
+  // Staged locking animation engine (10 full seconds)
+  const start10SecRollAnimation = (targetWinNum: string, winners: any[], rollStartTimestamp?: number) => {
+    if (rollIntervalRef.current) {
+      clearInterval(rollIntervalRef.current);
+    }
+
+    const start = rollStartTimestamp || Date.now();
+    setIsRolling(true);
+    setWinnerAnnouncedList(null);
+
+    const safeTargetDigits = (targetWinNum || '786910').padStart(6, '0').slice(-6).split('');
+    const prevLockedState = [false, false, false, false, false, false];
+
+    // Lock schedule milestones (ms from roll start):
+    // 0 - 6000ms: all 6 reels spin at rapid speed
+    // 6000ms: Reel #1 locks
+    // 6800ms: Reel #2 locks
+    // 7600ms: Reel #3 locks
+    // 8400ms: Reel #4 locks
+    // 9200ms: Reel #5 locks
+    // 10000ms: Reel #6 locks (Grand final lock!)
+    const lockMilestones = [6000, 6800, 7600, 8400, 9200, 10000];
+
+    let tickCount = 0;
+    rollIntervalRef.current = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - start;
+      const remainingMs = Math.max(0, ROLL_TOTAL_MS - elapsed);
+      const remainingSec = remainingMs / 1000;
+      const progressPercent = Math.min(100, (elapsed / ROLL_TOTAL_MS) * 100);
+
+      setRollSecondsLeft(remainingSec);
+      setRollProgress(progressPercent);
+
+      // Evaluate lock status for each reel
+      const currentLocks = lockMilestones.map((milestone) => elapsed >= milestone);
+      setLockedReelMask(currentLocks);
+
+      // Play lock chime when a new reel locks
+      currentLocks.forEach((isLocked, idx) => {
+        if (isLocked && !prevLockedState[idx]) {
+          prevLockedState[idx] = true;
+          playReelLockSound(idx);
+        }
+      });
+
+      // Sound tick occasionally for spinning reels
+      tickCount++;
+      if (tickCount % 2 === 0 && elapsed < ROLL_TOTAL_MS) {
+        playElectricTick();
+      }
+
+      // Generate digit display
+      const currentDigits = safeTargetDigits.map((digit, idx) => {
+        if (currentLocks[idx]) {
+          return digit;
+        }
+        return Math.floor(Math.random() * 10).toString();
+      });
+      setDisplayDigits(currentDigits);
+
+      // Finish 10-second draw
+      if (elapsed >= ROLL_TOTAL_MS) {
+        if (rollIntervalRef.current) {
+          clearInterval(rollIntervalRef.current);
+          rollIntervalRef.current = null;
+        }
+        setIsRolling(false);
+        setLockedReelMask([true, true, true, true, true, true]);
+        setDisplayDigits(safeTargetDigits);
+        setRollSecondsLeft(0);
+        setRollProgress(100);
+        playJackpotFanfare();
+
+        if (winners && winners.length > 0) {
+          setWinnerAnnouncedList(winners);
+        }
+        if (onRefreshState) onRefreshState();
+      }
+    }, 45);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (rollIntervalRef.current) {
+        clearInterval(rollIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Admin Config State
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
@@ -177,25 +339,10 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         setLuckyDraw(ld);
 
         // Check if admin recently triggered a live draw spin across all users
-        if (ld.rollingStartedAt && ld.rollingStartedAt > lastSeenRollTime && (Date.now() - ld.rollingStartedAt < 10000)) {
+        if (ld.rollingStartedAt && ld.rollingStartedAt > lastSeenRollTime && (Date.now() - ld.rollingStartedAt < 12000)) {
           setLastSeenRollTime(ld.rollingStartedAt);
-          setIsRolling(true);
-          setWinnerAnnouncedList(null);
-
-          const elapsed = Date.now() - ld.rollingStartedAt;
-          const remainingSpin = Math.max(800, 3500 - elapsed);
-
-          setTimeout(() => {
-            setIsRolling(false);
-            const winNum = ld.rollingWinningNumber || ld.lastWinningNumber;
-            if (winNum) {
-              setDisplayDigits(winNum.padStart(6, '0').split(''));
-            }
-            if (ld.rollingWinners) {
-              setWinnerAnnouncedList(ld.rollingWinners);
-            }
-            if (onRefreshState) onRefreshState();
-          }, remainingSpin);
+          const winNum = ld.rollingWinningNumber || ld.lastWinningNumber || '786910';
+          start10SecRollAnimation(winNum, ld.rollingWinners || [], ld.rollingStartedAt);
         } else if (!isRolling && ld.lastWinningNumber) {
           setDisplayDigits(ld.lastWinningNumber.padStart(6, '0').split(''));
         }
@@ -243,27 +390,18 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       const now = Date.now();
       const diff = Math.max(0, target - now);
 
-      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setTimeLeft({ hours, minutes, seconds });
+      setTimeLeft({ days, hours, minutes, seconds });
     }, 1000);
 
     return () => clearInterval(timer);
   }, [luckyDraw?.targetEndTime]);
 
-  // Handle Roller Animation Effect
-  useEffect(() => {
-    if (!isRolling) return;
-
-    const reelInterval = setInterval(() => {
-      const randDigits = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10).toString());
-      setDisplayDigits(randDigits);
-    }, 80);
-
-    return () => clearInterval(reelInterval);
-  }, [isRolling]);
+  // Handle Roller Animation Effect - Controlled by start10SecRollAnimation engine
 
   // Helper to add custom coupon
   const handleAddCustomCoupon = () => {
@@ -387,12 +525,10 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
     }
   };
 
-  // Admin Trigger Roller Draw
+  // Admin Trigger Roller Draw (10-Second Suspense)
   const handleAdminTriggerDraw = async () => {
     try {
       setAdminMsg(null);
-      setIsRolling(true);
-      setWinnerAnnouncedList(null);
 
       const res = await fetch('/api/luckydraw/admin/trigger', {
         method: 'POST',
@@ -410,23 +546,21 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       });
       const data = await res.json();
 
-      if (data.luckyDraw?.rollingStartedAt) {
-        setLastSeenRollTime(data.luckyDraw.rollingStartedAt);
-      }
-
-      // Keep spinning for 3.5 seconds for visual thrill
-      setTimeout(() => {
-        setIsRolling(false);
-        if (res.ok && data.success && data.winningNumber) {
-          const winDigits = data.winningNumber.padStart(6, '0').split('');
-          setDisplayDigits(winDigits);
-          setWinnerAnnouncedList(data.winners || []);
-          setLuckyDraw(data.luckyDraw);
-          if (onRefreshState) onRefreshState();
-        } else {
-          alert(data.error || 'Error triggering draw');
+      if (res.ok && data.success && data.winningNumber) {
+        if (data.luckyDraw?.rollingStartedAt) {
+          setLastSeenRollTime(data.luckyDraw.rollingStartedAt);
         }
-      }, 3500);
+        setLuckyDraw(data.luckyDraw);
+        // Start high-voltage 10-second suspense draw
+        start10SecRollAnimation(
+          data.winningNumber,
+          data.winners || [],
+          data.luckyDraw?.rollingStartedAt || Date.now()
+        );
+      } else {
+        setIsRolling(false);
+        alert(data.error || 'Error triggering draw');
+      }
     } catch (err: any) {
       setIsRolling(false);
       alert('Error triggering draw: ' + err.message);
@@ -540,7 +674,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
               </span>
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-              Pick your own 6-digit lucky coupons! Match full 6 digits for 1st Prize, last 5 digits for 2nd Prize, or last 4 digits for 3rd Prize!
+              Pick your 6-digit lucky coupons for the <strong className="text-amber-300">Weekly Mega Grand Draw</strong> every <strong className="text-cyan-300">Sunday at 9:00 PM Sharp</strong>! Match 6 digits for 1st Prize, last 5 for 2nd Prize, or last 4 for 3rd Prize!
             </p>
           </div>
 
@@ -605,42 +739,126 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         </div>
       </div>
 
-      {/* 2. ELECTRIC ROLLER SLOT REEL DISPLAY */}
-      <div className="bg-[#070d18] border-2 border-cyan-500/50 rounded-3xl p-6 sm:p-8 text-center relative overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.25)]">
+      {/* 2. ELECTRIC ROLLER SLOT REEL DISPLAY (10-SECOND HIGH-VOLTAGE SUSPENSE) */}
+      <div className={`bg-[#070d18] border-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-8 text-center relative overflow-hidden transition-all duration-300 ${
+        isRolling
+          ? 'border-cyan-400 shadow-[0_0_70px_rgba(6,182,212,0.45)] ring-2 ring-cyan-500/50'
+          : 'border-cyan-500/50 shadow-[0_0_50px_rgba(6,182,212,0.25)]'
+      }`}>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent pointer-events-none" />
 
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <div className="flex items-center gap-2">
-            <Crown className="w-5 h-5 text-amber-400" />
-            <span className="text-xs sm:text-sm font-black text-cyan-300 uppercase tracking-widest">
-              Live Electric Ticket Roller
+        {/* Top Roller Controls Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 sm:mb-4 relative z-10">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+            <span className="text-xs sm:text-sm font-black text-cyan-300 uppercase tracking-wider sm:tracking-widest flex items-center gap-1.5">
+              <span>Electric Ticket Roller</span>
+              <span className="text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-cyan-500/30">10s Draw</span>
             </span>
           </div>
+
           <div className="flex items-center gap-2 text-xs">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-            <span className="text-emerald-400 font-bold uppercase">{isRolling ? 'ROLLING...' : 'LIVE READY'}</span>
+            {/* Audio Toggle Button */}
+            <button
+              onClick={() => setSoundEnabled((prev) => !prev)}
+              type="button"
+              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl text-xs font-bold transition border ${
+                soundEnabled
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
+                  : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:bg-slate-800'
+              }`}
+              title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
+            >
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-cyan-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
+              <span>{soundEnabled ? 'FX On' : 'Muted'}</span>
+            </button>
+
+            {/* Live Status Badge */}
+            <div className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl border font-bold uppercase text-[11px] sm:text-xs ${
+              isRolling
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
+                : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${isRolling ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
+              <span>{isRolling ? `⚡ ROLLING (${rollSecondsLeft.toFixed(1)}s)` : 'LIVE READY'}</span>
+            </div>
           </div>
         </div>
 
-        {/* Roller Slots Container - Single Row on Mobile & Desktop */}
-        <div className="my-4 sm:my-6 py-4 sm:py-6 px-2 sm:px-4 bg-[#02050b] rounded-2xl border border-cyan-500/30 shadow-inner flex items-center justify-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 flex-nowrap overflow-x-auto select-none max-w-full">
-          {displayDigits.map((digit, idx) => (
-            <div
-              key={idx}
-              className={`w-9 h-13 xs:w-11 xs:h-16 sm:w-16 sm:h-24 shrink-0 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-lg xs:text-2xl sm:text-4xl transition-all duration-150 ${
-                isRolling
-                  ? 'bg-gradient-to-b from-cyan-500/30 via-cyan-400/20 to-indigo-600/30 text-cyan-200 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.5)] animate-pulse'
-                  : 'bg-[#0b1424] text-amber-300 border-2 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-              }`}
-            >
-              <span>{digit}</span>
+        {/* 10-Second High-Voltage Tension Progress Meter */}
+        {isRolling && (
+          <div className="mb-3 sm:mb-4 bg-[#030712]/90 border border-cyan-500/40 rounded-2xl p-2.5 sm:p-3 space-y-1.5 sm:space-y-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] animate-fadeIn">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold">
+              <span className="flex items-center gap-1.5 text-cyan-300">
+                <Zap className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                <span className="tracking-wide">ELECTRIC 6-DIGIT DRAW SPINNING (10 SECONDS)...</span>
+              </span>
+              <span className="font-mono text-amber-300 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px]">
+                {rollSecondsLeft.toFixed(1)}s remaining
+              </span>
             </div>
-          ))}
+            <div className="w-full bg-slate-900 rounded-full h-2.5 sm:h-3 border border-cyan-500/40 p-0.5 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-amber-400 to-emerald-400 transition-all duration-75"
+                style={{ width: `${Math.min(100, Math.max(0, rollProgress))}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Roller Slots Container - Perfect 6-Column Grid fitting all screen sizes */}
+        <div className="my-2.5 sm:my-5 py-2.5 sm:py-5 px-1.5 sm:px-4 bg-[#02050b] rounded-2xl border border-cyan-500/30 shadow-inner w-full max-w-2xl mx-auto">
+          <div className="grid grid-cols-6 gap-1 xs:gap-1.5 sm:gap-3 md:gap-4 select-none w-full">
+            {displayDigits.map((digit, idx) => {
+              const isThisLocked = isRolling ? lockedReelMask[idx] : true;
+              return (
+                <div key={idx} className="flex flex-col items-center gap-1 w-full min-w-0">
+                  {/* Reel Status Pill */}
+                  {isRolling ? (
+                    <div className={`text-[8px] xs:text-[9px] font-black uppercase px-1 py-0.5 rounded-full transition-all duration-200 flex items-center justify-center gap-0.5 w-full truncate ${
+                      !isThisLocked
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 animate-pulse'
+                        : 'bg-amber-500/30 text-amber-300 border border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                    }`}>
+                      {isThisLocked ? (
+                        <>
+                          <Lock className="w-2 h-2 text-amber-400 shrink-0" />
+                          <span className="truncate">L#{idx + 1}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-2 h-2 text-cyan-400 shrink-0" />
+                          <span className="truncate">SPIN</span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-[8px] xs:text-[9px] font-black uppercase px-1 py-0.5 rounded-full bg-slate-800/80 text-slate-400 border border-slate-700 w-full text-center truncate">
+                      #{idx + 1}
+                    </div>
+                  )}
+
+                  {/* Digit Display Reel Box */}
+                  <div
+                    className={`w-full aspect-[3/4] max-w-[80px] rounded-lg xs:rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xl xs:text-2xl sm:text-3xl md:text-4xl transition-all duration-150 ${
+                      isRolling && !isThisLocked
+                        ? 'bg-gradient-to-b from-cyan-500/30 via-cyan-400/20 to-indigo-600/30 text-cyan-200 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.6)] animate-pulse'
+                        : isRolling && isThisLocked
+                        ? 'bg-gradient-to-b from-amber-500/30 via-yellow-500/20 to-amber-600/30 text-amber-300 border-2 border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.7)] scale-[1.03]'
+                        : 'bg-[#0b1424] text-amber-300 border-2 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                    }`}
+                  >
+                    <span>{digit}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Winner Announcement Banner */}
         {winnerAnnouncedList && winnerAnnouncedList.length > 0 && (
-          <div className="mt-4 p-4 bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-amber-400 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.4)] space-y-2">
+          <div className="mt-4 p-4 bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-amber-400 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.4)] space-y-2 animate-fadeIn">
             <div className="flex items-center justify-center gap-2 text-amber-300 font-black text-sm sm:text-base">
               <Trophy className="w-5 h-5 text-amber-400" />
               <span>🎉 DRAW COMPLETED! WINNERS ANNOUNCED ({winnerAnnouncedList.length}):</span>
@@ -668,23 +886,28 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         <div className="mt-6 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-slate-300 text-xs sm:text-sm">
             <Clock className="w-4 h-4 text-cyan-400" />
-            <span>Next Automatic Draw In:</span>
+            <span>Next Weekly Mega Grand Draw (Sunday 9:00 PM):</span>
           </div>
 
-          <div className="flex items-center gap-2 font-black">
-            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-3 py-1.5 text-center min-w-[50px]">
-              <div className="text-lg text-cyan-300">{String(timeLeft.hours).padStart(2, '0')}</div>
-              <div className="text-[9px] text-slate-400 uppercase">Hours</div>
+          <div className="flex items-center gap-1.5 sm:gap-2 font-black">
+            <div className="bg-[#0b1424] border border-amber-500/50 rounded-xl px-2.5 sm:px-3 py-1.5 text-center min-w-[46px] sm:min-w-[50px] shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+              <div className="text-base sm:text-lg text-amber-300">{String(timeLeft.days).padStart(2, '0')}</div>
+              <div className="text-[8px] sm:text-[9px] text-amber-400 uppercase font-bold">Days</div>
             </div>
             <span className="text-cyan-400 font-bold">:</span>
-            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-3 py-1.5 text-center min-w-[50px]">
-              <div className="text-lg text-cyan-300">{String(timeLeft.minutes).padStart(2, '0')}</div>
-              <div className="text-[9px] text-slate-400 uppercase">Mins</div>
+            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-2.5 sm:px-3 py-1.5 text-center min-w-[46px] sm:min-w-[50px]">
+              <div className="text-base sm:text-lg text-cyan-300">{String(timeLeft.hours).padStart(2, '0')}</div>
+              <div className="text-[8px] sm:text-[9px] text-slate-400 uppercase font-bold">Hours</div>
             </div>
             <span className="text-cyan-400 font-bold">:</span>
-            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-3 py-1.5 text-center min-w-[50px]">
-              <div className="text-lg text-amber-300">{String(timeLeft.seconds).padStart(2, '0')}</div>
-              <div className="text-[9px] text-slate-400 uppercase">Secs</div>
+            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-2.5 sm:px-3 py-1.5 text-center min-w-[46px] sm:min-w-[50px]">
+              <div className="text-base sm:text-lg text-cyan-300">{String(timeLeft.minutes).padStart(2, '0')}</div>
+              <div className="text-[8px] sm:text-[9px] text-slate-400 uppercase font-bold">Mins</div>
+            </div>
+            <span className="text-cyan-400 font-bold">:</span>
+            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-2.5 sm:px-3 py-1.5 text-center min-w-[46px] sm:min-w-[50px]">
+              <div className="text-base sm:text-lg text-emerald-300">{String(timeLeft.seconds).padStart(2, '0')}</div>
+              <div className="text-[8px] sm:text-[9px] text-slate-400 uppercase font-bold">Secs</div>
             </div>
           </div>
         </div>
