@@ -78,7 +78,8 @@ export default function App() {
         const data = await res.json();
         if (storedId && data.currentUser) {
           setCurrentUser(data.currentUser);
-        } else {
+          setIsAuthPage(false);
+        } else if (!storedId) {
           setCurrentUser(null);
         }
         setUsers(data.users || []);

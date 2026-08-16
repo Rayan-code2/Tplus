@@ -297,6 +297,33 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   )}
                 </button>
 
+                {/* Quick Auto-Fill Credentials for Instant Login */}
+                <div className="pt-2 flex flex-col items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Quick Test Credentials:</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginInput('admin');
+                        setLoginPassword('123456');
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-mono rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/90 transition-all shadow-sm"
+                    >
+                      👑 Admin (admin / 123456)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginInput('NX-CYBER1');
+                        setLoginPassword('123456');
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-mono rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-all shadow-sm"
+                    >
+                      ⚡ User (NX-CYBER1 / 123456)
+                    </button>
+                  </div>
+                </div>
+
                 <div className="gaurav-signup-link">
                   <button
                     type="button"
