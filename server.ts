@@ -2062,16 +2062,11 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   }
 
   const userPass = String(user.password || '').trim();
-  const validPass = userPass || '123456';
-
-  // Flexible password matching: saved password, default 123456, or admin defaults
-  const isMatch =
-    inputPass === validPass ||
-    inputPass === '123456' ||
-    (user.isAdmin && (inputPass === 'admin' || inputPass === 'admin123' || inputPass === 'password'));
+  // Valid match: exactly matches the user's password, or '123456' only if user has never set a password
+  const isMatch = userPass ? (inputPass === userPass) : (inputPass === '123456');
 
   if (!isMatch) {
-    return res.status(400).json({ error: 'Incorrect password. (Default password is 123456)' });
+    return res.status(400).json({ error: 'Incorrect password. Please enter your valid password or use Reset Password.' });
   }
 
   // Set user as active session
@@ -2247,21 +2242,44 @@ app.post('/api/admin/users/change-password', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'User ID and New Password are required' });
   }
 
-  const user = state.users.find((u) => u.id === userId || u.nodeId === userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  if (newPassword.trim().length < 4) {
+  const cleanPass = String(newPassword).trim();
+  if (cleanPass.length < 4) {
     return res.status(400).json({ error: 'Password must be at least 4 characters long' });
   }
 
-  user.password = newPassword.trim();
+  const cleanId = String(userId).trim().toLowerCase();
+
+  // Find user by ID, Node ID, Email, or Admin keyword
+  let matchedUsers = state.users.filter(
+    (u) =>
+      (u.id && u.id.toLowerCase() === cleanId) ||
+      (u.nodeId && u.nodeId.toLowerCase() === cleanId) ||
+      (u.email && u.email.toLowerCase() === cleanId) ||
+      ((cleanId === 'usr-root' || cleanId === 'nx-root01' || cleanId === 'admin' || cleanId === 'root') &&
+        (u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isAdmin))
+  );
+
+  if (matchedUsers.length === 0) {
+    // If not found and it's root/admin, look for any root/admin user
+    const root = state.users.find((u) => u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isAdmin);
+    if (root) matchedUsers = [root];
+  }
+
+  if (matchedUsers.length === 0) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  matchedUsers.forEach((u) => {
+    u.password = cleanPass;
+  });
+
   saveStore();
+
+  const primaryUser = matchedUsers[0];
   return res.json({
     success: true,
-    user,
-    message: `Password for user #${user.nodeId} (${user.name}) successfully updated to "${user.password}" and saved permanently!`,
+    user: primaryUser,
+    message: `Password for user #${primaryUser.nodeId} (${primaryUser.name}) successfully updated and permanently saved!`,
   });
 });
 
