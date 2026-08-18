@@ -49,6 +49,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Percent,
+  Ticket,
 } from 'lucide-react';
 import {
   User,
@@ -113,8 +114,131 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onDeleteUser,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'dragon_tiger' | 'aviator_game' | 'tournament'
+    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'dragon_tiger' | 'aviator_game' | 'tournament' | 'lottery_draw'
   >('settings');
+
+  // Lucky Draw / Lottery Admin State
+  const [luckyDrawData, setLuckyDrawData] = useState<any>(null);
+  const [loadingLuckyDraw, setLoadingLuckyDraw] = useState(false);
+  const [savingLuckyDraw, setSavingLuckyDraw] = useState(false);
+  const [luckyDrawMsg, setLuckyDrawMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [ldTicketPrice, setLdTicketPrice] = useState<number | ''>(5);
+  const [ldPrize1, setLdPrize1] = useState<number | ''>(250);
+  const [ldPrize2, setLdPrize2] = useState<number | ''>(100);
+  const [ldPrize3, setLdPrize3] = useState<number | ''>(50);
+  const [ldPrize4, setLdPrize4] = useState<number | ''>(25);
+  const [ldPrize5, setLdPrize5] = useState<number | ''>(15);
+  const [ldPrizeGuaranteed, setLdPrizeGuaranteed] = useState<number | ''>(5);
+  const [ldForcedPrizes, setLdForcedPrizes] = useState<{ [key: string]: { userId: string; ticketNumber: string } }>({
+    '1': { userId: '', ticketNumber: '' },
+    '2': { userId: '', ticketNumber: '' },
+    '3': { userId: '', ticketNumber: '' },
+    '4': { userId: '', ticketNumber: '' },
+    '5': { userId: '', ticketNumber: '' },
+  });
+
+  const fetchAdminLuckyDraw = async () => {
+    setLoadingLuckyDraw(true);
+    try {
+      const res = await fetch('/api/luckydraw');
+      if (res.ok) {
+        const data = await res.json();
+        const ld = data.luckyDraw;
+        setLuckyDrawData(ld);
+        if (ld) {
+          setLdTicketPrice(ld.ticketPrice !== undefined ? ld.ticketPrice : 5);
+          setLdPrize1(ld.prizeAmount !== undefined ? ld.prizeAmount : 250);
+          setLdPrize2(ld.secondPrizeAmount !== undefined ? ld.secondPrizeAmount : 100);
+          setLdPrize3(ld.thirdPrizeAmount !== undefined ? ld.thirdPrizeAmount : 50);
+          setLdPrize4(ld.fourthPrizeAmount !== undefined ? ld.fourthPrizeAmount : 25);
+          setLdPrize5(ld.fifthPrizeAmount !== undefined ? ld.fifthPrizeAmount : 15);
+          setLdPrizeGuaranteed(ld.guaranteedPrizeAmount !== undefined ? ld.guaranteedPrizeAmount : 5);
+          if (ld.forcedPrizes) {
+            setLdForcedPrizes({
+              '1': { userId: ld.forcedPrizes['1']?.userId || '', ticketNumber: ld.forcedPrizes['1']?.ticketNumber || '' },
+              '2': { userId: ld.forcedPrizes['2']?.userId || '', ticketNumber: ld.forcedPrizes['2']?.ticketNumber || '' },
+              '3': { userId: ld.forcedPrizes['3']?.userId || '', ticketNumber: ld.forcedPrizes['3']?.ticketNumber || '' },
+              '4': { userId: ld.forcedPrizes['4']?.userId || '', ticketNumber: ld.forcedPrizes['4']?.ticketNumber || '' },
+              '5': { userId: ld.forcedPrizes['5']?.userId || '', ticketNumber: ld.forcedPrizes['5']?.ticketNumber || '' },
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch lucky draw in admin:', err);
+    } finally {
+      setLoadingLuckyDraw(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdminLuckyDraw();
+  }, []);
+
+  const handleSaveLuckyDrawConfig = async (override?: any) => {
+    setSavingLuckyDraw(true);
+    setLuckyDrawMsg(null);
+    try {
+      const payload = {
+        ticketPrice: override?.ticketPrice !== undefined ? override.ticketPrice : (ldTicketPrice === '' ? 5 : Number(ldTicketPrice)),
+        prizeAmount: override?.prizeAmount !== undefined ? override.prizeAmount : (ldPrize1 === '' ? 250 : Number(ldPrize1)),
+        secondPrizeAmount: override?.secondPrizeAmount !== undefined ? override.secondPrizeAmount : (ldPrize2 === '' ? 100 : Number(ldPrize2)),
+        thirdPrizeAmount: override?.thirdPrizeAmount !== undefined ? override.thirdPrizeAmount : (ldPrize3 === '' ? 50 : Number(ldPrize3)),
+        fourthPrizeAmount: override?.fourthPrizeAmount !== undefined ? override.fourthPrizeAmount : (ldPrize4 === '' ? 25 : Number(ldPrize4)),
+        fifthPrizeAmount: override?.fifthPrizeAmount !== undefined ? override.fifthPrizeAmount : (ldPrize5 === '' ? 15 : Number(ldPrize5)),
+        guaranteedPrizeAmount: override?.guaranteedPrizeAmount !== undefined ? override.guaranteedPrizeAmount : (ldPrizeGuaranteed === '' ? 5 : Number(ldPrizeGuaranteed)),
+        forcedPrizes: override?.forcedPrizes !== undefined ? override.forcedPrizes : ldForcedPrizes,
+        ...override,
+      };
+
+      const res = await fetch('/api/luckydraw/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setLuckyDrawMsg({ text: '✅ Lucky Draw Prize Amounts and Winners saved successfully!', type: 'success' });
+        const ld = data.luckyDraw;
+        setLuckyDrawData(ld);
+        if (ld) {
+          setLdTicketPrice(ld.ticketPrice !== undefined ? ld.ticketPrice : 5);
+          setLdPrize1(ld.prizeAmount !== undefined ? ld.prizeAmount : 250);
+          setLdPrize2(ld.secondPrizeAmount !== undefined ? ld.secondPrizeAmount : 100);
+          setLdPrize3(ld.thirdPrizeAmount !== undefined ? ld.thirdPrizeAmount : 50);
+          setLdPrize4(ld.fourthPrizeAmount !== undefined ? ld.fourthPrizeAmount : 25);
+          setLdPrize5(ld.fifthPrizeAmount !== undefined ? ld.fifthPrizeAmount : 15);
+          setLdPrizeGuaranteed(ld.guaranteedPrizeAmount !== undefined ? ld.guaranteedPrizeAmount : 5);
+          if (ld.forcedPrizes) {
+            setLdForcedPrizes({
+              '1': { userId: ld.forcedPrizes['1']?.userId || '', ticketNumber: ld.forcedPrizes['1']?.ticketNumber || '' },
+              '2': { userId: ld.forcedPrizes['2']?.userId || '', ticketNumber: ld.forcedPrizes['2']?.ticketNumber || '' },
+              '3': { userId: ld.forcedPrizes['3']?.userId || '', ticketNumber: ld.forcedPrizes['3']?.ticketNumber || '' },
+              '4': { userId: ld.forcedPrizes['4']?.userId || '', ticketNumber: ld.forcedPrizes['4']?.ticketNumber || '' },
+              '5': { userId: ld.forcedPrizes['5']?.userId || '', ticketNumber: ld.forcedPrizes['5']?.ticketNumber || '' },
+            });
+          }
+        }
+        if (data.settings) {
+          setEditableSettings((prev: any) => ({
+            ...prev,
+            luckyDraw: data.settings.luckyDraw,
+          }));
+          if (onUpdateSettings) {
+            onUpdateSettings(data.settings);
+          }
+        }
+        setIsSettingsDirty(false);
+        setTimeout(() => setLuckyDrawMsg(null), 4000);
+      } else {
+        setLuckyDrawMsg({ text: `❌ Failed: ${data.error || 'Unknown error'}`, type: 'error' });
+      }
+    } catch (err: any) {
+      setLuckyDrawMsg({ text: `Network error: ${err.message}`, type: 'error' });
+    } finally {
+      setSavingLuckyDraw(false);
+    }
+  };
 
   const [colorStats, setColorStats] = useState<any>(null);
   const [aviatorStats, setAviatorStats] = useState<any>(null);
@@ -1140,7 +1264,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         })),
       } : undefined;
 
-      const settingsToSave: SystemSettings = {
+      const settingsToSave: any = {
         ...editableSettings,
         spinWheelRewards: sanitizedRewards,
         levelIncomePercentages: sanitizedLevelIncome,
@@ -1152,9 +1276,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         spinCreditsPerReset: typeof editableSettings.spinCreditsPerReset === 'number'
           ? editableSettings.spinCreditsPerReset
           : (parseInt(editableSettings.spinCreditsPerReset as any) || 1),
+        luckyDraw: {
+          ticketPrice: ldTicketPrice === '' ? 5 : Number(ldTicketPrice),
+          prizeAmount: ldPrize1 === '' ? 250 : Number(ldPrize1),
+          secondPrizeAmount: ldPrize2 === '' ? 100 : Number(ldPrize2),
+          thirdPrizeAmount: ldPrize3 === '' ? 50 : Number(ldPrize3),
+          fourthPrizeAmount: ldPrize4 === '' ? 25 : Number(ldPrize4),
+          fifthPrizeAmount: ldPrize5 === '' ? 15 : Number(ldPrize5),
+          guaranteedPrizeAmount: ldPrizeGuaranteed === '' ? 5 : Number(ldPrizeGuaranteed),
+          forcedPrizes: ldForcedPrizes,
+        },
       };
       await onUpdateSettings(settingsToSave);
+
+      // Also ensure direct sync to lucky draw endpoint
+      try {
+        await handleSaveLuckyDrawConfig();
+      } catch (_) {}
+
       setIsSettingsDirty(false);
+      alert('✅ System & Tournament Settings Saved Successfully!');
+    } catch (err: any) {
+      alert('❌ Failed to save settings: ' + err.message);
     } finally {
       setSavingSettings(false);
     }
@@ -1365,6 +1508,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         >
           <Trophy className="w-4 h-4 text-yellow-400" />
           Top Bettor Tournament
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('lottery_draw');
+            fetchAdminLuckyDraw();
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+            activeTab === 'lottery_draw'
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Ticket className="w-4 h-4 text-amber-400" />
+          Lottery & Lucky Draw
         </button>
       </div>
 
@@ -2627,6 +2784,150 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* SECTION 2.9: ⚡ 5-TIER MEGA LUCKY DRAW LOTTERY & TICKET PRICE CONFIGURATION */}
+          <div className="bg-[#0b1424] border border-amber-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_25px_rgba(245,158,11,0.1)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-sm font-black text-amber-300 flex items-center gap-2">
+                  <Ticket className="w-5 h-5 text-amber-400" />
+                  <span>SECTION 2.9: ⚡ 5-TIER LUCKY DRAW LOTTERY & PRIZE CONFIGURATION</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Configure coupon ticket entry cost, 1st to 5th grand prize payouts, and 45x guaranteed series reward pool ($ USDT).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSaveLuckyDrawConfig()}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)] transition flex items-center gap-2 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Lucky Draw Prices</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#070e1d] border border-slate-700/60 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-slate-300 block">🎟️ Coupon Ticket Price ($):</label>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="any"
+                  value={ldTicketPrice}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setLdTicketPrice(val);
+                    setIsSettingsDirty(true);
+                  }}
+                  className="w-full bg-[#02050e] border border-slate-700 rounded-lg px-3 py-2 text-white font-black text-sm focus:border-amber-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">Price in USDT per 6-digit coupon</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-amber-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-amber-400 block">🥇 1st Grand Prize ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={ldPrize1}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setLdPrize1(val);
+                    setIsSettingsDirty(true);
+                  }}
+                  className="w-full bg-[#02050e] border border-amber-500/60 rounded-lg px-3 py-2 text-amber-300 font-black text-sm focus:border-amber-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">Grand 1st Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-purple-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-purple-400 block">🥈 2nd Prize ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={ldPrize2}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setLdPrize2(val);
+                    setIsSettingsDirty(true);
+                  }}
+                  className="w-full bg-[#02050e] border border-purple-500/60 rounded-lg px-3 py-2 text-purple-300 font-black text-sm focus:border-purple-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">2nd Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-cyan-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-cyan-400 block">🥉 3rd Prize ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={ldPrize3}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setLdPrize3(val);
+                    setIsSettingsDirty(true);
+                  }}
+                  className="w-full bg-[#02050e] border border-cyan-500/60 rounded-lg px-3 py-2 text-cyan-300 font-black text-sm focus:border-cyan-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">3rd Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-emerald-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-emerald-400 block">⭐ 4th Prize ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={ldPrize4}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setLdPrize4(val);
+                    setIsSettingsDirty(true);
+                  }}
+                  className="w-full bg-[#02050e] border border-emerald-500/60 rounded-lg px-3 py-2 text-emerald-300 font-black text-sm focus:border-emerald-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">4th Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-rose-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-rose-400 block">🎖️ 5th Prize ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={ldPrize5}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setLdPrize5(val);
+                    setIsSettingsDirty(true);
+                  }}
+                  className="w-full bg-[#02050e] border border-rose-500/60 rounded-lg px-3 py-2 text-rose-300 font-black text-sm focus:border-rose-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">5th Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-yellow-500/40 rounded-xl p-3.5 space-y-1 sm:col-span-2">
+                <label className="text-xs font-bold text-yellow-400 block">🎁 Guaranteed Prize Pool ($ USDT per Winner):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={ldPrizeGuaranteed}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setLdPrizeGuaranteed(val);
+                    setIsSettingsDirty(true);
+                  }}
+                  className="w-full bg-[#02050e] border border-yellow-500/60 rounded-lg px-3 py-2 text-yellow-300 font-black text-sm focus:border-yellow-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">Payout to 45 Winners across matching 5-digit series (Total Guaranteed Pool: 45 × ${ldPrizeGuaranteed || 0} = ${(45 * (Number(ldPrizeGuaranteed) || 0)).toFixed(0)} USDT)</span>
+              </div>
             </div>
           </div>
 
@@ -7001,6 +7302,358 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: LOTTERY & LUCKY DRAW ADMIN CONTROL */}
+      {activeTab === 'lottery_draw' && (
+        <div className="space-y-6">
+          {/* Header Bar */}
+          <div className="bg-[#0b1424] border border-amber-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Ticket className="w-6 h-6 text-amber-400 animate-pulse" />
+                <h2 className="text-xl font-black text-white tracking-wide">
+                  Lottery & Lucky Draw Prize Manager 🎟️
+                </h2>
+              </div>
+              <p className="text-xs text-slate-400">
+                Set and update prize pool amounts for all 5 tiers (1st to 5th) and guaranteed prizes, configure coupon ticket price, and set forced winners.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchAdminLuckyDraw}
+                disabled={loadingLuckyDraw}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-2 border border-slate-700 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingLuckyDraw ? 'animate-spin text-amber-400' : ''}`} />
+                <span>{loadingLuckyDraw ? 'Refreshing...' : 'Refresh Status'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveLuckyDrawConfig()}
+                disabled={savingLuckyDraw}
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black transition flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.3)] disabled:opacity-50 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingLuckyDraw ? 'Saving...' : 'Save Prize Amounts & Winners'}</span>
+              </button>
+            </div>
+          </div>
+
+          {luckyDrawMsg && (
+            <div
+              className={`p-4 rounded-2xl text-xs font-bold border ${
+                luckyDrawMsg.type === 'success'
+                  ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
+                  : 'bg-rose-950/80 border-rose-500/50 text-rose-300'
+              }`}
+            >
+              {luckyDrawMsg.text}
+            </div>
+          )}
+
+          {/* Quick Summary Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-[#070e1d] border border-slate-800 rounded-2xl p-4 text-center">
+              <span className="text-[10px] text-slate-400 font-bold block">TICKET PRICE</span>
+              <span className="text-lg font-black text-white">${ldTicketPrice || 5}</span>
+            </div>
+            <div className="bg-[#070e1d] border border-amber-500/30 rounded-2xl p-4 text-center">
+              <span className="text-[10px] text-amber-400 font-bold block">🥇 1st PRIZE</span>
+              <span className="text-lg font-black text-amber-300">${ldPrize1 || 250}</span>
+            </div>
+            <div className="bg-[#070e1d] border border-purple-500/30 rounded-2xl p-4 text-center">
+              <span className="text-[10px] text-purple-400 font-bold block">🥈 2nd PRIZE</span>
+              <span className="text-lg font-black text-purple-300">${ldPrize2 || 100}</span>
+            </div>
+            <div className="bg-[#070e1d] border border-cyan-500/30 rounded-2xl p-4 text-center">
+              <span className="text-[10px] text-cyan-400 font-bold block">🥉 3rd PRIZE</span>
+              <span className="text-lg font-black text-cyan-300">${ldPrize3 || 50}</span>
+            </div>
+            <div className="bg-[#070e1d] border border-emerald-500/30 rounded-2xl p-4 text-center">
+              <span className="text-[10px] text-emerald-400 font-bold block">⭐ 4th PRIZE</span>
+              <span className="text-lg font-black text-emerald-300">${ldPrize4 || 25}</span>
+            </div>
+            <div className="bg-[#070e1d] border border-rose-500/30 rounded-2xl p-4 text-center">
+              <span className="text-[10px] text-rose-400 font-bold block">🎖️ 5th PRIZE</span>
+              <span className="text-lg font-black text-rose-300">${ldPrize5 || 15}</span>
+            </div>
+          </div>
+
+          {/* Prize Pool Amounts Configuration Form */}
+          <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-sm font-black text-amber-300 flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-amber-400" />
+                  <span>Prize Amounts Configuration ($ USDT)</span>
+                </h3>
+                <span className="text-xs text-slate-400">Values update instantly and persist permanently</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSaveLuckyDrawConfig()}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)] transition flex items-center gap-2 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save All Prize Amounts</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#070e1d] border border-slate-700/60 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-slate-300 block">🎟️ Coupon Ticket Price ($):</label>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.5"
+                  value={ldTicketPrice}
+                  onChange={(e) => {
+                    setLdTicketPrice(e.target.value === '' ? '' : Number(e.target.value));
+                    setIsSettingsDirty(true);
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value === '' ? 5 : Number(e.target.value);
+                    handleSaveLuckyDrawConfig({ ticketPrice: val });
+                  }}
+                  className="w-full bg-[#02050e] border border-slate-700 rounded-lg px-3 py-2 text-white font-black text-sm focus:border-amber-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">Price per 6-digit coupon entry</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-amber-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-amber-400 block">🥇 1st Prize Amount ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={ldPrize1}
+                  onChange={(e) => {
+                    setLdPrize1(e.target.value === '' ? '' : Number(e.target.value));
+                    setIsSettingsDirty(true);
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value === '' ? 250 : Number(e.target.value);
+                    handleSaveLuckyDrawConfig({ prizeAmount: val });
+                  }}
+                  className="w-full bg-[#02050e] border border-amber-500/60 rounded-lg px-3 py-2 text-amber-300 font-black text-sm focus:border-amber-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">Grand 1st Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-purple-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-purple-400 block">🥈 2nd Prize Amount ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={ldPrize2}
+                  onChange={(e) => {
+                    setLdPrize2(e.target.value === '' ? '' : Number(e.target.value));
+                    setIsSettingsDirty(true);
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value === '' ? 100 : Number(e.target.value);
+                    handleSaveLuckyDrawConfig({ secondPrizeAmount: val });
+                  }}
+                  className="w-full bg-[#02050e] border border-purple-500/60 rounded-lg px-3 py-2 text-purple-300 font-black text-sm focus:border-purple-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">2nd Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-cyan-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-cyan-400 block">🥉 3rd Prize Amount ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={ldPrize3}
+                  onChange={(e) => {
+                    setLdPrize3(e.target.value === '' ? '' : Number(e.target.value));
+                    setIsSettingsDirty(true);
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value === '' ? 50 : Number(e.target.value);
+                    handleSaveLuckyDrawConfig({ thirdPrizeAmount: val });
+                  }}
+                  className="w-full bg-[#02050e] border border-cyan-500/60 rounded-lg px-3 py-2 text-cyan-300 font-black text-sm focus:border-cyan-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">3rd Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-emerald-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-emerald-400 block">⭐ 4th Prize Amount ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={ldPrize4}
+                  onChange={(e) => {
+                    setLdPrize4(e.target.value === '' ? '' : Number(e.target.value));
+                    setIsSettingsDirty(true);
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value === '' ? 25 : Number(e.target.value);
+                    handleSaveLuckyDrawConfig({ fourthPrizeAmount: val });
+                  }}
+                  className="w-full bg-[#02050e] border border-emerald-500/60 rounded-lg px-3 py-2 text-emerald-300 font-black text-sm focus:border-emerald-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">4th Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-rose-500/40 rounded-xl p-3.5 space-y-1">
+                <label className="text-xs font-bold text-rose-400 block">🎖️ 5th Prize Amount ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={ldPrize5}
+                  onChange={(e) => {
+                    setLdPrize5(e.target.value === '' ? '' : Number(e.target.value));
+                    setIsSettingsDirty(true);
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value === '' ? 15 : Number(e.target.value);
+                    handleSaveLuckyDrawConfig({ fifthPrizeAmount: val });
+                  }}
+                  className="w-full bg-[#02050e] border border-rose-500/60 rounded-lg px-3 py-2 text-rose-300 font-black text-sm focus:border-rose-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">5th Prize Winner payout</span>
+              </div>
+
+              <div className="bg-[#070e1d] border border-yellow-500/40 rounded-xl p-3.5 space-y-1 sm:col-span-2">
+                <label className="text-xs font-bold text-yellow-400 block">🎁 Guaranteed Prize Amount ($):</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={ldPrizeGuaranteed}
+                  onChange={(e) => {
+                    setLdPrizeGuaranteed(e.target.value === '' ? '' : Number(e.target.value));
+                    setIsSettingsDirty(true);
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value === '' ? 5 : Number(e.target.value);
+                    handleSaveLuckyDrawConfig({ guaranteedPrizeAmount: val });
+                  }}
+                  className="w-full bg-[#02050e] border border-yellow-500/60 rounded-lg px-3 py-2 text-yellow-300 font-black text-sm focus:border-yellow-400 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500 block">45x Matching series winner payout</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Forced Winner Selection (1st to 5th Prizes) */}
+          <div className="bg-[#0b1424] border border-amber-500/40 rounded-2xl p-6 space-y-4 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-black text-amber-300 flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span>Forced Winner Controller (1st to 5th Prize Tiers)</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Select any registered member for each prize slot. If they don't have a ticket, one is automatically created when triggered.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleared = {
+                      '1': { userId: '', ticketNumber: '' },
+                      '2': { userId: '', ticketNumber: '' },
+                      '3': { userId: '', ticketNumber: '' },
+                      '4': { userId: '', ticketNumber: '' },
+                      '5': { userId: '', ticketNumber: '' },
+                    };
+                    setLdForcedPrizes(cleared);
+                    handleSaveLuckyDrawConfig({ forcedPrizes: cleared });
+                  }}
+                  className="px-3 py-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Clear All Forced Winners</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {([1, 2, 3, 4, 5] as const).map((step) => {
+                const stKey = String(step) as '1' | '2' | '3' | '4' | '5';
+                const prizeTitles = ['1st Prize (🥇)', '2nd Prize (🥈)', '3rd Prize (🥉)', '4th Prize (⭐)', '5th Prize (🎖️)'];
+                const prizeAmounts = [ldPrize1 || 250, ldPrize2 || 100, ldPrize3 || 50, ldPrize4 || 25, ldPrize5 || 15];
+                const currentForced = ldForcedPrizes[stKey] || { userId: '', ticketNumber: '' };
+                const chosenUser = users.find((u) => u.id === currentForced.userId);
+
+                return (
+                  <div
+                    key={step}
+                    className={`rounded-2xl p-4 space-y-3 border transition-all ${
+                      currentForced.userId || currentForced.ticketNumber
+                        ? 'bg-gradient-to-b from-[#0f172a] to-[#080d1a] border-amber-400/80 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                        : 'bg-[#060a15] border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <span className="text-xs font-black text-amber-300">{prizeTitles[step - 1]}</span>
+                      <span className="text-xs font-bold text-emerald-400">${prizeAmounts[step - 1]}</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-400 font-bold block">Select Member:</label>
+                      <select
+                        value={currentForced.userId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const updated = {
+                            ...ldForcedPrizes,
+                            [stKey]: { ...currentForced, userId: val },
+                          };
+                          setLdForcedPrizes(updated);
+                          handleSaveLuckyDrawConfig({ forcedPrizes: updated });
+                        }}
+                        className="w-full p-2 bg-[#02050e] border border-slate-700 rounded-xl text-xs text-cyan-300 focus:outline-none focus:border-amber-500 font-bold"
+                      >
+                        <option value="">-- Random Fair Draw --</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.nodeId})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {chosenUser && (
+                      <div className="text-[10px] text-slate-400 bg-[#02050e] border border-slate-800 rounded-xl p-2 space-y-0.5">
+                        <div className="font-bold text-amber-300">Selected: {chosenUser.name}</div>
+                        <div className="text-cyan-300">Node: {chosenUser.nodeId}</div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-400 font-bold block">Custom 6-Digit Coupon (Optional):</label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="Random / Auto"
+                        value={currentForced.ticketNumber || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          const updated = {
+                            ...ldForcedPrizes,
+                            [stKey]: { ...currentForced, ticketNumber: val },
+                          };
+                          setLdForcedPrizes(updated);
+                        }}
+                        onBlur={() => handleSaveLuckyDrawConfig()}
+                        className="w-full p-2 bg-[#02050e] border border-slate-800 rounded-xl text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono tracking-widest font-bold text-center"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

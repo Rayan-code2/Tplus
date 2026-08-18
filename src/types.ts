@@ -239,6 +239,17 @@ export interface DailyTournamentConfig {
   prizeDistribution: TournamentPrizeTier[];
 }
 
+export interface LuckyDrawConfig {
+  ticketPrice: number;
+  prizeAmount: number;
+  secondPrizeAmount: number;
+  thirdPrizeAmount: number;
+  fourthPrizeAmount: number;
+  fifthPrizeAmount: number;
+  guaranteedPrizeAmount: number;
+  forcedPrizes?: { [key: string]: { userId?: string; ticketNumber?: string } };
+}
+
 export interface SystemSettings {
   packages: Package[];
   levelIncomePercentages: LevelIncomeConfig[];
@@ -271,6 +282,7 @@ export interface SystemSettings {
   heroBanners?: HeroBannerSlide[];
   ranks: RankConfig[];
   dailyTournament?: DailyTournamentConfig;
+  luckyDraw?: LuckyDrawConfig;
   smtp?: {
     host?: string;
     port?: number;
@@ -304,10 +316,22 @@ export interface LuckyDrawWinner {
   userNodeId: string;
   userName: string;
   prizeAmount: number;
-  prizeTier?: '1st Prize (6 Digits Match)' | '2nd Prize (Last 5 Digits)' | '3rd Prize (Last 4 Digits)' | string;
+  prizeTier?: '1st Prize (6 Digits Match)' | '2nd Prize (6 Digits Match)' | '3rd Prize (6 Digits Match)' | '4th Prize (6 Digits Match)' | '5th Prize (6 Digits Match)' | 'Guaranteed Prize (Last 5 Digits Match)' | string;
   matchedDigits?: number;
+  matchedPrizeNumber?: string;
   winningNumber?: string;
   wonAt: string;
+}
+
+export interface DrawnPrizeTicket {
+  prizeRank: 1 | 2 | 3 | 4 | 5;
+  prizeName: string;
+  ticketNumber: string;
+  drawnAt: string;
+  userId?: string;
+  userNodeId?: string;
+  userName?: string;
+  prizeAmount: number;
 }
 
 export interface LuckyDrawState {
@@ -316,10 +340,21 @@ export interface LuckyDrawState {
   description?: string;
   ticketPrice: number;
   prizeAmount: number; // 1st Prize
-  secondPrizeAmount?: number; // 2nd Prize (Last 5 Digits Match)
-  thirdPrizeAmount?: number; // 3rd Prize (Last 4 Digits Match)
+  secondPrizeAmount?: number; // 2nd Prize
+  thirdPrizeAmount?: number; // 3rd Prize
+  fourthPrizeAmount?: number; // 4th Prize
+  fifthPrizeAmount?: number; // 5th Prize
+  guaranteedPrizeAmount?: number; // Guaranteed Prize (Last 5 Digits of any 1st-5th winner, total 45 winners)
   targetEndTime: string;
   status: 'active' | 'rolling' | 'completed';
+  currentDrawStep?: number; // 0 = ready, 1 = drawn 1st, 2 = drawn 2nd, 3 = drawn 3rd, 4 = drawn 4th, 5 = drawn 5th (completed)
+  drawnPrizes?: DrawnPrizeTicket[]; // Array of 1st through 5th prize tickets drawn so far in current round
+  forcedPrizes?: {
+    [key in '1' | '2' | '3' | '4' | '5']?: {
+      userId?: string | null;
+      ticketNumber?: string | null;
+    };
+  };
   forcedWinnerUserId?: string | null;
   forcedWinnerTicketNumber?: string | null;
   forcedSecondWinnerUserId?: string | null;
@@ -332,6 +367,7 @@ export interface LuckyDrawState {
   isRolling?: boolean;
   rollingStartedAt?: number;
   rollingWinningNumber?: string;
+  rollingPrizeRank?: number;
   rollingWinners?: LuckyDrawWinner[];
 }
 

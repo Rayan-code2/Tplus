@@ -224,7 +224,38 @@
         "icon": "Zap",
         "color": "#ff007f"
       }
-    ]
+    ],
+    "luckyDraw": {
+      "ticketPrice": 10,
+      "prizeAmount": 500,
+      "secondPrizeAmount": 200,
+      "thirdPrizeAmount": 100,
+      "fourthPrizeAmount": 50,
+      "fifthPrizeAmount": 25,
+      "guaranteedPrizeAmount": 10,
+      "forcedPrizes": {
+        "1": {
+          "userId": "",
+          "ticketNumber": ""
+        },
+        "2": {
+          "userId": "",
+          "ticketNumber": ""
+        },
+        "3": {
+          "userId": "",
+          "ticketNumber": ""
+        },
+        "4": {
+          "userId": "",
+          "ticketNumber": ""
+        },
+        "5": {
+          "userId": "",
+          "ticketNumber": ""
+        }
+      }
+    }
   },
   "users": [
     {
@@ -276,8 +307,8 @@
       "referralCommissionEarned": 0.15600000000000006,
       "lastDailyCheckinAt": "2026-08-15T16:24:41.472Z",
       "dailyCheckinStreak": 1,
-      "winningBalance": 34,
-      "winningEarned": 84
+      "winningBalance": 59,
+      "winningEarned": 109
     },
     {
       "id": "usr-cyber1",
@@ -290,13 +321,13 @@
       "activePackageId": "pkg-500",
       "packageActivatedAt": "2026-07-07T15:56:23.737Z",
       "packageExpiryDays": 100,
-      "balance": 1850.5,
+      "balance": 1851.5,
       "depositBalance": 0,
       "upgradeBalance": 320,
-      "totalEarned": 6400,
+      "totalEarned": 6401,
       "roiEarned": 1250,
       "levelEarned": 2400,
-      "sponsorEarned": 1850,
+      "sponsorEarned": 1851,
       "rankEarned": 500,
       "boostingEarned": 400,
       "spinEarned": 10,
@@ -341,7 +372,9 @@
       "lastRoiClaimAt": "2026-07-27T11:56:23.737Z",
       "spinCredits": 2,
       "lastSpinAt": "",
-      "isUpgraded": false
+      "isUpgraded": false,
+      "winningBalance": 10,
+      "winningEarned": 10
     },
     {
       "id": "usr-alpha2",
@@ -482,13 +515,13 @@
       "activePackageId": "pkg-10",
       "packageActivatedAt": "2026-07-31T22:34:36.481Z",
       "packageExpiryDays": 100,
-      "balance": 18.5,
+      "balance": 45,
       "depositBalance": 0,
       "upgradeBalance": 2.8000000000000003,
-      "totalEarned": 14.5,
+      "totalEarned": 41,
       "roiEarned": 0,
       "levelEarned": 11.5,
-      "sponsorEarned": 3,
+      "sponsorEarned": 29.5,
       "rankEarned": 0,
       "boostingEarned": 0,
       "spinEarned": 7,
@@ -538,7 +571,9 @@
       "lastRoiClaimAt": "2026-07-31T22:36:50.379Z",
       "spinCredits": 1,
       "lastSpinAt": "",
-      "isUpgraded": true
+      "isUpgraded": true,
+      "winningBalance": 250,
+      "winningEarned": 250
     },
     {
       "id": "usr-1785537482252",
@@ -570,7 +605,9 @@
       "lastRoiClaimAt": "2026-07-31T22:38:02.252Z",
       "spinCredits": 1,
       "lastSpinAt": "",
-      "isUpgraded": true
+      "isUpgraded": true,
+      "winningBalance": 15,
+      "winningEarned": 15
     },
     {
       "id": "usr-1785537563063",
@@ -583,13 +620,13 @@
       "activePackageId": "pkg-10",
       "packageActivatedAt": "2026-07-31T22:42:42.249Z",
       "packageExpiryDays": 100,
-      "balance": 0,
+      "balance": 5,
       "depositBalance": 0,
       "upgradeBalance": 0,
-      "totalEarned": 12,
+      "totalEarned": 17,
       "roiEarned": 0,
       "levelEarned": 10,
-      "sponsorEarned": 2,
+      "sponsorEarned": 7,
       "rankEarned": 0,
       "boostingEarned": 0,
       "spinEarned": 0,
@@ -666,7 +703,9 @@
       "lastRoiClaimAt": "2026-07-31T22:48:10.422Z",
       "spinCredits": 1,
       "lastSpinAt": "",
-      "isUpgraded": true
+      "isUpgraded": true,
+      "winningBalance": 50,
+      "winningEarned": 50
     },
     {
       "id": "usr-1786632163372",
@@ -753,6 +792,96 @@
     }
   ],
   "transactions": [
+    {
+      "id": "tx-1786986928233-dqnj-step5",
+      "userId": "usr-1785537482252",
+      "userNodeId": "NX-BW4BQG",
+      "type": "admin_adjust",
+      "amount": 15,
+      "status": "completed",
+      "notes": "🏆 5th Prize Winner of Lucky Draw Coupon #464330 ($15 USDT to Winning Wallet)",
+      "createdAt": "2026-08-17T17:15:28.233Z"
+    },
+    {
+      "id": "tx-spwin-1786986928233-2864",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "sponsor_game_win_bonus",
+      "amount": 1.5,
+      "status": "completed",
+      "notes": "10% Sponsor Lottery Win Royalty from neha2's Lucky Draw Lottery (5th Prize) Win ($15.00)",
+      "createdAt": "2026-08-17T17:15:28.233Z"
+    },
+    {
+      "id": "tx-1786986908232-os7f-step4",
+      "userId": "usr-root",
+      "userNodeId": "NX-ROOT01",
+      "type": "admin_adjust",
+      "amount": 25,
+      "status": "completed",
+      "notes": "🏆 4th Prize Winner of Lucky Draw Coupon #620910 ($25 USDT to Winning Wallet)",
+      "createdAt": "2026-08-17T17:15:08.232Z"
+    },
+    {
+      "id": "tx-1786986890271-n9ka-step3",
+      "userId": "usr-demo",
+      "userNodeId": "NX-GML9L6",
+      "type": "admin_adjust",
+      "amount": 10,
+      "status": "completed",
+      "notes": "🏆 3rd Prize Winner of Lucky Draw Coupon #421596 ($10 USDT to Winning Wallet)",
+      "createdAt": "2026-08-17T17:14:50.271Z"
+    },
+    {
+      "id": "tx-spwin-1786986890271-5660",
+      "userId": "usr-cyber1",
+      "userNodeId": "NX-CYBER1",
+      "type": "sponsor_game_win_bonus",
+      "amount": 1,
+      "status": "completed",
+      "notes": "10% Sponsor Lottery Win Royalty from Alex Cyberpunk (Demo Account)'s Lucky Draw Lottery (3rd Prize) Win ($10.00)",
+      "createdAt": "2026-08-17T17:14:50.271Z"
+    },
+    {
+      "id": "tx-1786986868262-c86i-step2",
+      "userId": "usr-1785538090422",
+      "userNodeId": "NX-83HQT6",
+      "type": "admin_adjust",
+      "amount": 50,
+      "status": "completed",
+      "notes": "🏆 2nd Prize Winner of Lucky Draw Coupon #480583 ($50 USDT to Winning Wallet)",
+      "createdAt": "2026-08-17T17:14:28.262Z"
+    },
+    {
+      "id": "tx-spwin-1786986868262-8756",
+      "userId": "usr-1785537563063",
+      "userNodeId": "NX-W72Q7W",
+      "type": "sponsor_game_win_bonus",
+      "amount": 5,
+      "status": "completed",
+      "notes": "10% Sponsor Lottery Win Royalty from rina1's Lucky Draw Lottery (2nd Prize) Win ($50.00)",
+      "createdAt": "2026-08-17T17:14:28.262Z"
+    },
+    {
+      "id": "tx-1786986849670-ymty-step1",
+      "userId": "usr-1785537410379",
+      "userNodeId": "NX-CYUDTV",
+      "type": "admin_adjust",
+      "amount": 250,
+      "status": "completed",
+      "notes": "🏆 1st Prize Winner of Lucky Draw Coupon #819983 ($250 USDT to Winning Wallet)",
+      "createdAt": "2026-08-17T17:14:09.670Z"
+    },
+    {
+      "id": "tx-spwin-1786986849670-9744",
+      "userId": "usr-1785537091494",
+      "userNodeId": "NX-SQXCVC",
+      "type": "sponsor_game_win_bonus",
+      "amount": 25,
+      "status": "completed",
+      "notes": "10% Sponsor Lottery Win Royalty from neha1's Lucky Draw Lottery (1st Prize) Win ($250.00)",
+      "createdAt": "2026-08-17T17:14:09.670Z"
+    },
     {
       "id": "tx-1786814279310-spin",
       "userId": "usr-root",
@@ -2743,81 +2872,189 @@
     "id": "draw-001",
     "title": "⚡ MEGA USDT ELECTRIC LUCKY DRAW",
     "description": "Pick your custom 6-digit lucky coupons! Match 6, 5, or 4 digits to win 1st, 2nd, and 3rd USDT prizes!",
-    "ticketPrice": 5,
-    "prizeAmount": 250,
-    "secondPrizeAmount": 50,
-    "thirdPrizeAmount": 10,
-    "targetEndTime": "2026-08-12T05:47:17.632Z",
-    "status": "completed",
+    "ticketPrice": 10,
+    "prizeAmount": 500,
+    "secondPrizeAmount": 200,
+    "thirdPrizeAmount": 100,
+    "targetEndTime": "2026-08-17T19:02:57.312Z",
+    "status": "active",
     "forcedWinnerUserId": null,
     "forcedWinnerTicketNumber": null,
-    "tickets": [
+    "tickets": [],
+    "pastWinners": [
       {
-        "id": "tkt-1786632310071-0-57ad",
-        "ticketNumber": "670281",
-        "userId": "usr-root",
-        "userNodeId": "NX-ROOT01",
-        "userName": "Sovereign Nexus (Root Master)",
-        "purchasedAt": "2026-08-13T14:45:10.071Z"
+        "id": "pwin-1786986928234-1",
+        "drawTitle": "⚡ MEGA USDT ELECTRIC LUCKY DRAW",
+        "ticketNumber": "819983",
+        "userId": "usr-1785537410379",
+        "userNodeId": "NX-CYUDTV",
+        "userName": "neha1",
+        "prizeAmount": 250,
+        "prizeTier": "1st Prize (6 Digits Match)",
+        "matchedDigits": 6,
+        "winningNumber": "819983",
+        "wonAt": "2026-08-17T17:14:09.669Z"
       },
       {
-        "id": "tkt-1786632927261-0-gth6",
+        "id": "pwin-1786986928234-2",
+        "drawTitle": "⚡ MEGA USDT ELECTRIC LUCKY DRAW",
+        "ticketNumber": "480583",
+        "userId": "usr-1785538090422",
+        "userNodeId": "NX-83HQT6",
+        "userName": "rina1",
+        "prizeAmount": 50,
+        "prizeTier": "2nd Prize (6 Digits Match)",
+        "matchedDigits": 6,
+        "winningNumber": "480583",
+        "wonAt": "2026-08-17T17:14:28.262Z"
+      },
+      {
+        "id": "pwin-1786986928234-3",
+        "drawTitle": "⚡ MEGA USDT ELECTRIC LUCKY DRAW",
+        "ticketNumber": "421596",
+        "userId": "usr-demo",
+        "userNodeId": "NX-GML9L6",
+        "userName": "Alex Cyberpunk (Demo Account)",
+        "prizeAmount": 10,
+        "prizeTier": "3rd Prize (6 Digits Match)",
+        "matchedDigits": 6,
+        "winningNumber": "421596",
+        "wonAt": "2026-08-17T17:14:50.271Z"
+      },
+      {
+        "id": "pwin-1786986928234-4",
+        "drawTitle": "⚡ MEGA USDT ELECTRIC LUCKY DRAW",
         "ticketNumber": "620910",
         "userId": "usr-root",
         "userNodeId": "NX-ROOT01",
         "userName": "Sovereign Nexus (Root Master)",
-        "purchasedAt": "2026-08-13T14:55:27.261Z"
+        "prizeAmount": 25,
+        "prizeTier": "4th Prize (6 Digits Match)",
+        "matchedDigits": 6,
+        "winningNumber": "620910",
+        "wonAt": "2026-08-17T17:15:08.232Z"
       },
       {
-        "id": "tkt-1786632943425-0-w6qn",
-        "ticketNumber": "252807",
-        "userId": "usr-root",
-        "userNodeId": "NX-ROOT01",
-        "userName": "Sovereign Nexus (Root Master)",
-        "purchasedAt": "2026-08-13T14:55:43.425Z"
-      },
-      {
-        "id": "tkt-1786632994308-0-qpu0",
-        "ticketNumber": "980621",
-        "userId": "usr-root",
-        "userNodeId": "NX-ROOT01",
-        "userName": "Sovereign Nexus (Root Master)",
-        "purchasedAt": "2026-08-13T14:56:34.308Z"
-      },
-      {
-        "id": "tkt-1786633003996-0-dzk1",
-        "ticketNumber": "215561",
-        "userId": "usr-root",
-        "userNodeId": "NX-ROOT01",
-        "userName": "Sovereign Nexus (Root Master)",
-        "purchasedAt": "2026-08-13T14:56:43.996Z"
-      },
-      {
-        "id": "tkt-1786633298000-0-xf8j",
-        "ticketNumber": "449229",
-        "userId": "usr-1786632220819",
-        "userNodeId": "NX-84GU6Z",
-        "userName": "mina1@gmail.com",
-        "purchasedAt": "2026-08-13T15:01:38.000Z"
-      },
-      {
-        "id": "tkt-1786633318504-0-7njt",
-        "ticketNumber": "248199",
-        "userId": "usr-1786632220819",
-        "userNodeId": "NX-84GU6Z",
-        "userName": "mina1@gmail.com",
-        "purchasedAt": "2026-08-13T15:01:58.504Z"
+        "id": "pwin-1786986928233-jp66",
+        "drawTitle": "⚡ MEGA USDT ELECTRIC LUCKY DRAW",
+        "ticketNumber": "464330",
+        "userId": "usr-1785537482252",
+        "userNodeId": "NX-BW4BQG",
+        "userName": "neha2",
+        "prizeAmount": 15,
+        "prizeTier": "5th Prize (6 Digits Match)",
+        "matchedDigits": 6,
+        "winningNumber": "464330",
+        "wonAt": "2026-08-17T17:15:28.233Z"
       }
     ],
-    "pastWinners": [],
-    "lastWinningNumber": "156789",
-    "lastDrawAt": "2026-08-11T05:47:17.632Z",
-    "historyCleared": true
+    "lastWinningNumber": "464330",
+    "lastDrawAt": "2026-08-17T17:15:28.234Z",
+    "historyCleared": true,
+    "fourthPrizeAmount": 50,
+    "fifthPrizeAmount": 25,
+    "guaranteedPrizeAmount": 10,
+    "currentDrawStep": 5,
+    "drawnPrizes": [
+      {
+        "prizeRank": 1,
+        "prizeName": "1st Prize",
+        "ticketNumber": "819983",
+        "drawnAt": "2026-08-17T17:14:09.669Z",
+        "userId": "usr-1785537410379",
+        "userNodeId": "NX-CYUDTV",
+        "userName": "neha1",
+        "prizeAmount": 250
+      },
+      {
+        "prizeRank": 2,
+        "prizeName": "2nd Prize",
+        "ticketNumber": "480583",
+        "drawnAt": "2026-08-17T17:14:28.262Z",
+        "userId": "usr-1785538090422",
+        "userNodeId": "NX-83HQT6",
+        "userName": "rina1",
+        "prizeAmount": 50
+      },
+      {
+        "prizeRank": 3,
+        "prizeName": "3rd Prize",
+        "ticketNumber": "421596",
+        "drawnAt": "2026-08-17T17:14:50.271Z",
+        "userId": "usr-demo",
+        "userNodeId": "NX-GML9L6",
+        "userName": "Alex Cyberpunk (Demo Account)",
+        "prizeAmount": 10
+      },
+      {
+        "prizeRank": 4,
+        "prizeName": "4th Prize",
+        "ticketNumber": "620910",
+        "drawnAt": "2026-08-17T17:15:08.232Z",
+        "userId": "usr-root",
+        "userNodeId": "NX-ROOT01",
+        "userName": "Sovereign Nexus (Root Master)",
+        "prizeAmount": 25
+      },
+      {
+        "prizeRank": 5,
+        "prizeName": "5th Prize",
+        "ticketNumber": "464330",
+        "drawnAt": "2026-08-17T17:15:28.233Z",
+        "userId": "usr-1785537482252",
+        "userNodeId": "NX-BW4BQG",
+        "userName": "neha2",
+        "prizeAmount": 15
+      }
+    ],
+    "forcedPrizes": {
+      "1": {
+        "userId": "",
+        "ticketNumber": ""
+      },
+      "2": {
+        "userId": "",
+        "ticketNumber": ""
+      },
+      "3": {
+        "userId": "",
+        "ticketNumber": ""
+      },
+      "4": {
+        "userId": "",
+        "ticketNumber": ""
+      },
+      "5": {
+        "userId": "",
+        "ticketNumber": ""
+      }
+    },
+    "forcedSecondWinnerUserId": null,
+    "forcedSecondWinnerTicketNumber": null,
+    "isRolling": false,
+    "rollingStartedAt": 1786986928234,
+    "rollingWinningNumber": "464330",
+    "rollingPrizeRank": 5,
+    "rollingWinners": [
+      {
+        "id": "pwin-1786986928233-jp66",
+        "drawTitle": "⚡ MEGA USDT ELECTRIC LUCKY DRAW",
+        "ticketNumber": "464330",
+        "userId": "usr-1785537482252",
+        "userNodeId": "NX-BW4BQG",
+        "userName": "neha2",
+        "prizeAmount": 15,
+        "prizeTier": "5th Prize (6 Digits Match)",
+        "matchedDigits": 6,
+        "winningNumber": "464330",
+        "wonAt": "2026-08-17T17:15:28.233Z"
+      }
+    ]
   },
   "colorPrediction": {
-    "currentPeriodId": "202608151224",
+    "currentPeriodId": "202608171295",
     "periodDurationSeconds": 60,
-    "startTime": 1786815780628,
+    "startTime": 1786990513968,
     "forcedNextNumber": null,
     "bets": [
       {
@@ -3035,6 +3272,503 @@
     ],
     "history": [
       {
+        "periodId": "202608171294",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-17T18:15:13.968Z"
+      },
+      {
+        "periodId": "202608171293",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T18:14:13.935Z"
+      },
+      {
+        "periodId": "202608171292",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T18:13:13.900Z"
+      },
+      {
+        "periodId": "202608171291",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T18:12:13.863Z"
+      },
+      {
+        "periodId": "202608171290",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T18:11:13.833Z"
+      },
+      {
+        "periodId": "202608171289",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T18:10:13.795Z"
+      },
+      {
+        "periodId": "202608171288",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T18:09:13.758Z"
+      },
+      {
+        "periodId": "202608171287",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T18:08:13.044Z"
+      },
+      {
+        "periodId": "202608171286",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T18:07:12.572Z"
+      },
+      {
+        "periodId": "202608171285",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T18:06:12.544Z"
+      },
+      {
+        "periodId": "202608171284",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T18:05:12.523Z"
+      },
+      {
+        "periodId": "202608171283",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T18:04:12.491Z"
+      },
+      {
+        "periodId": "202608171282",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T18:03:12.457Z"
+      },
+      {
+        "periodId": "202608171281",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T18:02:12.421Z"
+      },
+      {
+        "periodId": "202608171280",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T18:01:12.395Z"
+      },
+      {
+        "periodId": "202608171279",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T18:00:11.540Z"
+      },
+      {
+        "periodId": "202608171278",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:59:10.673Z"
+      },
+      {
+        "periodId": "202608171277",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:58:10.492Z"
+      },
+      {
+        "periodId": "202608171276",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:57:10.453Z"
+      },
+      {
+        "periodId": "202608171275",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:56:10.414Z"
+      },
+      {
+        "periodId": "202608171274",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:55:10.378Z"
+      },
+      {
+        "periodId": "202608171273",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:54:10.338Z"
+      },
+      {
+        "periodId": "202608171272",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:53:10.292Z"
+      },
+      {
+        "periodId": "202608171271",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:52:10.258Z"
+      },
+      {
+        "periodId": "202608171270",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:51:10.218Z"
+      },
+      {
+        "periodId": "202608171269",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:50:10.185Z"
+      },
+      {
+        "periodId": "202608171268",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:49:10.151Z"
+      },
+      {
+        "periodId": "202608171267",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:48:10.114Z"
+      },
+      {
+        "periodId": "202608171266",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:47:10.082Z"
+      },
+      {
+        "periodId": "202608171265",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:46:10.018Z"
+      },
+      {
+        "periodId": "202608171264",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:45:09.979Z"
+      },
+      {
+        "periodId": "202608171263",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:44:09.944Z"
+      },
+      {
+        "periodId": "202608171262",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:43:09.903Z"
+      },
+      {
+        "periodId": "202608171261",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:42:09.867Z"
+      },
+      {
+        "periodId": "202608171260",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:41:09.821Z"
+      },
+      {
+        "periodId": "202608171259",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:40:09.780Z"
+      },
+      {
+        "periodId": "202608171258",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:39:09.742Z"
+      },
+      {
+        "periodId": "202608171257",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:38:09.692Z"
+      },
+      {
+        "periodId": "202608171256",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:37:09.655Z"
+      },
+      {
+        "periodId": "202608171255",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:36:09.617Z"
+      },
+      {
+        "periodId": "202608171254",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:35:09.591Z"
+      },
+      {
+        "periodId": "202608171253",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:34:09.383Z"
+      },
+      {
+        "periodId": "202608171252",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:33:09.343Z"
+      },
+      {
+        "periodId": "202608171251",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:32:09.311Z"
+      },
+      {
+        "periodId": "202608171250",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:31:09.272Z"
+      },
+      {
+        "periodId": "202608171249",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:30:09.238Z"
+      },
+      {
+        "periodId": "202608171248",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:29:09.205Z"
+      },
+      {
+        "periodId": "202608171247",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:28:09.175Z"
+      },
+      {
+        "periodId": "202608171246",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:27:09.127Z"
+      },
+      {
+        "periodId": "202608171245",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:26:09.086Z"
+      },
+      {
+        "periodId": "202608171244",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:25:09.032Z"
+      },
+      {
+        "periodId": "202608171243",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:24:08.995Z"
+      },
+      {
+        "periodId": "202608171242",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:23:08.955Z"
+      },
+      {
+        "periodId": "202608171241",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:22:08.100Z"
+      },
+      {
+        "periodId": "202608171240",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:21:08.072Z"
+      },
+      {
+        "periodId": "202608171239",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:20:08.050Z"
+      },
+      {
+        "periodId": "202608171238",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:19:08.025Z"
+      },
+      {
+        "periodId": "202608171237",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:18:08.004Z"
+      },
+      {
+        "periodId": "202608171236",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:17:07.978Z"
+      },
+      {
+        "periodId": "202608171235",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:16:07.941Z"
+      },
+      {
+        "periodId": "202608171234",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:15:07.919Z"
+      },
+      {
+        "periodId": "202608171233",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:14:07.893Z"
+      },
+      {
+        "periodId": "202608171232",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:13:07.856Z"
+      },
+      {
+        "periodId": "202608171231",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:12:07.818Z"
+      },
+      {
+        "periodId": "202608171230",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:11:07.780Z"
+      },
+      {
+        "periodId": "202608171229",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-17T17:10:06.894Z"
+      },
+      {
+        "periodId": "202608171228",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-17T17:09:06.864Z"
+      },
+      {
+        "periodId": "202608171227",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:08:06.831Z"
+      },
+      {
+        "periodId": "202608171226",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-17T17:07:06.795Z"
+      },
+      {
+        "periodId": "202608171225",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:06:06.758Z"
+      },
+      {
+        "periodId": "202608151224",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-17T17:05:06.719Z"
+      },
+      {
         "periodId": "202608151223",
         "number": 5,
         "color": "violet-green",
@@ -3236,535 +3970,38 @@
         "color": "violet-green",
         "size": "big",
         "completedAt": "2026-08-15T17:14:58.468Z"
-      },
-      {
-        "periodId": "202608151194",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:13:58.435Z"
-      },
-      {
-        "periodId": "202608151193",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T17:12:58.400Z"
-      },
-      {
-        "periodId": "202608151192",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:11:58.375Z"
-      },
-      {
-        "periodId": "202608151191",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T17:10:58.347Z"
-      },
-      {
-        "periodId": "202608151190",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:09:58.312Z"
-      },
-      {
-        "periodId": "202608151189",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:08:58.289Z"
-      },
-      {
-        "periodId": "202608151188",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:07:58.259Z"
-      },
-      {
-        "periodId": "202608151187",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:06:58.234Z"
-      },
-      {
-        "periodId": "202608151186",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:05:58.200Z"
-      },
-      {
-        "periodId": "202608151185",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:04:58.174Z"
-      },
-      {
-        "periodId": "202608151184",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T17:03:58.146Z"
-      },
-      {
-        "periodId": "202608151183",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T17:02:58.120Z"
-      },
-      {
-        "periodId": "202608151182",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:01:58.085Z"
-      },
-      {
-        "periodId": "202608151181",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T17:00:58.053Z"
-      },
-      {
-        "periodId": "202608151180",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:59:58.022Z"
-      },
-      {
-        "periodId": "202608151179",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:58:57.989Z"
-      },
-      {
-        "periodId": "202608151178",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:57:57.949Z"
-      },
-      {
-        "periodId": "202608151177",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:56:57.644Z"
-      },
-      {
-        "periodId": "202608151176",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:55:57.608Z"
-      },
-      {
-        "periodId": "202608151175",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:54:57.574Z"
-      },
-      {
-        "periodId": "202608151174",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:53:57.533Z"
-      },
-      {
-        "periodId": "202608151173",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:52:57.505Z"
-      },
-      {
-        "periodId": "202608151172",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:51:57.475Z"
-      },
-      {
-        "periodId": "202608151171",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:50:57.448Z"
-      },
-      {
-        "periodId": "202608151170",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:49:57.423Z"
-      },
-      {
-        "periodId": "202608151169",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:48:57.388Z"
-      },
-      {
-        "periodId": "202608151168",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:47:57.362Z"
-      },
-      {
-        "periodId": "202608151167",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:46:57.334Z"
-      },
-      {
-        "periodId": "202608151166",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:45:56.748Z"
-      },
-      {
-        "periodId": "202608151165",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:44:56.720Z"
-      },
-      {
-        "periodId": "202608151164",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:43:56.689Z"
-      },
-      {
-        "periodId": "202608151163",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:42:56.653Z"
-      },
-      {
-        "periodId": "202608151162",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:41:56.615Z"
-      },
-      {
-        "periodId": "202608151161",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:40:56.572Z"
-      },
-      {
-        "periodId": "202608151160",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:39:56.538Z"
-      },
-      {
-        "periodId": "202608151159",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:38:56.513Z"
-      },
-      {
-        "periodId": "202608151158",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:37:56.482Z"
-      },
-      {
-        "periodId": "202608151157",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:36:56.454Z"
-      },
-      {
-        "periodId": "202608151156",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:35:56.423Z"
-      },
-      {
-        "periodId": "202608151155",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:34:56.391Z"
-      },
-      {
-        "periodId": "202608151154",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:33:56.017Z"
-      },
-      {
-        "periodId": "202608151153",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:32:55.984Z"
-      },
-      {
-        "periodId": "202608151152",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:31:55.965Z"
-      },
-      {
-        "periodId": "202608151151",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:30:55.930Z"
-      },
-      {
-        "periodId": "202608151150",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:29:55.901Z"
-      },
-      {
-        "periodId": "202608151149",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:28:55.869Z"
-      },
-      {
-        "periodId": "202608151148",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:27:55.847Z"
-      },
-      {
-        "periodId": "202608151147",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:26:55.820Z"
-      },
-      {
-        "periodId": "202608151146",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:25:55.791Z"
-      },
-      {
-        "periodId": "202608151145",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:24:55.765Z"
-      },
-      {
-        "periodId": "202608151144",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:23:55.733Z"
-      },
-      {
-        "periodId": "202608151143",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:22:55.692Z"
-      },
-      {
-        "periodId": "202608151142",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:21:55.663Z"
-      },
-      {
-        "periodId": "202608151141",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:20:55.636Z"
-      },
-      {
-        "periodId": "202608151140",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:19:55.602Z"
-      },
-      {
-        "periodId": "202608151139",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:18:55.563Z"
-      },
-      {
-        "periodId": "202608151138",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:17:54.868Z"
-      },
-      {
-        "periodId": "202608151137",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:16:54.844Z"
-      },
-      {
-        "periodId": "202608151136",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:15:54.806Z"
-      },
-      {
-        "periodId": "202608151135",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:14:54.771Z"
-      },
-      {
-        "periodId": "202608151134",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:13:54.004Z"
-      },
-      {
-        "periodId": "202608151133",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:12:53.979Z"
-      },
-      {
-        "periodId": "202608151132",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:11:53.941Z"
-      },
-      {
-        "periodId": "202608151131",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T16:10:53.909Z"
-      },
-      {
-        "periodId": "202608151130",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:09:53.881Z"
-      },
-      {
-        "periodId": "202608151129",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T16:08:53.854Z"
-      },
-      {
-        "periodId": "202608151128",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:07:53.824Z"
-      },
-      {
-        "periodId": "202608151127",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:06:53.795Z"
-      },
-      {
-        "periodId": "202608151126",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:05:53.766Z"
-      },
-      {
-        "periodId": "202608151125",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T16:04:53.735Z"
-      },
-      {
-        "periodId": "202608151124",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T16:03:53.707Z"
       }
     ],
     "adminMode": "smart_retention_60_40"
   },
   "aviator": {
-    "currentRoundId": "AV-1786815797807",
-    "status": "waiting",
-    "currentMultiplier": 1,
-    "targetCrashMultiplier": 5.27,
-    "startTime": 1786815797807,
+    "currentRoundId": "AV-1786990527638",
+    "status": "flying",
+    "currentMultiplier": 2.15,
+    "targetCrashMultiplier": 4.86,
+    "startTime": 1786990539949,
     "bets": [],
     "history": [
-      5.27,
-      1.72,
-      1.77,
-      6.27,
-      3.14,
-      6.81,
-      8.52,
-      6.35,
-      8.99,
-      1.23,
-      7.88,
-      6.06,
-      7.65,
-      7.42,
-      7.67,
-      4.14,
+      8.84,
+      5.03,
+      7.95,
+      9.01,
+      5.57,
+      7.24,
+      5.16,
+      9.11,
+      8.1,
+      4.32,
+      1.67,
+      4.11,
+      6.6,
+      7.64,
       3.84,
-      1.58,
-      2.65,
-      4.92
+      5.47,
+      6.84,
+      3.44,
+      3.09,
+      4.1
     ],
     "forcedNextCrash": null,
     "adminMode": "lowest_payout"

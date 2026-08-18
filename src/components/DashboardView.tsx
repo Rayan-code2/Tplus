@@ -154,37 +154,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
 
-        {/* Daily Top Bettor Tournament & Live Pot Widget */}
-        <div
-          onClick={onOpenTournament}
-          className="bg-gradient-to-r from-[#201503] via-[#2d1e05] to-[#120b02] border border-amber-500/50 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[0_0_20px_rgba(245,158,11,0.2)] cursor-pointer hover:border-amber-400 transition group"
-        >
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="bg-amber-500/20 text-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border border-amber-500/40 flex items-center gap-1">
-                <Trophy className="w-3 h-3 text-amber-400" />
-                Live 24h Championship
-              </span>
-              <span className="text-[10px] text-yellow-300 font-mono animate-pulse">● LIVE</span>
+        {/* Daily Top Bettor Tournament & Live Pot Widget (Dynamic based on Admin settings) */}
+        {settings.dailyTournament?.enabled !== false && (
+          <div
+            onClick={onOpenTournament}
+            className="bg-gradient-to-r from-[#201503] via-[#2d1e05] to-[#120b02] border border-amber-500/50 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-[0_0_20px_rgba(245,158,11,0.2)] cursor-pointer hover:border-amber-400 transition group"
+          >
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border border-amber-500/40 flex items-center gap-1">
+                  <Trophy className="w-3 h-3 text-amber-400" />
+                  Live 24h Championship
+                </span>
+                <span className="text-[10px] text-yellow-300 font-mono animate-pulse">● LIVE</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-white group-hover:text-yellow-300 transition">
+                {settings.dailyTournament?.title || 'Daily Top Bettor Tournament'}
+              </h3>
+              <p className="text-[11px] text-amber-200/80 font-sans">
+                Guaranteed Pot ${settings.dailyTournament?.basePot ?? 250}+ | Live Leaderboard & Instant Prizes
+              </p>
             </div>
-            <h3 className="text-base sm:text-lg font-black text-white group-hover:text-yellow-300 transition">
-              Daily Top Bettor Tournament
-            </h3>
-            <p className="text-[11px] text-amber-200/80 font-sans">
-              Guaranteed Pot $250+ | Live Leaderboard & Instant Prizes
-            </p>
-          </div>
 
-          <div className="text-right shrink-0">
-            <span className="text-[9px] text-amber-400 font-bold uppercase block">Total Pot</span>
-            <div className="text-lg sm:text-xl font-black text-white">
-              $250+ <span className="text-xs text-amber-400">USDT</span>
+            <div className="text-right shrink-0">
+              <span className="text-[9px] text-amber-400 font-bold uppercase block">Total Pot</span>
+              <div className="text-lg sm:text-xl font-black text-white">
+                ${settings.dailyTournament?.basePot ?? 250}+ <span className="text-xs text-amber-400">USDT</span>
+              </div>
+              <span className="text-[10px] text-amber-300 font-bold group-hover:translate-x-1 inline-flex items-center gap-0.5 transition">
+                View Pot →
+              </span>
             </div>
-            <span className="text-[10px] text-amber-300 font-bold group-hover:translate-x-1 inline-flex items-center gap-0.5 transition">
-              View Pot →
-            </span>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 1. TOP WALLET CARDS OVERVIEW */}

@@ -733,7 +733,6 @@ export default function App() {
               transactions={transactions}
               onDepositSubmit={handleDepositSubmit}
               onWithdrawSubmit={handleWithdrawSubmit}
-              onConvertWinnings={handleConvertWinnings}
               onNavigateToPackages={() => {
                 setActiveTab('dashboard');
                 setIsAdminView(false);

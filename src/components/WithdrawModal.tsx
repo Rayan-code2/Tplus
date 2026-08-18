@@ -26,7 +26,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   onNavigateToPackages,
   defaultWalletType = 'winning',
 }) => {
-  const [selectedWallet, setSelectedWallet] = useState<'winning' | 'mlm'>(defaultWalletType);
+  const [selectedWallet, setSelectedWallet] = useState<'winning' | 'mlm'>('winning');
   const [amount, setAmount] = useState('20');
   const [address, setAddress] = useState(user.walletAddress || '');
   const [network, setNetwork] = useState<'TRC20' | 'BEP20' | 'ERC20'>('BEP20');
@@ -92,7 +92,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
               <ArrowUpRight className="w-4 h-4" />
-              Instant Crypto Withdrawal
+              Instant Crypto Withdrawal & Transfer
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-white">
               <X className="w-5 h-5" />

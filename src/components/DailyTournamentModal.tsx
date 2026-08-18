@@ -84,11 +84,16 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
                   <Flame className="w-3.5 h-3.5 fill-black" />
                   Live 24h Championship
                 </span>
+                {data?.enabled === false && (
+                  <span className="bg-red-900 text-white font-black text-[10px] px-2 py-0.5 rounded-full">
+                    PAUSED
+                  </span>
+                )}
                 <span className="text-xs font-bold text-amber-950">Daily Reset @ 00:00 UTC</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] flex items-center gap-2">
                 <Trophy className="w-6 h-6 text-yellow-200" />
-                Daily Top Bettor Tournament
+                {data?.title || 'Daily Top Bettor Tournament'}
               </h2>
               <p className="text-xs text-amber-950 font-sans font-medium max-w-xl">
                 Wager on Color Prediction, Dragon vs Tiger, or Aviator to climb the daily leaderboard and win massive USDT prize pool shares!
@@ -119,10 +124,10 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
               Total Dynamic Pot
             </div>
             <div className="text-xl sm:text-2xl font-black text-white mt-1">
-              ${(data?.totalPot || 250).toFixed(2)} <span className="text-xs text-amber-400 font-normal">USDT</span>
+              ${(data?.totalPot ?? 250).toFixed(2)} <span className="text-xs text-amber-400 font-normal">USDT</span>
             </div>
             <div className="text-[9px] text-amber-300/80 font-sans mt-0.5">
-              Guaranteed $250 + 5% of all daily wagers!
+              Guaranteed ${(data?.basePot ?? 250).toFixed(2)} + {data?.turnoverContributionPercent ?? 5}% of daily wagers!
             </div>
           </div>
 
@@ -317,11 +322,26 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
               <Award className="w-4 h-4 text-amber-400" />
               Tournament Rules & Prize Distribution
             </div>
-            <p className="text-slate-300 font-sans leading-relaxed text-[11px]">
-              1. Every real bet placed across Win Go Color Prediction, Dragon vs Tiger, and Aviator automatically counts towards your Daily Wager Volume.<br />
-              2. <strong>1st Place</strong> takes <strong>40%</strong> of the Total Pot, <strong>2nd Place</strong> takes <strong>25%</strong>, <strong>3rd Place</strong> takes <strong>15%</strong>, and Top 10 share the remainder.<br />
-              3. Prizes are calculated daily at 00:00 UTC and automatically credited to your <strong>Winning Wallet</strong> with 100% instant withdrawal!
-            </p>
+            <div className="text-slate-300 font-sans leading-relaxed text-[11px] space-y-1.5">
+              <p>
+                1. Every real bet placed across Win Go Color Prediction, Dragon vs Tiger, and Aviator automatically counts towards your Daily Wager Volume.
+              </p>
+              <p>
+                2. <strong>Prize Allocation:</strong>{' '}
+                {data?.prizeBreakdown && data.prizeBreakdown.length > 0 ? (
+                  data.prizeBreakdown.slice(0, 4).map((p) => `Rank ${p.rank} (${p.percent}%)`).join(', ') +
+                  (data.prizeBreakdown.length > 4 ? ` and Top ${data.prizeBreakdown.length} share remainder.` : '.')
+                ) : (
+                  'Rank 1 (40%), Rank 2 (25%), Rank 3 (15%), Top 10 share remainder.'
+                )}
+              </p>
+              <p>
+                3. <strong>Min Wager Rule:</strong> Minimum <strong>${(data?.minWagerToQualify ?? 10).toFixed(2)} USDT</strong> total wager required to qualify for prize payout.
+              </p>
+              <p>
+                4. Prizes are calculated daily at 00:00 UTC and automatically credited to your <strong>Winning Wallet</strong> with 100% instant withdrawal!
+              </p>
+            </div>
           </div>
         </div>
 

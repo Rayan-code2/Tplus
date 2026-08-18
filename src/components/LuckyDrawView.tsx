@@ -23,8 +23,10 @@ import {
   Volume2,
   VolumeX,
   Lock,
+  Layers,
+  RotateCcw,
 } from 'lucide-react';
-import { User, LuckyDrawState } from '../types';
+import { User, LuckyDrawState, DrawnPrizeTicket, LuckyDrawWinner } from '../types';
 
 interface LuckyDrawViewProps {
   currentUser: User;
@@ -32,6 +34,25 @@ interface LuckyDrawViewProps {
   onOpenDeposit?: () => void;
   onOpenWithdraw?: () => void;
   onRefreshState?: () => void;
+}
+
+// Shared AudioContext Singleton to eliminate browser stutter and audio thread leaks
+let sharedAudioCtx: AudioContext | null = null;
+function getSharedAudioContext(): AudioContext | null {
+  try {
+    if (!sharedAudioCtx) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        sharedAudioCtx = new AudioContextClass();
+      }
+    }
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+    return sharedAudioCtx;
+  } catch {
+    return null;
+  }
 }
 
 export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
@@ -48,7 +69,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   const [selectionMode, setSelectionMode] = useState<'random' | 'custom'>('custom');
   const [customCouponInput, setCustomCouponInput] = useState<string>('');
   const [customCouponList, setCustomCouponList] = useState<string[]>([]);
-  
+
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
     days: 0,
     hours: 0,
@@ -57,15 +78,18 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   });
 
   // 10-Second Roller animation states
-  const ROLL_TOTAL_MS = 10000; // Minimum 10 full seconds!
+  const ROLL_TOTAL_MS = 10000;
   const [isRolling, setIsRolling] = useState(false);
+  const isRollingRef = useRef<boolean>(false);
   const [rollSecondsLeft, setRollSecondsLeft] = useState<number>(10.0);
   const [rollProgress, setRollProgress] = useState<number>(0);
   const [lockedReelMask, setLockedReelMask] = useState<boolean[]>([false, false, false, false, false, false]);
   const [displayDigits, setDisplayDigits] = useState<string[]>(['7', '3', '9', '2', '1', '0']);
-  const [winnerAnnouncedList, setWinnerAnnouncedList] = useState<any[] | null>(null);
-  const [winnerTierFilter, setWinnerTierFilter] = useState<'all' | '1st' | '2nd' | '3rd'>('all');
-  const [lastSeenRollTime, setLastSeenRollTime] = useState<number>(0);
+  const [currentRollingPrizeName, setCurrentRollingPrizeName] = useState<string>('1st Prize');
+  const [currentRollingStep, setCurrentRollingStep] = useState<number>(1);
+  const [winnerAnnouncedList, setWinnerAnnouncedList] = useState<LuckyDrawWinner[] | null>(null);
+  const [winnerTierFilter, setWinnerTierFilter] = useState<'all' | '1st' | '2nd' | '3rd' | '4th' | '5th' | 'guaranteed'>('all');
+  const lastSeenRollTimeRef = useRef<number>(0);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
   // Active animation refs
@@ -75,83 +99,93 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
-  // Web Audio Synth Helpers
+  // Web Audio Synth Helpers (Zero Lag via Shared Audio Context)
   const playElectricTick = () => {
     if (!soundEnabledRef.current) return;
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = getSharedAudioContext();
+      if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(650 + Math.random() * 500, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.025, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+      osc.frequency.setValueAtTime(600 + Math.random() * 400, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.03);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.04);
+      osc.stop(audioCtx.currentTime + 0.03);
     } catch {}
   };
 
   const playReelLockSound = (reelIdx: number) => {
     if (!soundEnabledRef.current) return;
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = getSharedAudioContext();
+      if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
       const freqs = [392, 440, 523, 587, 659, 784];
       osc.frequency.setValueAtTime(freqs[reelIdx] || 523, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.22);
+      osc.stop(audioCtx.currentTime + 0.18);
     } catch {}
   };
 
   const playJackpotFanfare = () => {
     if (!soundEnabledRef.current) return;
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const notes = [523.25, 659.25, 783.99, 1046.50];
+      const audioCtx = getSharedAudioContext();
+      if (!audioCtx) return;
+      const notes = [523.25, 659.25, 783.99, 1046.5];
       notes.forEach((freq, i) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.12);
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime + i * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.12 + 0.6);
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime + i * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + i * 0.1 + 0.4);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + i * 0.12);
-        osc.stop(audioCtx.currentTime + i * 0.12 + 0.6);
+        osc.start(audioCtx.currentTime + i * 0.1);
+        osc.stop(audioCtx.currentTime + i * 0.1 + 0.4);
       });
     } catch {}
   };
 
-  // Staged locking animation engine (10 full seconds)
-  const start10SecRollAnimation = (targetWinNum: string, winners: any[], rollStartTimestamp?: number) => {
+  // Staged locking animation engine (10 full seconds, ultra smooth)
+  const start10SecRollAnimation = (
+    targetWinNum: string,
+    winners: any[],
+    rollStartTimestamp?: number,
+    prizeRank: number = 1,
+    drawnPrizesSnapshot?: DrawnPrizeTicket[]
+  ) => {
     if (rollIntervalRef.current) {
       clearInterval(rollIntervalRef.current);
     }
 
     const start = rollStartTimestamp || Date.now();
     setIsRolling(true);
+    isRollingRef.current = true;
+    setCurrentRollingStep(prizeRank);
+    const prizeRankNamesMap: Record<number, string> = {
+      1: '1st Prize',
+      2: '2nd Prize',
+      3: '3rd Prize',
+      4: '4th Prize',
+      5: '5th Prize',
+    };
+    setCurrentRollingPrizeName(prizeRankNamesMap[prizeRank] || `${prizeRank}th Prize`);
     setWinnerAnnouncedList(null);
 
     const safeTargetDigits = (targetWinNum || '786910').padStart(6, '0').slice(-6).split('');
     const prevLockedState = [false, false, false, false, false, false];
-
-    // Lock schedule milestones (ms from roll start):
-    // 0 - 6000ms: all 6 reels spin at rapid speed
-    // 6000ms: Reel #1 locks
-    // 6800ms: Reel #2 locks
-    // 7600ms: Reel #3 locks
-    // 8400ms: Reel #4 locks
-    // 9200ms: Reel #5 locks
-    // 10000ms: Reel #6 locks (Grand final lock!)
     const lockMilestones = [6000, 6800, 7600, 8400, 9200, 10000];
 
     let tickCount = 0;
@@ -162,13 +196,9 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       const remainingSec = remainingMs / 1000;
       const progressPercent = Math.min(100, (elapsed / ROLL_TOTAL_MS) * 100);
 
-      setRollSecondsLeft(remainingSec);
-      setRollProgress(progressPercent);
-
       // Evaluate lock status for each reel
       const currentLocks = lockMilestones.map((milestone) => elapsed >= milestone);
-      setLockedReelMask(currentLocks);
-
+      
       // Play lock chime when a new reel locks
       currentLocks.forEach((isLocked, idx) => {
         if (isLocked && !prevLockedState[idx]) {
@@ -179,7 +209,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
       // Sound tick occasionally for spinning reels
       tickCount++;
-      if (tickCount % 2 === 0 && elapsed < ROLL_TOTAL_MS) {
+      if (tickCount % 3 === 0 && elapsed < ROLL_TOTAL_MS) {
         playElectricTick();
       }
 
@@ -190,27 +220,38 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         }
         return Math.floor(Math.random() * 10).toString();
       });
+
+      // Batch state updates
+      setRollSecondsLeft(remainingSec);
+      setRollProgress(progressPercent);
+      setLockedReelMask(currentLocks);
       setDisplayDigits(currentDigits);
 
-      // Finish 10-second draw
+      // Finish 10-second draw: roller stops completely and reveals ticket smoothly
       if (elapsed >= ROLL_TOTAL_MS) {
         if (rollIntervalRef.current) {
           clearInterval(rollIntervalRef.current);
           rollIntervalRef.current = null;
         }
         setIsRolling(false);
+        isRollingRef.current = false;
         setLockedReelMask([true, true, true, true, true, true]);
         setDisplayDigits(safeTargetDigits);
         setRollSecondsLeft(0);
         setRollProgress(100);
         playJackpotFanfare();
 
+        // Update state with newly drawn prizes after roller completely finishes
+        if (drawnPrizesSnapshot && drawnPrizesSnapshot.length > 0) {
+          setLuckyDraw((prev) => (prev ? { ...prev, drawnPrizes: drawnPrizesSnapshot, currentDrawStep: prizeRank } : null));
+        }
+
         if (winners && winners.length > 0) {
           setWinnerAnnouncedList(winners);
         }
         if (onRefreshState) onRefreshState();
       }
-    }, 45);
+    }, 55);
   };
 
   useEffect(() => {
@@ -223,23 +264,40 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
   // Admin Config State
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
-  const [forcedUserId, setForcedUserId] = useState<string>('');
-  const [forcedTicketNum, setForcedTicketNum] = useState<string>('');
-  const [forcedSecondUserId, setForcedSecondUserId] = useState<string>('');
-  const [forcedSecondTicketNum, setForcedSecondTicketNum] = useState<string>('');
+  const [adminSelectedStep, setAdminSelectedStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [forcedPrizesState, setForcedPrizesState] = useState<{
+    '1': { userId: string; ticketNumber: string };
+    '2': { userId: string; ticketNumber: string };
+    '3': { userId: string; ticketNumber: string };
+    '4': { userId: string; ticketNumber: string };
+    '5': { userId: string; ticketNumber: string };
+  }>({
+    '1': { userId: '', ticketNumber: '' },
+    '2': { userId: '', ticketNumber: '' },
+    '3': { userId: '', ticketNumber: '' },
+    '4': { userId: '', ticketNumber: '' },
+    '5': { userId: '', ticketNumber: '' },
+  });
+
   const [previewLast5Input, setPreviewLast5Input] = useState<string>('');
   const [assignTargetUsers, setAssignTargetUsers] = useState<Record<string, string>>({});
 
   const [adminTicketPrice, setAdminTicketPrice] = useState<number | string>(5);
   const [adminPrizeAmount, setAdminPrizeAmount] = useState<number | string>(250);
-  const [adminSecondPrize, setAdminSecondPrize] = useState<number | string>(50);
-  const [adminThirdPrize, setAdminThirdPrize] = useState<number | string>(10);
+  const [adminSecondPrize, setAdminSecondPrize] = useState<number | string>(100);
+  const [adminThirdPrize, setAdminThirdPrize] = useState<number | string>(50);
+  const [adminFourthPrize, setAdminFourthPrize] = useState<number | string>(25);
+  const [adminFifthPrize, setAdminFifthPrize] = useState<number | string>(15);
+  const [adminGuaranteedPrize, setAdminGuaranteedPrize] = useState<number | string>(5);
   const [adminCountdownMins, setAdminCountdownMins] = useState<number>(60);
   const [adminSearchUser, setAdminSearchUser] = useState('');
   const [adminCouponSearch, setAdminCouponSearch] = useState('');
   const [showActiveCouponsList, setShowActiveCouponsList] = useState(false);
   const [adminMsg, setAdminMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [hasInitializedConfig, setHasInitializedConfig] = useState(false);
+  const [isAdminDirty, setIsAdminDirty] = useState(false);
+  const isAdminDirtyRef = useRef(false);
+  const hasInitializedConfigRef = useRef(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // CSV Export Active Coupons
@@ -280,7 +338,16 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       alert('No past winner results found to export.');
       return;
     }
-    const headers = ['Draw Title', 'Winning Ticket Number', 'Prize Tier', 'Prize Amount (USDT)', 'Winner Name', 'Winner Node ID', 'Winner User ID', 'Draw Date'];
+    const headers = [
+      'Draw Title',
+      'Winning Ticket Number',
+      'Prize Tier',
+      'Prize Amount (USDT)',
+      'Winner Name',
+      'Winner Node ID',
+      'Winner User ID',
+      'Draw Date',
+    ];
     const csvRows = [
       headers.join(','),
       ...past.map((w) => {
@@ -328,6 +395,21 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
     }
   };
 
+  const handleResetDrawRound = async () => {
+    try {
+      const res = await fetch('/api/luckydraw/admin/reset-round', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setLuckyDraw(data.luckyDraw);
+        setAdminMsg({ text: '🔄 Lucky Draw Round Reset! Ready to start 1st Prize Draw!', type: 'success' });
+        fetchLuckyDraw();
+        if (onRefreshState) onRefreshState();
+      }
+    } catch (err: any) {
+      setAdminMsg({ text: 'Error resetting round: ' + err.message, type: 'error' });
+    }
+  };
+
   // Fetch Lucky Draw State
   const fetchLuckyDraw = async () => {
     try {
@@ -335,36 +417,53 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       const res = await fetch('/api/luckydraw');
       if (res.ok) {
         const data = await res.json();
-        const ld = data.luckyDraw;
-        setLuckyDraw(ld);
+        const ld = data.luckyDraw as LuckyDrawState;
 
         // Check if admin recently triggered a live draw spin across all users
-        if (ld.rollingStartedAt && ld.rollingStartedAt > lastSeenRollTime && (Date.now() - ld.rollingStartedAt < 12000)) {
-          setLastSeenRollTime(ld.rollingStartedAt);
+        if (ld.rollingStartedAt && ld.rollingStartedAt > lastSeenRollTimeRef.current && Date.now() - ld.rollingStartedAt < 12000) {
+          lastSeenRollTimeRef.current = ld.rollingStartedAt;
           const winNum = ld.rollingWinningNumber || ld.lastWinningNumber || '786910';
-          start10SecRollAnimation(winNum, ld.rollingWinners || [], ld.rollingStartedAt);
-        } else if (!isRolling && ld.lastWinningNumber) {
-          setDisplayDigits(ld.lastWinningNumber.padStart(6, '0').split(''));
+          const stepRank = ld.rollingPrizeRank || 1;
+          const previousDrawnPrizes = (ld.drawnPrizes || []).filter((p: any) => p.prizeRank < stepRank);
+          setLuckyDraw({
+            ...ld,
+            drawnPrizes: previousDrawnPrizes,
+            currentDrawStep: stepRank - 1,
+          });
+          start10SecRollAnimation(
+            winNum,
+            ld.rollingWinners || [],
+            ld.rollingStartedAt,
+            stepRank,
+            ld.drawnPrizes || []
+          );
+        } else if (!isRollingRef.current) {
+          setLuckyDraw(ld);
+          if (ld.lastWinningNumber) {
+            setDisplayDigits(ld.lastWinningNumber.padStart(6, '0').split(''));
+          }
         }
 
-        // Only set admin input fields once on initial load or if admin panel is closed
-        if (!hasInitializedConfig) {
-          setAdminTicketPrice(ld.ticketPrice ?? 5);
-          setAdminPrizeAmount(ld.prizeAmount ?? 250);
-          setAdminSecondPrize(ld.secondPrizeAmount ?? 50);
-          setAdminThirdPrize(ld.thirdPrizeAmount ?? 10);
-          if (ld.forcedWinnerUserId) {
-            setForcedUserId(ld.forcedWinnerUserId);
+        // Initialize admin input fields on first load or if not currently being edited by admin
+        if (!hasInitializedConfigRef.current || !isAdminDirtyRef.current) {
+          if (ld.ticketPrice !== undefined) setAdminTicketPrice(ld.ticketPrice);
+          if (ld.prizeAmount !== undefined) setAdminPrizeAmount(ld.prizeAmount);
+          if (ld.secondPrizeAmount !== undefined) setAdminSecondPrize(ld.secondPrizeAmount);
+          if (ld.thirdPrizeAmount !== undefined) setAdminThirdPrize(ld.thirdPrizeAmount);
+          if (ld.fourthPrizeAmount !== undefined) setAdminFourthPrize(ld.fourthPrizeAmount);
+          if (ld.fifthPrizeAmount !== undefined) setAdminFifthPrize(ld.fifthPrizeAmount);
+          if (ld.guaranteedPrizeAmount !== undefined) setAdminGuaranteedPrize(ld.guaranteedPrizeAmount);
+
+          if (ld.forcedPrizes && (!hasInitializedConfigRef.current || !isAdminDirtyRef.current)) {
+            setForcedPrizesState({
+              '1': { userId: ld.forcedPrizes['1']?.userId || '', ticketNumber: ld.forcedPrizes['1']?.ticketNumber || '' },
+              '2': { userId: ld.forcedPrizes['2']?.userId || '', ticketNumber: ld.forcedPrizes['2']?.ticketNumber || '' },
+              '3': { userId: ld.forcedPrizes['3']?.userId || '', ticketNumber: ld.forcedPrizes['3']?.ticketNumber || '' },
+              '4': { userId: ld.forcedPrizes['4']?.userId || '', ticketNumber: ld.forcedPrizes['4']?.ticketNumber || '' },
+              '5': { userId: ld.forcedPrizes['5']?.userId || '', ticketNumber: ld.forcedPrizes['5']?.ticketNumber || '' },
+            });
           }
-          if (ld.forcedWinnerTicketNumber) {
-            setForcedTicketNum(ld.forcedWinnerTicketNumber);
-          }
-          if (ld.forcedSecondWinnerUserId) {
-            setForcedSecondUserId(ld.forcedSecondWinnerUserId);
-          }
-          if (ld.forcedSecondWinnerTicketNumber) {
-            setForcedSecondTicketNum(ld.forcedSecondWinnerTicketNumber);
-          }
+          hasInitializedConfigRef.current = true;
           setHasInitializedConfig(true);
         }
       }
@@ -377,9 +476,9 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
   useEffect(() => {
     fetchLuckyDraw();
-    const interval = setInterval(fetchLuckyDraw, 2000);
+    const interval = setInterval(fetchLuckyDraw, 2500);
     return () => clearInterval(interval);
-  }, [lastSeenRollTime]);
+  }, []);
 
   // Countdown timer logic
   useEffect(() => {
@@ -400,8 +499,6 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
     return () => clearInterval(timer);
   }, [luckyDraw?.targetEndTime]);
-
-  // Handle Roller Animation Effect - Controlled by start10SecRollAnimation engine
 
   // Helper to add custom coupon
   const handleAddCustomCoupon = () => {
@@ -435,7 +532,6 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   const handleBuyTickets = async () => {
     if (!luckyDraw) return;
 
-    // Auto-include pending input in custom mode if user didn't press '+ Add'
     let effectiveCustomList = [...customCouponList];
     const pendingInput = customCouponInput.trim();
     if (selectionMode === 'custom' && /^\d{6}$/.test(pendingInput) && !effectiveCustomList.includes(pendingInput)) {
@@ -444,8 +540,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
     const finalQty = selectionMode === 'custom' && effectiveCustomList.length > 0 ? effectiveCustomList.length : ticketQty;
     const totalCost = luckyDraw.ticketPrice * finalQty;
-    
-    // Check total available balance across all wallets
+
     const totalUserAvail = (currentUser.depositBalance || 0) + (currentUser.winningBalance || 0) + (currentUser.balance || 0);
     if (totalUserAvail < totalCost) {
       alert(`Insufficient funds! Total cost is $${totalCost} USDT. (Available Balance: $${totalUserAvail.toFixed(2)} USDT). Please deposit funds.`);
@@ -488,34 +583,58 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   };
 
   // Admin Save Settings
-  const handleAdminSaveConfig = async () => {
+  const handleAdminSaveConfig = async (overrides?: any) => {
     try {
       setAdminMsg(null);
-      const targetEndTime = new Date(Date.now() + adminCountdownMins * 60 * 1000).toISOString();
+      const targetEndTime = overrides?.targetEndTime !== undefined
+        ? overrides.targetEndTime
+        : (overrides?.countdownMins !== undefined
+          ? new Date(Date.now() + adminCountdownMins * 60 * 1000).toISOString()
+          : luckyDraw?.targetEndTime);
+
+      const payload = {
+        ticketPrice: overrides?.ticketPrice !== undefined ? overrides.ticketPrice : (adminTicketPrice === '' ? 5 : Number(adminTicketPrice)),
+        prizeAmount: overrides?.prizeAmount !== undefined ? overrides.prizeAmount : (adminPrizeAmount === '' ? 250 : Number(adminPrizeAmount)),
+        secondPrizeAmount: overrides?.secondPrizeAmount !== undefined ? overrides.secondPrizeAmount : (adminSecondPrize === '' ? 100 : Number(adminSecondPrize)),
+        thirdPrizeAmount: overrides?.thirdPrizeAmount !== undefined ? overrides.thirdPrizeAmount : (adminThirdPrize === '' ? 50 : Number(adminThirdPrize)),
+        fourthPrizeAmount: overrides?.fourthPrizeAmount !== undefined ? overrides.fourthPrizeAmount : (adminFourthPrize === '' ? 25 : Number(adminFourthPrize)),
+        fifthPrizeAmount: overrides?.fifthPrizeAmount !== undefined ? overrides.fifthPrizeAmount : (adminFifthPrize === '' ? 15 : Number(adminFifthPrize)),
+        guaranteedPrizeAmount: overrides?.guaranteedPrizeAmount !== undefined ? overrides.guaranteedPrizeAmount : (adminGuaranteedPrize === '' ? 5 : Number(adminGuaranteedPrize)),
+        targetEndTime,
+        status: 'active',
+        forcedPrizes: overrides?.forcedPrizes || forcedPrizesState,
+        ...overrides,
+      };
+
       const res = await fetch('/api/luckydraw/admin/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ticketPrice: adminTicketPrice === '' ? 5 : Number(adminTicketPrice),
-          prizeAmount: adminPrizeAmount === '' ? 250 : Number(adminPrizeAmount),
-          secondPrizeAmount: adminSecondPrize === '' ? 50 : Number(adminSecondPrize),
-          thirdPrizeAmount: adminThirdPrize === '' ? 10 : Number(adminThirdPrize),
-          targetEndTime,
-          status: 'active',
-          forcedWinnerUserId: forcedUserId || null,
-          forcedWinnerTicketNumber: forcedTicketNum || null,
-          forcedSecondWinnerUserId: forcedSecondUserId || null,
-          forcedSecondWinnerTicketNumber: forcedSecondTicketNum || null,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setLuckyDraw(data.luckyDraw);
-        setAdminTicketPrice(data.luckyDraw.ticketPrice);
-        setAdminPrizeAmount(data.luckyDraw.prizeAmount);
-        setAdminSecondPrize(data.luckyDraw.secondPrizeAmount);
-        setAdminThirdPrize(data.luckyDraw.thirdPrizeAmount);
-        setAdminMsg({ text: '🎉 Tiered Prize Pools & Lucky Draw Config Saved Successfully!', type: 'success' });
+        if (data.luckyDraw) {
+          setLuckyDraw(data.luckyDraw);
+          setAdminTicketPrice(data.luckyDraw.ticketPrice !== undefined ? data.luckyDraw.ticketPrice : 5);
+          setAdminPrizeAmount(data.luckyDraw.prizeAmount !== undefined ? data.luckyDraw.prizeAmount : 250);
+          setAdminSecondPrize(data.luckyDraw.secondPrizeAmount !== undefined ? data.luckyDraw.secondPrizeAmount : 100);
+          setAdminThirdPrize(data.luckyDraw.thirdPrizeAmount !== undefined ? data.luckyDraw.thirdPrizeAmount : 50);
+          setAdminFourthPrize(data.luckyDraw.fourthPrizeAmount !== undefined ? data.luckyDraw.fourthPrizeAmount : 25);
+          setAdminFifthPrize(data.luckyDraw.fifthPrizeAmount !== undefined ? data.luckyDraw.fifthPrizeAmount : 15);
+          setAdminGuaranteedPrize(data.luckyDraw.guaranteedPrizeAmount !== undefined ? data.luckyDraw.guaranteedPrizeAmount : 5);
+          if (data.luckyDraw.forcedPrizes) {
+            setForcedPrizesState({
+              '1': { userId: data.luckyDraw.forcedPrizes['1']?.userId || '', ticketNumber: data.luckyDraw.forcedPrizes['1']?.ticketNumber || '' },
+              '2': { userId: data.luckyDraw.forcedPrizes['2']?.userId || '', ticketNumber: data.luckyDraw.forcedPrizes['2']?.ticketNumber || '' },
+              '3': { userId: data.luckyDraw.forcedPrizes['3']?.userId || '', ticketNumber: data.luckyDraw.forcedPrizes['3']?.ticketNumber || '' },
+              '4': { userId: data.luckyDraw.forcedPrizes['4']?.userId || '', ticketNumber: data.luckyDraw.forcedPrizes['4']?.ticketNumber || '' },
+              '5': { userId: data.luckyDraw.forcedPrizes['5']?.userId || '', ticketNumber: data.luckyDraw.forcedPrizes['5']?.ticketNumber || '' },
+            });
+          }
+        }
+        setAdminMsg({ text: '🎉 Prize amounts & forced winners saved successfully to system!', type: 'success' });
+        isAdminDirtyRef.current = false;
+        setIsAdminDirty(false);
         if (onRefreshState) onRefreshState();
       } else {
         setAdminMsg({ text: data.error || 'Failed to update settings', type: 'error' });
@@ -525,37 +644,49 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
     }
   };
 
-  // Admin Trigger Roller Draw (10-Second Suspense)
-  const handleAdminTriggerDraw = async () => {
+  // Admin Trigger Roller Draw (Next Step or Specific Step)
+  const handleAdminTriggerDraw = async (targetStep?: number) => {
     try {
       setAdminMsg(null);
+      const stepToDraw = targetStep || ((luckyDraw?.currentDrawStep || 0) >= 5 ? 1 : (luckyDraw?.currentDrawStep || 0) + 1);
 
       const res = await fetch('/api/luckydraw/admin/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          forcedWinnerUserId: forcedUserId || null,
-          forcedWinnerTicketNumber: forcedTicketNum || null,
-          forcedSecondWinnerUserId: forcedSecondUserId || null,
-          forcedSecondWinnerTicketNumber: forcedSecondTicketNum || null,
+          step: stepToDraw,
+          forcedPrizes: forcedPrizesState,
           ticketPrice: adminTicketPrice === '' ? 5 : Number(adminTicketPrice),
           prizeAmount: adminPrizeAmount === '' ? 250 : Number(adminPrizeAmount),
-          secondPrizeAmount: adminSecondPrize === '' ? 50 : Number(adminSecondPrize),
-          thirdPrizeAmount: adminThirdPrize === '' ? 10 : Number(adminThirdPrize),
+          secondPrizeAmount: adminSecondPrize === '' ? 100 : Number(adminSecondPrize),
+          thirdPrizeAmount: adminThirdPrize === '' ? 50 : Number(adminThirdPrize),
+          fourthPrizeAmount: adminFourthPrize === '' ? 25 : Number(adminFourthPrize),
+          fifthPrizeAmount: adminFifthPrize === '' ? 15 : Number(adminFifthPrize),
+          guaranteedPrizeAmount: adminGuaranteedPrize === '' ? 5 : Number(adminGuaranteedPrize),
         }),
       });
       const data = await res.json();
 
       if (res.ok && data.success && data.winningNumber) {
         if (data.luckyDraw?.rollingStartedAt) {
-          setLastSeenRollTime(data.luckyDraw.rollingStartedAt);
+          lastSeenRollTimeRef.current = data.luckyDraw.rollingStartedAt;
         }
-        setLuckyDraw(data.luckyDraw);
-        // Start high-voltage 10-second suspense draw
+        // Keep prior drawn prizes during the 10-second roll so the current one only reveals when locked
+        const stepTriggered = data.step || stepToDraw;
+        const previousDrawnPrizes = (data.luckyDraw?.drawnPrizes || []).filter((p: any) => p.prizeRank < stepTriggered);
+        if (data.luckyDraw) {
+          setLuckyDraw({
+            ...data.luckyDraw,
+            drawnPrizes: previousDrawnPrizes,
+            currentDrawStep: stepTriggered - 1,
+          });
+        }
         start10SecRollAnimation(
           data.winningNumber,
           data.winners || [],
-          data.luckyDraw?.rollingStartedAt || Date.now()
+          data.luckyDraw?.rollingStartedAt || Date.now(),
+          stepTriggered,
+          data.luckyDraw?.drawnPrizes || []
         );
       } else {
         setIsRolling(false);
@@ -595,65 +726,29 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
     }
   };
 
-  const userTickets = luckyDraw?.tickets?.filter(
-    (t) => t.userId === currentUser.id || t.userNodeId === currentUser.nodeId || t.userId === currentUser.nodeId
-  ) || [];
-  const filteredAdminUsers = users.filter((u) =>
-    u.name.toLowerCase().includes(adminSearchUser.toLowerCase()) ||
-    u.nodeId.toLowerCase().includes(adminSearchUser.toLowerCase())
+  const userTickets =
+    luckyDraw?.tickets?.filter(
+      (t) => t.userId === currentUser.id || t.userNodeId === currentUser.nodeId || t.userId === currentUser.nodeId
+    ) || [];
+
+  const filteredAdminUsers = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(adminSearchUser.toLowerCase()) ||
+      u.nodeId.toLowerCase().includes(adminSearchUser.toLowerCase())
   );
 
-  const selectedWinnerUser = users.find((u) => u.id === forcedUserId);
+  const currentDrawnPrizes = luckyDraw?.drawnPrizes || [];
+  const currentStepNum = luckyDraw?.currentDrawStep || 0;
 
-  // Derive active 1st prize winning coupon number if specified
-  const active1stPrizeCouponNum = (() => {
-    if (forcedTicketNum && /^\d{6}$/.test(forcedTicketNum.trim())) {
-      return forcedTicketNum.trim();
-    }
-    if (forcedUserId) {
-      const uTicket = luckyDraw?.tickets?.find((t) => t.userId === forcedUserId);
-      if (uTicket) return uTicket.ticketNumber;
-    }
-    if (previewLast5Input && /^\d{6}$/.test(previewLast5Input.trim())) {
-      return previewLast5Input.trim();
-    }
-    return '';
-  })();
-
-  // Effective last 5 digits for 2nd prize matching & Admin Reserved Series
-  const targetLast5Digits = (() => {
-    if (luckyDraw?.reservedSeriesLast5 && /^\d{5}$/.test(luckyDraw.reservedSeriesLast5.trim())) {
-      return luckyDraw.reservedSeriesLast5.trim();
-    }
-    if (active1stPrizeCouponNum.length === 6) {
-      return active1stPrizeCouponNum.slice(-5);
-    }
-    if (previewLast5Input && /^\d{1,5}$/.test(previewLast5Input.trim())) {
-      return previewLast5Input.trim().padStart(5, '0');
-    }
-    return '';
-  })();
-
-  // Build list of all 10 reserved ticket numbers in family series ending with targetLast5Digits (023456 to 923456)
-  const secondPrizeCandidatesList = (() => {
-    if (!targetLast5Digits || targetLast5Digits.length !== 5) return [];
-
-    const prefixes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-
-    return prefixes.map((prefix) => {
-      const candidateNum = prefix + targetLast5Digits;
-      // find any tickets in current lucky draw matching this coupon number
-      const matchingTickets = (luckyDraw?.tickets || []).filter((t) => t.ticketNumber === candidateNum);
-      const is1stPrizeNum = active1stPrizeCouponNum === candidateNum || forcedTicketNum === candidateNum;
-      return {
-        couponNumber: candidateNum,
-        prefixDigit: prefix,
-        is1stPrizeNum,
-        matchingTickets, // list of tickets sold for this exact coupon number
-      };
-    });
-  })();
-
+  // Prize rank configuration summary
+  const prizeCardsConfig = [
+    { rank: 1, name: '1st Prize', amount: luckyDraw?.prizeAmount ?? 250, badge: '🥇 1st', color: 'border-amber-500/60 text-amber-300 bg-amber-500/10' },
+    { rank: 2, name: '2nd Prize', amount: luckyDraw?.secondPrizeAmount ?? 100, badge: '🥈 2nd', color: 'border-purple-500/60 text-purple-300 bg-purple-500/10' },
+    { rank: 3, name: '3rd Prize', amount: luckyDraw?.thirdPrizeAmount ?? 50, badge: '🥉 3rd', color: 'border-cyan-500/60 text-cyan-300 bg-cyan-500/10' },
+    { rank: 4, name: '4th Prize', amount: luckyDraw?.fourthPrizeAmount ?? 25, badge: '⭐ 4th', color: 'border-emerald-500/60 text-emerald-300 bg-emerald-500/10' },
+    { rank: 5, name: '5th Prize', amount: luckyDraw?.fifthPrizeAmount ?? 15, badge: '🎖️ 5th', color: 'border-rose-500/60 text-rose-300 bg-rose-500/10' },
+    { rank: 6, name: 'Guaranteed (45x)', amount: luckyDraw?.guaranteedPrizeAmount ?? 5, badge: '🎁 45 Series', color: 'border-yellow-500/60 text-yellow-300 bg-yellow-500/10' },
+  ];
 
   return (
     <div className="space-y-6 font-mono text-slate-100 pb-16">
@@ -666,37 +761,27 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           <div className="space-y-3 text-center md:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-xs font-bold uppercase tracking-wider animate-pulse">
               <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>Electric Lucky Draw Reel & Custom Coupon Picker</span>
+              <span>5-Step Sequential Draw (1st to 5th Prize + 45 Guaranteed Winners)</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center justify-center md:justify-start gap-2">
               <span className="bg-gradient-to-r from-cyan-400 via-amber-300 to-rose-400 bg-clip-text text-transparent">
-                {luckyDraw?.title || 'MEGA USDT ELECTRIC DRAW'}
+                {luckyDraw?.title || 'MEGA USDT ELECTRIC 5-TIER DRAW'}
               </span>
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-              Pick your 6-digit lucky coupons for the <strong className="text-amber-300">Weekly Mega Grand Draw</strong> every <strong className="text-cyan-300">Sunday at 9:00 PM Sharp</strong>! Match 6 digits for 1st Prize, last 5 for 2nd Prize, or last 4 for 3rd Prize!
+              Admin triggers 5 sequential draws (1st to 5th Prize). Plus, all <strong className="text-amber-300">45 Guaranteed Winners</strong> (matching last 5 digits across 9 other series for all 5 prizes) win guaranteed cash prizes!
             </p>
           </div>
 
-          {/* Tiered Prizes Overview Cards */}
-          <div className="grid grid-cols-3 gap-2 shrink-0 w-full md:w-auto">
-            <div className="bg-[#030712]/90 border border-amber-500/60 rounded-2xl p-3 text-center shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-              <div className="text-[9px] uppercase font-bold text-amber-400 tracking-wider">🥇 1st Prize</div>
-              <div className="text-base sm:text-xl font-black text-amber-300">${luckyDraw?.prizeAmount ?? 250}</div>
-              <div className="text-[9px] text-slate-400">Match 6 Digits</div>
-            </div>
-
-            <div className="bg-[#030712]/90 border border-purple-500/50 rounded-2xl p-3 text-center shadow-[0_0_15px_rgba(168,85,247,0.2)]">
-              <div className="text-[9px] uppercase font-bold text-purple-300 tracking-wider">🥈 2nd Prize</div>
-              <div className="text-base sm:text-xl font-black text-purple-300">${luckyDraw?.secondPrizeAmount ?? 50}</div>
-              <div className="text-[9px] text-slate-400">Match Last 5</div>
-            </div>
-
-            <div className="bg-[#030712]/90 border border-emerald-500/50 rounded-2xl p-3 text-center shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-              <div className="text-[9px] uppercase font-bold text-emerald-400 tracking-wider">🥉 3rd Prize</div>
-              <div className="text-base sm:text-xl font-black text-emerald-300">${luckyDraw?.thirdPrizeAmount ?? 10}</div>
-              <div className="text-[9px] text-slate-400">Match Last 4</div>
-            </div>
+          {/* 5 Tiered Prizes + Guaranteed Pool Overview Cards */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 shrink-0 w-full md:w-auto">
+            {prizeCardsConfig.map((p) => (
+              <div key={p.rank} className={`bg-[#030712]/90 border rounded-2xl p-2 sm:p-2.5 text-center shadow-md ${p.color}`}>
+                <div className="text-[9px] uppercase font-bold tracking-wider">{p.badge}</div>
+                <div className="text-sm sm:text-base font-black">${p.amount}</div>
+                <div className="text-[8px] text-slate-400 truncate">{p.rank === 6 ? 'Match 5 Digits' : 'Exact 6 Digits'}</div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -739,12 +824,14 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         </div>
       </div>
 
-      {/* 2. ELECTRIC ROLLER SLOT REEL DISPLAY (10-SECOND HIGH-VOLTAGE SUSPENSE) */}
-      <div className={`bg-[#070d18] border-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-8 text-center relative overflow-hidden transition-all duration-300 ${
-        isRolling
-          ? 'border-cyan-400 shadow-[0_0_70px_rgba(6,182,212,0.45)] ring-2 ring-cyan-500/50'
-          : 'border-cyan-500/50 shadow-[0_0_50px_rgba(6,182,212,0.25)]'
-      }`}>
+      {/* 2. ELECTRIC ROLLER SLOT REEL DISPLAY & LIVE 5-STEP DRAW STAGE */}
+      <div
+        className={`bg-[#070d18] border-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-8 text-center relative overflow-hidden transition-all duration-300 ${
+          isRolling
+            ? 'border-cyan-400 shadow-[0_0_70px_rgba(6,182,212,0.45)] ring-2 ring-cyan-500/50'
+            : 'border-cyan-500/50 shadow-[0_0_50px_rgba(6,182,212,0.25)]'
+        }`}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent pointer-events-none" />
 
         {/* Top Roller Controls Bar */}
@@ -752,8 +839,10 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
             <span className="text-xs sm:text-sm font-black text-cyan-300 uppercase tracking-wider sm:tracking-widest flex items-center gap-1.5">
-              <span>Electric Ticket Roller</span>
-              <span className="text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-cyan-500/30">10s Draw</span>
+              <span>Electric Roller</span>
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40">
+                {isRolling ? `Drawing ${currentRollingPrizeName}` : currentStepNum > 0 ? `Step ${currentStepNum}/5 Complete` : 'Ready For Draw'}
+              </span>
             </span>
           </div>
 
@@ -774,24 +863,28 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
             </button>
 
             {/* Live Status Badge */}
-            <div className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl border font-bold uppercase text-[11px] sm:text-xs ${
-              isRolling
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
-                : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-            }`}>
+            <div
+              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl border font-bold uppercase text-[11px] sm:text-xs ${
+                isRolling
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
+                  : currentStepNum >= 5
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                  : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+              }`}
+            >
               <span className={`w-2 h-2 rounded-full ${isRolling ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
-              <span>{isRolling ? `⚡ ROLLING (${rollSecondsLeft.toFixed(1)}s)` : 'LIVE READY'}</span>
+              <span>{isRolling ? `⚡ ROLLING (${rollSecondsLeft.toFixed(1)}s)` : currentStepNum >= 5 ? 'ROUND COMPLETED' : `STEP ${currentStepNum} OF 5`}</span>
             </div>
           </div>
         </div>
 
-        {/* 10-Second High-Voltage Tension Progress Meter */}
-        {isRolling && (
-          <div className="mb-3 sm:mb-4 bg-[#030712]/90 border border-cyan-500/40 rounded-2xl p-2.5 sm:p-3 space-y-1.5 sm:space-y-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] animate-fadeIn">
+        {/* 10-Second High-Voltage Tension Progress Meter (Smooth transition, zero layout jolt) */}
+        <div className={`transition-all duration-300 overflow-hidden ${isRolling ? 'max-h-24 opacity-100 mb-3 sm:mb-4' : 'max-h-0 opacity-0 mb-0 pointer-events-none'}`}>
+          <div className="bg-[#030712]/90 border border-cyan-500/40 rounded-2xl p-2.5 sm:p-3 space-y-1.5 shadow-[0_0_20px_rgba(6,182,212,0.25)]">
             <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold">
               <span className="flex items-center gap-1.5 text-cyan-300">
-                <Zap className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
-                <span className="tracking-wide">ELECTRIC 6-DIGIT DRAW SPINNING (10 SECONDS)...</span>
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span className="tracking-wide">DRAWING {currentRollingPrizeName.toUpperCase()} (10-SECOND ROLLER)...</span>
               </span>
               <span className="font-mono text-amber-300 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px]">
                 {rollSecondsLeft.toFixed(1)}s remaining
@@ -804,9 +897,9 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
               />
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Roller Slots Container - Perfect 6-Column Grid fitting all screen sizes */}
+        {/* Roller Slots Container */}
         <div className="my-2.5 sm:my-5 py-2.5 sm:py-5 px-1.5 sm:px-4 bg-[#02050b] rounded-2xl border border-cyan-500/30 shadow-inner w-full max-w-2xl mx-auto">
           <div className="grid grid-cols-6 gap-1 xs:gap-1.5 sm:gap-3 md:gap-4 select-none w-full">
             {displayDigits.map((digit, idx) => {
@@ -815,11 +908,13 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
                 <div key={idx} className="flex flex-col items-center gap-1 w-full min-w-0">
                   {/* Reel Status Pill */}
                   {isRolling ? (
-                    <div className={`text-[8px] xs:text-[9px] font-black uppercase px-1 py-0.5 rounded-full transition-all duration-200 flex items-center justify-center gap-0.5 w-full truncate ${
-                      !isThisLocked
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 animate-pulse'
-                        : 'bg-amber-500/30 text-amber-300 border border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
-                    }`}>
+                    <div
+                      className={`text-[8px] xs:text-[9px] font-black uppercase px-1 py-0.5 rounded-full transition-all duration-200 flex items-center justify-center gap-0.5 w-full truncate ${
+                        !isThisLocked
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50'
+                          : 'bg-amber-500/30 text-amber-300 border border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                      }`}
+                    >
                       {isThisLocked ? (
                         <>
                           <Lock className="w-2 h-2 text-amber-400 shrink-0" />
@@ -840,15 +935,74 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
                   {/* Digit Display Reel Box */}
                   <div
-                    className={`w-full aspect-[3/4] max-w-[80px] rounded-lg xs:rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xl xs:text-2xl sm:text-3xl md:text-4xl transition-all duration-150 ${
+                    className={`w-full aspect-[3/4] max-w-[80px] rounded-lg xs:rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xl xs:text-2xl sm:text-3xl md:text-4xl transition-colors duration-150 ${
                       isRolling && !isThisLocked
-                        ? 'bg-gradient-to-b from-cyan-500/30 via-cyan-400/20 to-indigo-600/30 text-cyan-200 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.6)] animate-pulse'
+                        ? 'bg-gradient-to-b from-cyan-500/30 via-cyan-400/20 to-indigo-600/30 text-cyan-200 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.6)]'
                         : isRolling && isThisLocked
-                        ? 'bg-gradient-to-b from-amber-500/30 via-yellow-500/20 to-amber-600/30 text-amber-300 border-2 border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.7)] scale-[1.03]'
+                        ? 'bg-gradient-to-b from-amber-500/30 via-yellow-500/20 to-amber-600/30 text-amber-300 border-2 border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.7)]'
                         : 'bg-[#0b1424] text-amber-300 border-2 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
                     }`}
                   >
                     <span>{digit}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 🌟 SEQUENTIAL 5 DRAWN TICKETS BOARD (Fixed heights, perfectly stable) */}
+        <div className="mt-4 p-4 bg-[#030612]/90 border border-cyan-500/30 rounded-2xl space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+            <div className="flex items-center gap-2 text-cyan-300 font-bold text-xs sm:text-sm">
+              <Layers className="w-4 h-4 text-amber-400" />
+              <span>Current Round Drawn Tickets ({currentDrawnPrizes.length} / 5 Revealed)</span>
+            </div>
+            {currentDrawnPrizes.length > 0 && (
+              <span className="text-[10px] text-slate-400 font-normal">
+                Drawn sequential tickets stay placed on the board!
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+            {[1, 2, 3, 4, 5].map((step) => {
+              const drawn = currentDrawnPrizes.find((p) => p.prizeRank === step);
+              const prizeConf = prizeCardsConfig[step - 1];
+
+              return (
+                <div
+                  key={step}
+                  className={`p-3 rounded-2xl border transition-all flex flex-col justify-between text-left h-[115px] min-h-[115px] ${
+                    drawn
+                      ? 'bg-gradient-to-b from-[#081226] to-[#040814] border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                      : 'bg-[#02050c]/80 border-slate-800/80 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1 shrink-0">
+                    <span className="text-[10px] font-black uppercase text-amber-300">{prizeConf.badge}</span>
+                    <span className="text-xs font-black text-emerald-400">${prizeConf.amount} USDT</span>
+                  </div>
+
+                  <div className="my-auto text-center">
+                    {drawn ? (
+                      <div className="space-y-0.5">
+                        <div className="text-lg font-black font-mono tracking-widest text-amber-300 leading-tight">
+                          #{drawn.ticketNumber}
+                        </div>
+                        <div className="text-[10px] font-bold text-white truncate max-w-[140px] mx-auto">
+                          {drawn.userName ? `${drawn.userName} (#${drawn.userNodeId || ''})` : 'Winner'}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-600 font-bold italic py-1">
+                        {isRolling && currentRollingStep === step ? '⚡ Rolling...' : 'Pending Draw'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-[9px] text-slate-500 text-center shrink-0">
+                    {drawn ? `Drawn at ${new Date(drawn.drawnAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `Step ${step}`}
                   </div>
                 </div>
               );
@@ -861,7 +1015,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           <div className="mt-4 p-4 bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-amber-400 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.4)] space-y-2 animate-fadeIn">
             <div className="flex items-center justify-center gap-2 text-amber-300 font-black text-sm sm:text-base">
               <Trophy className="w-5 h-5 text-amber-400" />
-              <span>🎉 DRAW COMPLETED! WINNERS ANNOUNCED ({winnerAnnouncedList.length}):</span>
+              <span>🎉 STEP WINNERS ANNOUNCED ({winnerAnnouncedList.length}):</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
               {winnerAnnouncedList.map((w, idx) => (
@@ -1186,86 +1340,109 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
               </button>
             )}
 
-            {adminMsg && (
-          <div
-            className={`p-3 rounded-xl text-xs font-bold border flex items-center justify-between ${
-              adminMsg.type === 'success'
-                ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
-                : 'bg-rose-950/90 border-rose-500/60 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
-            }`}
-          >
-            <span>{adminMsg.text}</span>
-            <button
-              type="button"
-              onClick={() => setAdminMsg(null)}
-              className="text-slate-400 hover:text-white font-mono text-xs px-1.5 py-0.5 rounded bg-slate-800/50"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Prize Category Filter Tabs */}
+            {/* Prize Category Filter Tabs */}
             <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setWinnerTierFilter('all')}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                winnerTierFilter === 'all'
-                  ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200'
-                  : 'bg-[#050a14] border-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              🌟 All ({luckyDraw?.pastWinners?.length || 0})
-            </button>
-            <button
-              type="button"
-              onClick={() => setWinnerTierFilter('1st')}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                winnerTierFilter === '1st'
-                  ? 'bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
-                  : 'bg-[#050a14] border-slate-800 text-amber-400/80 hover:text-amber-300'
-              }`}
-            >
-              🥇 1st Prize (${luckyDraw?.prizeAmount ?? 250})
-            </button>
-            <button
-              type="button"
-              onClick={() => setWinnerTierFilter('2nd')}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                winnerTierFilter === '2nd'
-                  ? 'bg-purple-500/30 border-purple-400 text-purple-200 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
-                  : 'bg-[#050a14] border-slate-800 text-purple-300/80 hover:text-purple-200'
-              }`}
-            >
-              🥈 2nd Prize (${luckyDraw?.secondPrizeAmount ?? 50})
-            </button>
-            <button
-              type="button"
-              onClick={() => setWinnerTierFilter('3rd')}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                winnerTierFilter === '3rd'
-                  ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                  : 'bg-[#050a14] border-slate-800 text-emerald-400/80 hover:text-emerald-300'
-              }`}
-            >
-              🥉 3rd Prize (${luckyDraw?.thirdPrizeAmount ?? 10})
-            </button>
+              <button
+                type="button"
+                onClick={() => setWinnerTierFilter('all')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  winnerTierFilter === 'all'
+                    ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200'
+                    : 'bg-[#050a14] border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                🌟 All ({luckyDraw?.pastWinners?.length || 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setWinnerTierFilter('1st')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  winnerTierFilter === '1st'
+                    ? 'bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                    : 'bg-[#050a14] border-slate-800 text-amber-400/80 hover:text-amber-300'
+                }`}
+              >
+                🥇 1st (${luckyDraw?.prizeAmount ?? 250})
+              </button>
+              <button
+                type="button"
+                onClick={() => setWinnerTierFilter('2nd')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  winnerTierFilter === '2nd'
+                    ? 'bg-purple-500/30 border-purple-400 text-purple-200 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
+                    : 'bg-[#050a14] border-slate-800 text-purple-300/80 hover:text-purple-200'
+                }`}
+              >
+                🥈 2nd (${luckyDraw?.secondPrizeAmount ?? 100})
+              </button>
+              <button
+                type="button"
+                onClick={() => setWinnerTierFilter('3rd')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  winnerTierFilter === '3rd'
+                    ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                    : 'bg-[#050a14] border-slate-800 text-cyan-400/80 hover:text-cyan-300'
+                }`}
+              >
+                🥉 3rd (${luckyDraw?.thirdPrizeAmount ?? 50})
+              </button>
+              <button
+                type="button"
+                onClick={() => setWinnerTierFilter('4th')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  winnerTierFilter === '4th'
+                    ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                    : 'bg-[#050a14] border-slate-800 text-emerald-400/80 hover:text-emerald-300'
+                }`}
+              >
+                ⭐ 4th (${luckyDraw?.fourthPrizeAmount ?? 25})
+              </button>
+              <button
+                type="button"
+                onClick={() => setWinnerTierFilter('5th')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  winnerTierFilter === '5th'
+                    ? 'bg-rose-500/30 border-rose-400 text-rose-200 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
+                    : 'bg-[#050a14] border-slate-800 text-rose-400/80 hover:text-rose-300'
+                }`}
+              >
+                🎖️ 5th (${luckyDraw?.fifthPrizeAmount ?? 15})
+              </button>
+              <button
+                type="button"
+                onClick={() => setWinnerTierFilter('guaranteed')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  winnerTierFilter === 'guaranteed'
+                    ? 'bg-yellow-500/30 border-yellow-400 text-yellow-200 shadow-[0_0_10px_rgba(234,179,8,0.3)]'
+                    : 'bg-[#050a14] border-slate-800 text-yellow-400/80 hover:text-yellow-300'
+                }`}
+              >
+                🎁 Guaranteed (45x)
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
         {(() => {
           const past = luckyDraw?.pastWinners || [];
           const filtered = past.filter((win) => {
             if (winnerTierFilter === '1st') {
-              return win.prizeTier?.toLowerCase().includes('1st') || win.matchedDigits === 6;
+              return win.prizeTier?.toLowerCase().includes('1st');
             }
             if (winnerTierFilter === '2nd') {
-              return win.prizeTier?.toLowerCase().includes('2nd') || win.matchedDigits === 5;
+              return win.prizeTier?.toLowerCase().includes('2nd');
             }
             if (winnerTierFilter === '3rd') {
-              return win.prizeTier?.toLowerCase().includes('3rd') || win.matchedDigits === 4;
+              return win.prizeTier?.toLowerCase().includes('3rd');
+            }
+            if (winnerTierFilter === '4th') {
+              return win.prizeTier?.toLowerCase().includes('4th');
+            }
+            if (winnerTierFilter === '5th') {
+              return win.prizeTier?.toLowerCase().includes('5th');
+            }
+            if (winnerTierFilter === 'guaranteed') {
+              return win.prizeTier?.toLowerCase().includes('guaranteed');
             }
             return true;
           });
@@ -1283,35 +1460,31 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((win) => {
-                const is1st = win.prizeTier?.toLowerCase().includes('1st') || win.matchedDigits === 6;
-                const is2nd = win.prizeTier?.toLowerCase().includes('2nd') || win.matchedDigits === 5;
+                const is1st = win.prizeTier?.toLowerCase().includes('1st');
+                const is2nd = win.prizeTier?.toLowerCase().includes('2nd');
+                const isGuaranteed = win.prizeTier?.toLowerCase().includes('guaranteed');
 
                 const cardStyle = is1st
                   ? 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
                   : is2nd
                   ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
-                  : 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]';
+                  : isGuaranteed
+                  ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]'
+                  : 'border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]';
 
                 const badgeStyle = is1st
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                   : is2nd
                   ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
-
-                const amountColor = is1st
-                  ? 'text-amber-400'
-                  : is2nd
-                  ? 'text-purple-300'
-                  : 'text-emerald-400';
+                  : isGuaranteed
+                  ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40';
 
                 return (
-                  <div
-                    key={win.id}
-                    className={`bg-[#050a14] border rounded-2xl p-4 flex items-center justify-between gap-3 ${cardStyle}`}
-                  >
+                  <div key={win.id} className={`bg-[#050a14] border rounded-2xl p-4 flex items-center justify-between gap-3 ${cardStyle}`}>
                     <div className="space-y-1">
                       <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <Crown className={`w-3.5 h-3.5 ${is1st ? 'text-amber-400' : is2nd ? 'text-purple-300' : 'text-emerald-400'}`} />
+                        <Crown className="w-3.5 h-3.5 text-amber-400" />
                         <span>{win.userName}</span>
                       </div>
                       <div className="text-[10px] text-slate-400">
@@ -1328,10 +1501,8 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
                     </div>
 
                     <div className="text-right">
-                      <div className={`text-sm font-black ${amountColor}`}>+${win.prizeAmount} USDT</div>
-                      <div className="text-[9px] text-slate-500">
-                        {new Date(win.wonAt).toLocaleDateString()}
-                      </div>
+                      <div className="text-sm font-black text-emerald-400">+${win.prizeAmount} USDT</div>
+                      <div className="text-[9px] text-slate-500">{new Date(win.wonAt).toLocaleDateString()}</div>
                     </div>
                   </div>
                 );
@@ -1341,14 +1512,14 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         })()}
       </div>
 
-      {/* 5. ADMIN CONTROLLER PANEL (Riggable / Select Winner & Trigger) */}
+      {/* 5. ADMIN CONTROLLER PANEL (5-Step Sequential Draw & Forced Winner Controls) */}
       {(currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
         <div className="bg-[#0d0a18] border-2 border-rose-500/60 rounded-3xl p-5 sm:p-6 shadow-[0_0_30px_rgba(244,63,94,0.2)] space-y-5">
           <div className="flex items-center justify-between border-b border-rose-500/30 pb-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-rose-400" />
               <span className="text-sm font-bold text-rose-300 uppercase tracking-wider">
-                Admin Lucky Draw Control Panel
+                Admin Sequential Lucky Draw Control Panel
               </span>
             </div>
             <button
@@ -1374,6 +1545,84 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
           {isAdminPanelOpen && (
             <div className="space-y-5 pt-2">
+              {/* Sequential Draw Trigger Action Bar */}
+              <div className="bg-[#050814] border-2 border-amber-500/50 rounded-2xl p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                  <div>
+                    <div className="text-xs font-black text-amber-300 flex items-center gap-2">
+                      <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span>ELECTRIC 5-STEP GAME PLAY CONTROLLER</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Press "Game Play" 5 times sequentially. Each press rolls the 10-second electric roller and reveals one prize on the board!
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResetDrawRound}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Reset Round (Start Step 1)</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                  {[1, 2, 3, 4, 5].map((step) => {
+                    const prizeName = prizeCardsConfig[step - 1].name;
+                    const prizeAmt = prizeCardsConfig[step - 1].amount;
+                    const isDrawn = currentDrawnPrizes.some((p) => p.prizeRank === step);
+                    const isNextToDraw = (luckyDraw?.currentDrawStep || 0) + 1 === step;
+
+                    return (
+                      <button
+                        key={step}
+                        type="button"
+                        onClick={() => handleAdminTriggerDraw(step)}
+                        disabled={isRolling}
+                        className={`p-3 rounded-xl border font-bold text-xs transition flex flex-col items-center justify-center gap-1 cursor-pointer disabled:opacity-50 ${
+                          isNextToDraw
+                            ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-black border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-pulse'
+                            : isDrawn
+                            ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50'
+                            : 'bg-slate-900/80 text-slate-300 border-slate-700 hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="text-[10px] uppercase font-black">{isDrawn ? '✓ Drawn' : `Press #${step}`}</span>
+                        <span className="font-black text-sm">{prizeName}</span>
+                        <span className="text-[10px] opacity-80">${prizeAmt} USDT</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-xs">
+                  <span className="text-slate-400">
+                    Next Action:{' '}
+                    <strong className="text-amber-300">
+                      {(luckyDraw?.currentDrawStep || 0) >= 5
+                        ? 'All 5 Prizes Drawn! Guaranteed 45 Prizes Distributed.'
+                        : `Step ${(luckyDraw?.currentDrawStep || 0) + 1} of 5 (${prizeCardsConfig[luckyDraw?.currentDrawStep || 0]?.name})`}
+                    </strong>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAdminTriggerDraw()}
+                    disabled={isRolling}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-400 text-black font-black text-xs shadow-[0_0_20px_rgba(245,158,11,0.4)] transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-black" />
+                    <span>
+                      {(luckyDraw?.currentDrawStep || 0) >= 5 ? '⚡ START NEW ROUND (STEP 1)' : `⚡ GAME PLAY (TRIGGER STEP ${(luckyDraw?.currentDrawStep || 0) + 1})`}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               {/* Active Coupons Tracking & CSV Export Card */}
               <div className="bg-[#050814] border border-cyan-500/30 rounded-2xl p-4 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
@@ -1422,7 +1671,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
                             <th className="p-2 pl-3">Ticket #</th>
                             <th className="p-2">User / Node ID</th>
                             <th className="p-2">Price</th>
-                            <th className="p-2 text-center">Assign Prize</th>
+                            <th className="p-2 text-center">Set Forced Step</th>
                             <th className="p-2 pr-3 text-right">Date</th>
                           </tr>
                         </thead>
@@ -1445,15 +1694,10 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
                               );
                             }
                             return filteredTkts.map((tkt, idx) => {
-                              const is1st = forcedTicketNum === tkt.ticketNumber || (forcedUserId === tkt.userId && !forcedTicketNum);
-                              const is2nd = forcedSecondTicketNum === tkt.ticketNumber || (forcedSecondUserId === tkt.userId && !forcedSecondTicketNum);
-
                               return (
                                 <tr key={tkt.id || idx} className="hover:bg-slate-800/40 transition">
                                   <td className="p-2 pl-3 font-mono font-bold text-amber-300">
                                     #{tkt.ticketNumber}
-                                    {is1st && <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold border border-amber-500/40">🥇 1st</span>}
-                                    {is2nd && <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[9px] font-bold border border-purple-500/40">🥈 2nd</span>}
                                   </td>
                                   <td className="p-2">
                                     <div className="font-bold text-white">{tkt.userName || 'User'}</div>
@@ -1462,34 +1706,25 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
                                   <td className="p-2 text-cyan-300 font-bold">${tkt.price ?? 5} USDT</td>
                                   <td className="p-2 text-center">
                                     <div className="flex items-center justify-center gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setForcedTicketNum(tkt.ticketNumber);
-                                          setForcedUserId(tkt.userId);
-                                        }}
-                                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
-                                          is1st
-                                            ? 'bg-amber-500 text-black border-amber-400'
-                                            : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
-                                        }`}
-                                      >
-                                        🥇 1st
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setForcedSecondTicketNum(tkt.ticketNumber);
-                                          setForcedSecondUserId(tkt.userId);
-                                        }}
-                                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
-                                          is2nd
-                                            ? 'bg-purple-500 text-white border-purple-400'
-                                            : 'bg-purple-500/10 text-purple-300 border-purple-500/30 hover:bg-purple-500/20'
-                                        }`}
-                                      >
-                                        🥈 2nd
-                                      </button>
+                                      {([1, 2, 3, 4, 5] as const).map((st) => (
+                                        <button
+                                          key={st}
+                                          type="button"
+                                          onClick={() => {
+                                            setForcedPrizesState((prev) => ({
+                                              ...prev,
+                                              [String(st)]: { userId: tkt.userId, ticketNumber: tkt.ticketNumber },
+                                            }));
+                                          }}
+                                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition cursor-pointer border ${
+                                            forcedPrizesState[String(st) as '1' | '2' | '3' | '4' | '5']?.ticketNumber === tkt.ticketNumber
+                                              ? 'bg-amber-500 text-black border-amber-300'
+                                              : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                                          }`}
+                                        >
+                                          #{st}
+                                        </button>
+                                      ))}
                                     </div>
                                   </td>
                                   <td className="p-2 pr-3 text-right text-[10px] text-slate-400">
@@ -1506,326 +1741,284 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
                 )}
               </div>
 
-              {/* Select / Rig Winner Controls (1st & 2nd Prize Selection) */}
-              <div className="bg-[#05050f] border border-amber-500/30 rounded-2xl p-4 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                    <UserCheck className="w-4 h-4 text-amber-400" />
-                    <span>Choose / Select 1st & 2nd Prize Winners (Admin Panel)</span>
+              {/* 🎯 Forced Winner Selection for all 5 Steps (1st to 5th Prizes) */}
+              <div className="bg-[#05050f] border border-amber-500/40 rounded-2xl p-4 space-y-4 shadow-[0_0_20px_rgba(245,158,11,0.15)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div>
+                    <div className="text-xs font-black text-amber-300 flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-amber-400" />
+                      <span>ADMIN WINNER CONTROLLER (1st to 5th PRIZES)</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Select any registered member or enter custom 6-digit coupon for each prize slot (1st, 2nd, 3rd, 4th, 5th). Changes automatically save.
+                    </p>
                   </div>
-                  {(forcedUserId || forcedTicketNum || forcedSecondUserId || forcedSecondTicketNum) && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAdminSaveConfig()}
+                      className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black rounded-xl transition flex items-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.3)] cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Save Selections</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setForcedUserId('');
-                        setForcedTicketNum('');
-                        setForcedSecondUserId('');
-                        setForcedSecondTicketNum('');
+                        const cleared = {
+                          '1': { userId: '', ticketNumber: '' },
+                          '2': { userId: '', ticketNumber: '' },
+                          '3': { userId: '', ticketNumber: '' },
+                          '4': { userId: '', ticketNumber: '' },
+                          '5': { userId: '', ticketNumber: '' },
+                        };
+                        setForcedPrizesState(cleared);
+                        handleAdminSaveConfig({ forcedPrizes: cleared });
                       }}
-                      className="text-[10px] text-rose-400 hover:underline cursor-pointer font-bold"
+                      className="px-3 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
                     >
-                      Clear Selection (Reset to Random)
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Clear All</span>
                     </button>
-                  )}
-                </div>
-
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    placeholder="Search user by name, Node ID or email..."
-                    value={adminSearchUser}
-                    onChange={(e) => setAdminSearchUser(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 bg-[#0a0a18] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* 🥇 1st Prize Winner Selection */}
-                  <div className="bg-[#080d1a] border border-amber-500/40 rounded-xl p-3 space-y-2">
-                    <div className="text-xs font-bold text-amber-400 flex items-center justify-between">
-                      <span>🥇 1st Prize Winner ($ {adminPrizeAmount || 250})</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Match 6 Digits</span>
-                    </div>
-
-                    <select
-                      value={forcedUserId}
-                      onChange={(e) => setForcedUserId(e.target.value)}
-                      className="w-full p-2 bg-[#040712] border border-slate-700 rounded-xl text-xs text-amber-300 font-bold focus:outline-none focus:border-amber-500"
-                    >
-                      <option value="">-- Random Pick (No Forced 1st Winner) --</option>
-                      {filteredAdminUsers.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          #{u.nodeId} - {u.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    <div>
-                      <label className="text-[10px] text-slate-400">Or specify exact Coupon Number (6 Digits):</label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        placeholder="e.g. 839210"
-                        value={forcedTicketNum}
-                        onChange={(e) => setForcedTicketNum(e.target.value)}
-                        className="w-full mt-1 p-2 bg-[#040712] border border-slate-800 rounded-xl text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono tracking-widest font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 🥈 2nd Prize Winner Selection */}
-                  <div className="bg-[#0d081c] border border-purple-500/40 rounded-xl p-3 space-y-2">
-                    <div className="text-xs font-bold text-purple-300 flex items-center justify-between">
-                      <span>🥈 2nd Prize Winner ($ {adminSecondPrize || 50})</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Runner-Up / Last 5</span>
-                    </div>
-
-                    <select
-                      value={forcedSecondUserId}
-                      onChange={(e) => setForcedSecondUserId(e.target.value)}
-                      className="w-full p-2 bg-[#060412] border border-slate-700 rounded-xl text-xs text-purple-300 font-bold focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="">-- Automatic Runner-Up (Random / Match) --</option>
-                      {filteredAdminUsers.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          #{u.nodeId} - {u.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    <div>
-                      <label className="text-[10px] text-slate-400">Or specify exact 2nd Prize Coupon Number:</label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        placeholder="e.g. 139210"
-                        value={forcedSecondTicketNum}
-                        onChange={(e) => setForcedSecondTicketNum(e.target.value)}
-                        className="w-full mt-1 p-2 bg-[#060412] border border-slate-800 rounded-xl text-xs text-purple-300 placeholder-slate-600 focus:outline-none focus:border-purple-500 font-mono tracking-widest font-bold"
-                      />
-                    </div>
                   </div>
                 </div>
 
-                {/* 🎯 Identified 2nd Prize Candidates & Admin 10-Ticket Series Control */}
-                <div className="bg-[#060814] border border-purple-500/40 rounded-2xl p-4 space-y-3 shadow-[0_0_20px_rgba(168,85,247,0.12)]">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                    <div>
-                      <div className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-purple-400" />
-                        <span>🔒 Admin Reserved 10-Ticket Series Control & 2nd Prize Candidates</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        All 10 coupons ending with <strong className="text-purple-300 font-mono font-bold">{targetLast5Digits ? `...${targetLast5Digits}` : '...23456'}</strong> are strictly locked under Admin Control. Users cannot pick them manually or receive them via random draw. Admin can gift/assign them to any user below!
-                      </p>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {([1, 2, 3, 4, 5] as const).map((step) => {
+                    const stKey = String(step) as '1' | '2' | '3' | '4' | '5';
+                    const prizeName = prizeCardsConfig[step - 1].name;
+                    const prizeAmt = prizeCardsConfig[step - 1].amount;
+                    const currentForced = forcedPrizesState[stKey];
+                    const chosenUser = users.find((u) => u.id === currentForced.userId);
+                    const userCoupons = luckyDraw?.tickets?.filter((t) => t.userId === currentForced.userId) || [];
 
-                    {/* Inspector Input */}
-                    <div className="flex items-center gap-2 shrink-0 bg-[#0a0f24] p-1.5 rounded-xl border border-slate-800">
-                      <span className="text-[10px] text-slate-400 font-bold">Lock Last 5 Digits:</span>
-                      <input
-                        type="text"
-                        maxLength={5}
-                        placeholder="e.g. 23456"
-                        value={previewLast5Input}
-                        onChange={(e) => setPreviewLast5Input(e.target.value)}
-                        className="w-24 p-1 bg-[#040714] border border-slate-700 rounded-lg text-xs font-mono font-bold text-purple-300 placeholder-slate-600 focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
-                  </div>
-
-                  {!targetLast5Digits ? (
-                    <div className="p-4 text-center text-slate-400 text-xs bg-[#03050c] rounded-xl border border-slate-800/80">
-                      💡 Set a 1st Prize coupon number (e.g. <strong>123456</strong>) or enter 5 digits above to lock all 10 candidate coupons under strict Admin Control!
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-300 font-bold px-1 gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
-                        <div className="flex items-center gap-2">
-                          <UserCheck className="w-4 h-4 text-amber-400" />
-                          <span>
-                            Locked Series: <strong className="text-amber-300 font-mono text-xs">0{targetLast5Digits} - 9{targetLast5Digits}</strong>
-                          </span>
+                    return (
+                      <div
+                        key={step}
+                        className={`rounded-2xl p-3 space-y-2 border transition-all ${
+                          currentForced.userId || currentForced.ticketNumber
+                            ? 'bg-gradient-to-b from-[#0f172a] to-[#080d1a] border-amber-400/80 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                            : 'bg-[#060a15] border-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-amber-300">{prizeName}</span>
+                          <span className="text-[10px] font-bold text-emerald-400">${prizeAmt} USDT</span>
                         </div>
-                        <span className="text-[10px] text-purple-300 font-normal">
-                          🛡️ Protected from user picking! Admin Control Active.
-                        </span>
-                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-1">
-                        {secondPrizeCandidatesList.map((cand) => {
-                          const isSold = cand.matchingTickets.length > 0;
-                          const soldTicket = isSold ? cand.matchingTickets[0] : null;
-                          const isSelected1st = cand.is1stPrizeNum;
-                          const isSelected2nd = forcedSecondTicketNum === cand.couponNumber || (soldTicket && forcedSecondUserId === soldTicket.userId);
-                          const currentAssignUser = assignTargetUsers[cand.couponNumber] || (soldTicket ? soldTicket.userId : '');
+                        <div>
+                          <label className="text-[9px] text-slate-400 font-bold block mb-1">
+                            Select Winning Member:
+                          </label>
+                          <select
+                            value={currentForced.userId}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const updated = {
+                                ...forcedPrizesState,
+                                [stKey]: { ...forcedPrizesState[stKey], userId: val },
+                              };
+                              setForcedPrizesState(updated);
+                              handleAdminSaveConfig({ forcedPrizes: updated });
+                            }}
+                            className="w-full p-2 bg-[#02050e] border border-slate-700 rounded-xl text-[11px] text-amber-300 font-bold focus:outline-none focus:border-amber-500 cursor-pointer"
+                          >
+                            <option value="">-- Random Member (System Pick) --</option>
+                            {users.map((u) => {
+                              const count = luckyDraw?.tickets?.filter((t) => t.userId === u.id).length || 0;
+                              return (
+                                <option key={u.id} value={u.id}>
+                                  #{u.nodeId} - {u.name} ({count} tickets)
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
 
-                          return (
-                            <div
-                              key={cand.couponNumber}
-                              className={`p-3 rounded-xl border transition flex flex-col justify-between gap-2.5 ${
-                                isSelected1st
-                                  ? 'bg-amber-950/60 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
-                                  : isSelected2nd
-                                  ? 'bg-purple-950/80 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                                  : isSold
-                                  ? 'bg-[#0b1026] border-purple-500/40 hover:border-purple-400'
-                                  : 'bg-[#03050f] border-slate-800'
-                              }`}
-                            >
-                              <div>
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-mono font-black text-sm text-amber-300 tracking-wider">
-                                    #{cand.couponNumber}
-                                  </span>
-                                  <div className="flex items-center gap-1">
-                                    {isSelected1st && (
-                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500 text-black">
-                                        🥇 1st Prize
-                                      </span>
-                                    )}
-                                    {isSelected2nd && (
-                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500 text-white">
-                                        🥈 2nd Prize
-                                      </span>
-                                    )}
-                                    {isSold ? (
-                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                        ASSIGNED 🎫
-                                      </span>
-                                    ) : (
-                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30">
-                                        ADMIN HOLD 🔒
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="mt-1.5 text-[11px]">
-                                  {isSold && soldTicket ? (
-                                    <div className="bg-[#050814] p-1.5 rounded-lg border border-slate-800">
-                                      <div className="font-bold text-white truncate">{soldTicket.userName || 'User'}</div>
-                                      <div className="text-[10px] text-slate-400">Node ID: #{soldTicket.userNodeId || soldTicket.userId}</div>
-                                    </div>
-                                  ) : (
-                                    <div className="text-[10px] text-amber-400/80 italic bg-amber-500/5 p-1.5 rounded-lg border border-amber-500/20">
-                                      Unassigned (Held in Admin Control)
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Action controls for Admin */}
-                              <div className="space-y-1.5 pt-1 border-t border-slate-800/80">
-                                {/* Winner assignment buttons */}
-                                <div className="grid grid-cols-2 gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setForcedTicketNum(cand.couponNumber);
-                                      if (soldTicket) setForcedUserId(soldTicket.userId);
-                                    }}
-                                    className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer border text-center ${
-                                      isSelected1st
-                                        ? 'bg-amber-500 text-black border-amber-300'
-                                        : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border-amber-500/30'
-                                    }`}
-                                  >
-                                    🥇 1st Winner
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setForcedSecondTicketNum(cand.couponNumber);
-                                      if (soldTicket) setForcedSecondUserId(soldTicket.userId);
-                                    }}
-                                    className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer border text-center ${
-                                      isSelected2nd
-                                        ? 'bg-purple-500 text-white border-purple-300'
-                                        : 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border-purple-500/30'
-                                    }`}
-                                  >
-                                    🥈 2nd Winner
-                                  </button>
-                                </div>
-
-                                {/* Assign / Gift Ticket Selector */}
-                                <div className="space-y-1 pt-1">
-                                  <div className="text-[9px] text-slate-400 font-bold">Gift/Assign to User:</div>
-                                  <div className="flex items-center gap-1">
-                                    <select
-                                      value={currentAssignUser}
-                                      onChange={(e) => setAssignTargetUsers((prev) => ({ ...prev, [cand.couponNumber]: e.target.value }))}
-                                      className="w-full p-1 bg-[#040612] border border-slate-700 rounded-lg text-[10px] text-white focus:outline-none focus:border-amber-500"
-                                    >
-                                      <option value="">-- Select Target User --</option>
-                                      {users.map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                          #{u.nodeId} - {u.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleAdminAssignTicket(cand.couponNumber)}
-                                      className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-black font-black text-[10px] rounded-lg cursor-pointer shrink-0 transition"
-                                      title="Assign/Gift this ticket to selected user"
-                                    >
-                                      🎁 Assign
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
+                        {chosenUser && (
+                          <div className="bg-[#020612] p-1.5 rounded-lg border border-cyan-500/30 text-[10px] space-y-0.5">
+                            <div className="text-cyan-300 font-bold truncate">✓ {chosenUser.name}</div>
+                            <div className="text-slate-400 text-[9px]">
+                              Active Tickets: <strong className="text-amber-400">{userCoupons.length}</strong>
+                              {userCoupons.length === 0 && ' (Auto-gift on draw)'}
                             </div>
-                          );
-                        })}
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="text-[9px] text-slate-400 font-bold block mb-1">
+                            Or Specific 6-Digit Ticket:
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={6}
+                            placeholder="e.g. 786910"
+                            value={currentForced.ticketNumber}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              const updated = {
+                                ...forcedPrizesState,
+                                [stKey]: { ...forcedPrizesState[stKey], ticketNumber: val },
+                              };
+                              setForcedPrizesState(updated);
+                            }}
+                            onBlur={() => {
+                              handleAdminSaveConfig();
+                            }}
+                            className="w-full p-1.5 bg-[#02050e] border border-slate-800 rounded-xl text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono tracking-widest font-bold text-center"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Configure Prize Pools & Countdown */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                  <label className="text-[11px] text-slate-400 font-bold">Ticket Price ($ USDT):</label>
-                  <input
-                    type="number"
-                    value={adminTicketPrice}
-                    onChange={(e) => setAdminTicketPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full mt-1 p-2 bg-[#05050f] border border-slate-700 rounded-xl text-xs text-white font-bold"
-                  />
+              {/* Configure Prize Amounts */}
+              <div className="bg-[#050814] border border-cyan-500/30 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-cyan-200">Configure Prize Pool Amounts ($ USDT)</span>
+                    {isAdminDirty && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-bold">
+                        Unsaved Changes
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAdminSaveConfig()}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      isAdminDirty
+                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black shadow-[0_0_12px_rgba(245,158,11,0.5)] border border-amber-300'
+                        : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{isAdminDirty ? 'Save Amounts Now' : 'Save Amounts'}</span>
+                  </button>
                 </div>
 
-                <div>
-                  <label className="text-[11px] text-amber-400 font-bold">🥇 1st Prize Pool ($ USDT):</label>
-                  <input
-                    type="number"
-                    value={adminPrizeAmount}
-                    onChange={(e) => setAdminPrizeAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full mt-1 p-2 bg-[#05050f] border border-amber-500/50 rounded-xl text-xs text-amber-400 font-bold"
-                  />
-                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-bold block">Ticket Price ($):</label>
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="any"
+                      value={adminTicketPrice}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setAdminTicketPrice(val);
+                        isAdminDirtyRef.current = true;
+                        setIsAdminDirty(true);
+                      }}
+                      className="w-full mt-1 p-2 bg-[#02050e] border border-slate-700 rounded-xl text-xs text-white font-bold focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
 
-                <div>
-                  <label className="text-[11px] text-purple-400 font-bold">🥈 2nd Prize Pool ($ USDT):</label>
-                  <input
-                    type="number"
-                    value={adminSecondPrize}
-                    onChange={(e) => setAdminSecondPrize(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full mt-1 p-2 bg-[#05050f] border border-purple-500/50 rounded-xl text-xs text-purple-300 font-bold"
-                  />
-                </div>
+                  <div>
+                    <label className="text-[10px] text-amber-400 font-bold block">🥇 1st Prize ($):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={adminPrizeAmount}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setAdminPrizeAmount(val);
+                        isAdminDirtyRef.current = true;
+                        setIsAdminDirty(true);
+                      }}
+                      className="w-full mt-1 p-2 bg-[#02050e] border border-amber-500/50 rounded-xl text-xs text-amber-400 font-bold focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
 
-                <div>
-                  <label className="text-[11px] text-emerald-400 font-bold">🥉 3rd Prize Pool ($ USDT):</label>
-                  <input
-                    type="number"
-                    value={adminThirdPrize}
-                    onChange={(e) => setAdminThirdPrize(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full mt-1 p-2 bg-[#05050f] border border-emerald-500/50 rounded-xl text-xs text-emerald-300 font-bold"
-                  />
+                  <div>
+                    <label className="text-[10px] text-purple-400 font-bold block">🥈 2nd Prize ($):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={adminSecondPrize}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setAdminSecondPrize(val);
+                        isAdminDirtyRef.current = true;
+                        setIsAdminDirty(true);
+                      }}
+                      className="w-full mt-1 p-2 bg-[#02050e] border border-purple-500/50 rounded-xl text-xs text-purple-300 font-bold focus:border-purple-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-cyan-400 font-bold block">🥉 3rd Prize ($):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={adminThirdPrize}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setAdminThirdPrize(val);
+                        isAdminDirtyRef.current = true;
+                        setIsAdminDirty(true);
+                      }}
+                      className="w-full mt-1 p-2 bg-[#02050e] border border-cyan-500/50 rounded-xl text-xs text-cyan-300 font-bold focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-emerald-400 font-bold block">⭐ 4th Prize ($):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={adminFourthPrize}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setAdminFourthPrize(val);
+                        isAdminDirtyRef.current = true;
+                        setIsAdminDirty(true);
+                      }}
+                      className="w-full mt-1 p-2 bg-[#02050e] border border-emerald-500/50 rounded-xl text-xs text-emerald-300 font-bold focus:border-emerald-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-rose-400 font-bold block">🎖️ 5th Prize ($):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={adminFifthPrize}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setAdminFifthPrize(val);
+                        isAdminDirtyRef.current = true;
+                        setIsAdminDirty(true);
+                      }}
+                      className="w-full mt-1 p-2 bg-[#02050e] border border-rose-500/50 rounded-xl text-xs text-rose-300 font-bold focus:border-rose-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-yellow-400 font-bold block">🎁 Guaranteed 45x ($):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={adminGuaranteedPrize}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setAdminGuaranteedPrize(val);
+                        isAdminDirtyRef.current = true;
+                        setIsAdminDirty(true);
+                      }}
+                      className="w-full mt-1 p-2 bg-[#02050e] border border-yellow-500/50 rounded-xl text-xs text-yellow-300 font-bold focus:border-yellow-400 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1833,20 +2026,11 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={handleAdminSaveConfig}
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition"
+                  onClick={() => handleAdminSaveConfig()}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs border border-amber-300 transition shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  Save Tiered Settings
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleAdminTriggerDraw}
-                  disabled={isRolling}
-                  className="w-full sm:w-1/2 px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 via-amber-500 to-amber-400 hover:from-rose-400 hover:to-amber-300 text-black font-black text-sm shadow-[0_0_25px_rgba(244,63,94,0.4)] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <Play className="w-4 h-4 fill-black" />
-                  <span>⚡ START ELECTRIC DRAW ROLL NOW</span>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Save All Prize Amounts & Winner Settings</span>
                 </button>
               </div>
             </div>
