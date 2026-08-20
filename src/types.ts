@@ -277,7 +277,8 @@ export interface SystemSettings {
   spinWheelRewards: SpinReward[];
   spinWheelIntervalHours?: number;
   spinCreditsPerReset?: number;
-  spinTicketPrice?: number; // Cost per spin ticket in USDT (e.g., $1.00)
+  spinTicketPrice?: number; // Cost per spin ticket in USDT (e.g., $45 or custom)
+  spinHouseProfitPercent?: number; // House Profit margin % on Spin Wheel (e.g., 55% House Profit, 45% Player RTP)
   specialSponsorBonus?: SpecialSponsorBonusConfig;
   heroBanners?: HeroBannerSlide[];
   ranks: RankConfig[];

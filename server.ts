@@ -117,16 +117,17 @@ const defaultSettings: SystemSettings = {
   tickerText:
     '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | BNB/USDT $680 (+1.9%) | 🚀 GLOBAL BOOSTING POOL CYCLE #142 ACTIVE | TOTAL DISTRIBUTED: $1,485,200 USDT ⚡',
   spinWheelRewards: [
-    { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151' },
-    { id: 'sp-2', label: '$0.20 USDT', amount: 0.20, probability: 25, color: '#06b6d4' },
-    { id: 'sp-3', label: '$0.50 USDT', amount: 0.50, probability: 15, color: '#10b981' },
-    { id: 'sp-4', label: '$1.00 USDT', amount: 1.00, probability: 10, color: '#8b5cf6' },
-    { id: 'sp-5', label: '$2.00 USDT', amount: 2.00, probability: 3, color: '#f59e0b' },
-    { id: 'sp-6', label: '$5.00 USDT', amount: 5.00, probability: 1.5, color: '#ec4899' },
-    { id: 'sp-7', label: '$10.00 BIG', amount: 10.00, probability: 0.4, color: '#ef4444' },
-    { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.00, probability: 0.1, color: '#eab308' },
+    { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151', minLevel: 0 },
+    { id: 'sp-2', label: '$0.20 USDT', amount: 0.2, probability: 25, color: '#06b6d4', minLevel: 0 },
+    { id: 'sp-3', label: '$0.50 USDT', amount: 0.5, probability: 15, color: '#10b981', minLevel: 0 },
+    { id: 'sp-4', label: '$1.00 USDT', amount: 1.0, probability: 10, color: '#8b5cf6', minLevel: 0 },
+    { id: 'sp-5', label: '$2.00 USDT', amount: 2.0, probability: 3, color: '#f59e0b', minLevel: 0 },
+    { id: 'sp-6', label: '$5.00 USDT', amount: 5.0, probability: 1.5, color: '#ec4899', minLevel: 0 },
+    { id: 'sp-7', label: '$10.00 BIG', amount: 10.0, probability: 0.4, color: '#ef4444', minLevel: 0 },
+    { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.0, probability: 0.1, color: '#eab308', minLevel: 0 },
   ],
   spinTicketPrice: 1.0,
+  spinHouseProfitPercent: 55.0,
   spinWheelIntervalHours: 24,
   spinCreditsPerReset: 1,
   specialSponsorBonus: {
@@ -1442,24 +1443,29 @@ function loadFromSqlite() {
 
 function ensureSpinWheelSettings() {
   const defaultProfitSlices: SpinReward[] = [
-    { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151' },
-    { id: 'sp-2', label: '$0.20 USDT', amount: 0.20, probability: 25, color: '#06b6d4' },
-    { id: 'sp-3', label: '$0.50 USDT', amount: 0.50, probability: 15, color: '#10b981' },
-    { id: 'sp-4', label: '$1.00 USDT', amount: 1.00, probability: 10, color: '#8b5cf6' },
-    { id: 'sp-5', label: '$2.00 USDT', amount: 2.00, probability: 3, color: '#f59e0b' },
-    { id: 'sp-6', label: '$5.00 USDT', amount: 5.00, probability: 1.5, color: '#ec4899' },
-    { id: 'sp-7', label: '$10.00 BIG', amount: 10.00, probability: 0.4, color: '#ef4444' },
-    { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.00, probability: 0.1, color: '#eab308' },
+    { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151', minLevel: 0 },
+    { id: 'sp-2', label: '$0.20 USDT', amount: 0.2, probability: 25, color: '#06b6d4', minLevel: 0 },
+    { id: 'sp-3', label: '$0.50 USDT', amount: 0.5, probability: 15, color: '#10b981', minLevel: 0 },
+    { id: 'sp-4', label: '$1.00 USDT', amount: 1.0, probability: 10, color: '#8b5cf6', minLevel: 0 },
+    { id: 'sp-5', label: '$2.00 USDT', amount: 2.0, probability: 3, color: '#f59e0b', minLevel: 0 },
+    { id: 'sp-6', label: '$5.00 USDT', amount: 5.0, probability: 1.5, color: '#ec4899', minLevel: 0 },
+    { id: 'sp-7', label: '$10.00 BIG', amount: 10.0, probability: 0.4, color: '#ef4444', minLevel: 0 },
+    { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.0, probability: 0.1, color: '#eab308', minLevel: 0 },
   ];
 
   if (!state.settings) {
     state.settings = { ...defaultSettings };
   }
 
+  if (state.settings.spinHouseProfitPercent === undefined) {
+    state.settings.spinHouseProfitPercent = 55.0;
+  }
+
   const rewards = state.settings.spinWheelRewards;
   if (!Array.isArray(rewards) || rewards.length === 0) {
     state.settings.spinWheelRewards = defaultProfitSlices;
     state.settings.spinTicketPrice = 1.0;
+    state.settings.spinHouseProfitPercent = 55.0;
     saveStore();
   }
 }
@@ -2454,10 +2460,6 @@ app.post('/api/packages/buy', (req: Request, res: Response) => {
   user.packageActivatedAt = new Date().toISOString();
   user.packageExpiryDays = pkg.durationDays || 100;
 
-  // Award Bonus Spin Credits based on Package Value (1 spin per $10)
-  const pkgSpinBonus = Math.max(1, Math.floor(pkg.price / 10));
-  user.spinCredits = (user.spinCredits || 0) + pkgSpinBonus;
-
   // Create Package Purchase Transaction
   const pkgTx: Transaction = {
     id: `tx-${Date.now()}-pkg`,
@@ -2711,10 +2713,6 @@ app.post('/api/deposit', async (req: Request, res: Response) => {
 
         user.depositBalance = (user.depositBalance || 0) + verifiedAmount;
         user.totalDeposited = (user.totalDeposited || 0) + verifiedAmount;
-
-        // Grant Deposit Bonus Spin Credits (1 spin per $10 deposited)
-        const depSpinBonus = Math.max(1, Math.floor(verifiedAmount / 10));
-        user.spinCredits = (user.spinCredits || 0) + depSpinBonus;
 
         state.transactions.unshift({
           id: `tx-${Date.now()}-autodep`,
@@ -3095,22 +3093,12 @@ app.post('/api/spin', (req: Request, res: Response) => {
   const user = getUserFromReq(req);
   if (!user) return res.status(400).json({ error: 'User not logged in' });
 
-  // Auto-recharge free spins if interval time has passed
-  const intervalHours = state.settings.spinWheelIntervalHours || 24;
-  const creditsToGrant = state.settings.spinCreditsPerReset || 1;
+  const ticketPrice = state.settings.spinTicketPrice !== undefined ? Number(state.settings.spinTicketPrice) : 1.0;
 
   if (user.spinCredits <= 0) {
-    const lastTime = user.lastSpinAt ? new Date(user.lastSpinAt).getTime() : new Date(user.registeredAt).getTime();
-    const elapsedHours = (Date.now() - lastTime) / (1000 * 60 * 60);
-
-    if (elapsedHours >= intervalHours) {
-      user.spinCredits += creditsToGrant;
-    } else {
-      const remainingHours = Math.ceil(intervalHours - elapsedHours);
-      return res.status(400).json({
-        error: `No Spin Credits remaining! Claim your 1 Free Spin via Daily Check-In, or wait ~${remainingHours} hour(s), or buy spin tickets.`,
-      });
-    }
+    return res.status(400).json({
+      error: `No Spin Credits remaining! You have already used your 1 Free Signup Welcome Spin. Additional spin tickets cost $${ticketPrice.toFixed(2)} USDT each. Please buy spin tickets from your balance.`,
+    });
   }
 
   user.spinCredits -= 1;
@@ -3239,17 +3227,9 @@ app.post('/api/daily-checkin', (req: Request, res: Response) => {
     }
   }
 
-  // Award +1 Free Spin Ticket & update checkin metadata
-  user.spinCredits = (user.spinCredits || 0) + 1;
+  // Update checkin metadata (Registration is the only free spin source)
   user.lastDailyCheckinAt = now.toISOString();
   user.dailyCheckinStreak = currentStreak;
-
-  // Streak Bonus: Every 7 days streak gives an extra bonus spin
-  let bonusSpins = 0;
-  if (currentStreak > 0 && currentStreak % 7 === 0) {
-    bonusSpins = 1;
-    user.spinCredits += bonusSpins;
-  }
 
   state.transactions.unshift({
     id: `tx-checkin-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -3258,7 +3238,7 @@ app.post('/api/daily-checkin', (req: Request, res: Response) => {
     type: 'admin_adjust' as any,
     amount: 0,
     status: 'completed',
-    notes: `🎁 Daily Check-in Bonus: +${1 + bonusSpins} Free Lucky Spin(s) (Day ${currentStreak} Streak)`,
+    notes: `📅 Daily Check-in Completed (Day ${currentStreak} Streak)`,
     createdAt: now.toISOString(),
   });
 
@@ -3266,10 +3246,9 @@ app.post('/api/daily-checkin', (req: Request, res: Response) => {
 
   res.json({
     success: true,
-    message: `🎉 Daily Check-In Successful! Claimed +${1 + bonusSpins} Free Spin Ticket (${currentStreak}-Day Streak)!`,
+    message: `🎉 Daily Check-In Recorded! Current ${currentStreak}-Day Streak active.`,
     spinCredits: user.spinCredits,
     streak: currentStreak,
-    bonusSpins,
     user,
   });
 });
@@ -5250,6 +5229,9 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
   if (mergedSettings.spinTicketPrice !== undefined) {
     mergedSettings.spinTicketPrice = parseFloat(mergedSettings.spinTicketPrice as any) || 1.0;
   }
+  if (mergedSettings.spinHouseProfitPercent !== undefined) {
+    mergedSettings.spinHouseProfitPercent = parseFloat(mergedSettings.spinHouseProfitPercent as any) || 55.0;
+  }
 
   if (mergedSettings.withdrawalFeePercent !== undefined) {
     mergedSettings.withdrawalFeePercent = parseFloat(mergedSettings.withdrawalFeePercent as any) || 0;
@@ -5483,10 +5465,6 @@ app.post('/api/admin/deposit/action', (req: Request, res: Response) => {
       user.depositBalance = (user.depositBalance || 0) + dep.amount;
       user.hasFirstDepositApproved = true;
 
-      // Grant Deposit Bonus Spin Credits (1 spin per $10 deposited)
-      const depSpinBonus = Math.max(1, Math.floor(dep.amount / 10));
-      user.spinCredits = (user.spinCredits || 0) + depSpinBonus;
-
       state.transactions.unshift({
         id: `tx-${Date.now()}-dep-app`,
         userId: user.id,
@@ -5627,9 +5605,6 @@ app.post('/api/web3/verify-deposit', async (req: Request, res: Response) => {
 
       user.depositBalance = (user.depositBalance || 0) + verifiedAmt;
       user.totalDeposited = (user.totalDeposited || 0) + verifiedAmt;
-
-      const depSpinBonus = Math.max(1, Math.floor(verifiedAmt / 10));
-      user.spinCredits = (user.spinCredits || 0) + depSpinBonus;
 
       state.transactions.unshift({
         id: `tx-${Date.now()}-autodep`,

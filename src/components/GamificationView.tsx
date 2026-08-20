@@ -129,59 +129,63 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
     <div className="space-y-6 font-mono pb-12">
       {/* 1. DAILY CHECK-IN (1 FREE SPIN) & TOURNAMENT ACTION BAR */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Daily Check-In Card */}
+        {/* Registration Bonus & Spin Status Card */}
         <div className="bg-gradient-to-br from-[#121c2d] to-[#0a111c] border border-cyan-500/40 rounded-3xl p-5 shadow-[0_0_25px_rgba(6,182,212,0.15)] flex flex-col justify-between gap-4 relative overflow-hidden">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-black text-cyan-400 uppercase tracking-wider">
-                <CalendarCheck className="w-3.5 h-3.5" />
-                Daily Streak Bonus
+                <Gift className="w-3.5 h-3.5 text-cyan-400" />
+                Signup Welcome Bonus
               </div>
               <h3 className="text-lg font-black text-white">
-                Daily Check-In: <span className="text-cyan-400">1 Free Spin</span>
+                Free Signup Spin: <span className="text-cyan-400">1 Free Credit</span>
               </h3>
               <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                Check in every day to claim your free lucky spin ticket! Maintain your daily streak for milestone multipliers.
+                Every newly registered member gets 1 Free Welcome Spin! Additional spin tickets can be purchased anytime from your wallet balance.
               </p>
             </div>
             <div className="text-right shrink-0 bg-[#060c16] border border-slate-800 rounded-2xl p-2.5">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Streak</span>
-              <span className="text-xl font-black text-amber-400 flex items-center justify-end gap-1">
-                🔥 {user.dailyCheckinStreak || 0}
+              <span className="text-[10px] text-slate-400 font-bold block uppercase">Available</span>
+              <span className="text-xl font-black text-cyan-400 flex items-center justify-end gap-1">
+                🎟️ {user.spinCredits}
               </span>
             </div>
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
             <span className="text-xs text-slate-400">
-              {isAlreadyCheckedInToday ? (
+              {user.spinCredits > 0 ? (
                 <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" /> Checked in today!
+                  <CheckCircle2 className="w-4 h-4" /> {user.spinCredits} Free Spin Available!
                 </span>
               ) : (
                 <span className="text-amber-400 font-bold flex items-center gap-1">
-                  <Zap className="w-4 h-4" /> Ready to claim today's spin!
+                  <Ticket className="w-4 h-4" /> Extra ticket: ${ticketPrice.toFixed(2)} USDT
                 </span>
               )}
             </span>
 
-            <button
-              onClick={handleCheckinClick}
-              disabled={isAlreadyCheckedInToday || checkingIn}
-              className={`px-5 py-2.5 rounded-xl font-black text-xs transition shadow-md flex items-center gap-1.5 ${
-                isAlreadyCheckedInToday
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-pulse'
-              }`}
-            >
-              {checkingIn ? (
-                'Claiming...'
-              ) : isAlreadyCheckedInToday ? (
-                'Claimed (Come Back Tomorrow)'
-              ) : (
-                '🎁 Claim 1 Free Spin Now'
-              )}
-            </button>
+            {user.spinCredits > 0 ? (
+              <button
+                onClick={handleSpinClick}
+                disabled={spinning}
+                className="px-5 py-2.5 rounded-xl font-black text-xs transition shadow-md flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+              >
+                <Disc className="w-3.5 h-3.5" />
+                Spin Now ({user.spinCredits} Left)
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  const buySection = document.getElementById('buy-tickets-section');
+                  if (buySection) buySection.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-4 py-2 rounded-xl font-bold text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition flex items-center gap-1"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                Buy Spin Tickets
+              </button>
+            )}
           </div>
         </div>
 
@@ -244,7 +248,7 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
             </h2>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              Spin the wheel to win instant cash rewards credited straight to your Winning Wallet! Earn free daily spins, bonus spins on package activation & deposits, or buy extra spin tickets anytime.
+              Spin the wheel to win instant cash rewards credited straight to your Winning Wallet! You get 1 Free Welcome Spin on Registration, and can purchase extra spin tickets anytime.
             </p>
 
             {/* Spin Credit Balance Card */}
@@ -358,7 +362,7 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
       </div>
 
       {/* SECTION 2: BUY SPIN TICKETS WITH BALANCE */}
-      <div className="bg-[#0b1320] border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+      <div id="buy-tickets-section" className="bg-[#0b1320] border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4">
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-2">

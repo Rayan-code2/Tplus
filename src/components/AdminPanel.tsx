@@ -2130,15 +2130,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           {/* SECTION 2.7: DAILY SPIN WHEEL REWARDS & PROBABILITY CONFIGURATION */}
-          <div className="bg-[#0b1424] border border-purple-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_20px_rgba(168,85,247,0.08)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="bg-[#0b1424] border border-purple-500/40 rounded-2xl p-6 space-y-5 shadow-[0_0_25px_rgba(168,85,247,0.15)]">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
-                <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
-                  <Disc className="w-4 h-4 text-purple-400" />
+                <h4 className="text-sm font-black text-purple-300 uppercase tracking-wider flex items-center gap-2">
+                  <Disc className="w-5 h-5 text-purple-400 animate-spin-slow" />
                   Daily Lucky Spin Wheel Rewards & Probability Controller
                 </h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Customize wheel reward slices, dollar payouts, winning probability weights (%), and slice colors for members spinning the daily wheel.
+                <p className="text-xs text-slate-300 mt-1">
+                  Customize wheel reward slices, dollar payouts, winning probability weights (%), and slice colors for members spinning the wheel.
                 </p>
               </div>
 
@@ -2146,23 +2146,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const default8: SpinReward[] = [
-                      { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151' },
-                      { id: 'sp-2', label: '$0.20 USDT', amount: 0.20, probability: 25, color: '#06b6d4' },
-                      { id: 'sp-3', label: '$0.50 USDT', amount: 0.50, probability: 15, color: '#10b981' },
-                      { id: 'sp-4', label: '$1.00 USDT', amount: 1.00, probability: 10, color: '#8b5cf6' },
-                      { id: 'sp-5', label: '$2.00 USDT', amount: 2.00, probability: 3, color: '#f59e0b' },
-                      { id: 'sp-6', label: '$5.00 USDT', amount: 5.00, probability: 1.5, color: '#ec4899' },
-                      { id: 'sp-7', label: '$10.00 BIG', amount: 10.00, probability: 0.4, color: '#ef4444' },
-                      { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.00, probability: 0.1, color: '#eab308' },
+                    const preset55: SpinReward[] = [
+                      { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151', minLevel: 0 },
+                      { id: 'sp-2', label: '$0.20 USDT', amount: 0.2, probability: 25, color: '#06b6d4', minLevel: 0 },
+                      { id: 'sp-3', label: '$0.50 USDT', amount: 0.5, probability: 15, color: '#10b981', minLevel: 0 },
+                      { id: 'sp-4', label: '$1.00 USDT', amount: 1.0, probability: 10, color: '#8b5cf6', minLevel: 0 },
+                      { id: 'sp-5', label: '$2.00 USDT', amount: 2.0, probability: 3, color: '#f59e0b', minLevel: 0 },
+                      { id: 'sp-6', label: '$5.00 USDT', amount: 5.0, probability: 1.5, color: '#ec4899', minLevel: 0 },
+                      { id: 'sp-7', label: '$10.00 BIG', amount: 10.0, probability: 0.4, color: '#ef4444', minLevel: 0 },
+                      { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.0, probability: 0.1, color: '#eab308', minLevel: 0 },
                     ];
-                    setEditableSettings({ ...editableSettings, spinWheelRewards: default8 });
+                    setEditableSettings({
+                      ...editableSettings,
+                      spinWheelRewards: preset55,
+                      spinTicketPrice: 1.0,
+                      spinHouseProfitPercent: 55.0,
+                    });
                     setIsSettingsDirty(true);
                   }}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700"
+                  className="px-3.5 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-                  Reset Default 8 Slices
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                  Apply 55% Profit ($1.00 Spin) Preset
                 </button>
 
                 <button
@@ -2171,10 +2176,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     const currentRewards = editableSettings.spinWheelRewards || [];
                     const newReward: SpinReward = {
                       id: `sp-${Date.now()}`,
-                      label: '$5.00 USDT',
-                      amount: 5,
+                      label: '$0.50 USDT',
+                      amount: 0.5,
                       probability: 5,
                       color: '#10b981',
+                      minLevel: 0,
                     };
                     setEditableSettings({
                       ...editableSettings,
@@ -2182,16 +2188,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     });
                     setIsSettingsDirty(true);
                   }}
-                  className="px-3.5 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-[0_0_10px_rgba(168,85,247,0.2)]"
+                  className="px-3.5 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Add Wheel Slice
+                  Add Slice
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveSettings}
+                  disabled={savingSettings}
+                  className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.4)] disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {savingSettings ? 'Saving...' : '💾 Save Spin Settings'}
                 </button>
               </div>
             </div>
 
-            {/* Spin Wheel Interval, Free Spin Credits & Ticket Price Config */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#050911] border border-slate-800 rounded-2xl p-4">
+            {/* Spin Wheel Interval, Free Spin Credits, Spin Cost & House Profit Config */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-[#050911] border border-slate-800 rounded-2xl p-4">
               <div>
                 <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
                   Free Spin Cooldown (Hours)
@@ -2214,24 +2230,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-xs text-slate-400 shrink-0">Hours</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Time gap before free spin recharge (e.g. 24 Hours).
+                  Time gap before free spin recharge.
                 </span>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
-                  Free Spins Per Cycle
+                  Free Spins on Registration
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     step="1"
                     value={editableSettings.spinCreditsPerReset !== undefined ? editableSettings.spinCreditsPerReset : 1}
                     onChange={(e) => {
                       setEditableSettings({
                         ...editableSettings,
-                        spinCreditsPerReset: parseInt(e.target.value) || 1,
+                        spinCreditsPerReset: parseInt(e.target.value) || 0,
                       });
                       setIsSettingsDirty(true);
                     }}
@@ -2240,24 +2256,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-xs text-slate-400 shrink-0">Spins</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Number of free spins automatically awarded.
+                  Welcome bonus spins granted upon registration.
                 </span>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold text-amber-400 uppercase block mb-1">
-                  Spin Ticket Price ($ USDT)
+                  Every Spin Cost ($ USDT)
                 </label>
                 <div className="flex items-center gap-2">
                   <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={editableSettings.spinTicketPrice !== undefined ? editableSettings.spinTicketPrice : 1.0}
+                    type="text"
+                    inputMode="decimal"
+                    value={editableSettings.spinTicketPrice !== undefined ? String(editableSettings.spinTicketPrice) : '1.0'}
                     onChange={(e) => {
+                      const val = e.target.value;
                       setEditableSettings({
                         ...editableSettings,
-                        spinTicketPrice: parseFloat(e.target.value) || 1.0,
+                        spinTicketPrice: val as any,
                       });
                       setIsSettingsDirty(true);
                     }}
@@ -2266,52 +2282,119 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span className="text-xs text-slate-400 shrink-0">USDT</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Cost per spin ticket when users buy extra spins.
+                  Cost per extra spin ticket (e.g. $1.00 USDT).
+                </span>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-rose-400 uppercase block mb-1">
+                  Target House Profit Margin (%)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editableSettings.spinHouseProfitPercent !== undefined ? String(editableSettings.spinHouseProfitPercent) : '55.0'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditableSettings({
+                        ...editableSettings,
+                        spinHouseProfitPercent: val as any,
+                      });
+                      setIsSettingsDirty(true);
+                    }}
+                    className="w-full bg-[#0d1726] border border-rose-500/30 rounded-xl px-3 py-2 text-rose-300 font-extrabold text-xs focus:outline-none focus:border-rose-400"
+                  />
+                  <span className="text-xs text-slate-400 shrink-0">%</span>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Target system retained profit margin (e.g. 55% House Profit).
                 </span>
               </div>
             </div>
 
-            {/* Total Probability Summary Bar */}
+            {/* Total Probability & Live Math Calculation Summary Bar */}
             {(() => {
               const list = editableSettings.spinWheelRewards || [];
-              const totalProb = list.reduce((sum, r) => sum + (r.probability || 0), 0);
+              const totalProb = list.reduce((sum, r) => sum + (parseFloat(r.probability as any) || 0), 0);
+              const spinPrice = parseFloat(editableSettings.spinTicketPrice as any) || 1.0;
+              const expectedPayout = list.reduce((sum, r) => {
+                const amt = parseFloat(r.amount as any) || 0;
+                const prob = parseFloat(r.probability as any) || 0;
+                return sum + (amt * prob) / 100;
+              }, 0);
+              const actualProfitPercent = spinPrice > 0 ? ((spinPrice - expectedPayout) / spinPrice) * 100 : 0;
+
               return (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-[#050911] border border-slate-800 px-4 py-2.5 rounded-xl text-xs gap-2">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span className="text-slate-300 font-bold">Total Wheel Slices:</span>
-                    <span className="text-purple-400 font-extrabold">{list.length} Slices</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-medium">Cumulative Probability Weight:</span>
-                    <span
-                      className={`font-mono font-extrabold px-2.5 py-0.5 rounded-md ${
-                        Math.abs(totalProb - 100) < 0.1
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                      }`}
-                    >
-                      {totalProb.toFixed(1)}% {Math.abs(totalProb - 100) < 0.1 ? '✓ Balanced' : '(Weighted Relative)'}
-                    </span>
+                <div className="bg-[#050911] border border-purple-500/30 p-4 rounded-2xl space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span className="text-slate-300 font-bold">Wheel Slices:</span>
+                      <span className="text-purple-400 font-extrabold">{list.length} Slices</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400">Total Probability:</span>
+                        <span
+                          className={`font-mono font-extrabold px-2.5 py-0.5 rounded-md ${
+                            Math.abs(totalProb - 100) < 0.1
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          }`}
+                        >
+                          {totalProb.toFixed(1)}% {Math.abs(totalProb - 100) < 0.1 ? '✓ Balanced (100%)' : '⚠️ Must sum to 100%'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-md text-cyan-300">
+                        <span>Avg Payout per Spin:</span>
+                        <span className="font-mono font-extrabold text-white">${expectedPayout.toFixed(3)} USDT</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-md text-emerald-300">
+                        <span>Admin House Profit:</span>
+                        <span className="font-mono font-black text-emerald-400">+{actualProfitPercent.toFixed(1)}%</span>
+                      </div>
+
+                      {Math.abs(totalProb - 100) >= 0.1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = [...(editableSettings.spinWheelRewards || [])];
+                            if (current.length === 0) return;
+                            const otherSum = current.slice(1).reduce((s, r) => s + (parseFloat(r.probability as any) || 0), 0);
+                            const remaining = Math.max(0, 100 - otherSum);
+                            current[0] = { ...current[0], probability: Math.round(remaining * 10) / 10 };
+                            setEditableSettings({ ...editableSettings, spinWheelRewards: current });
+                            setIsSettingsDirty(true);
+                          }}
+                          className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] font-bold transition"
+                        >
+                          ⚡ Auto-Balance Slice #1 to 100%
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })()}
 
             {/* Slice Items Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
               {(editableSettings.spinWheelRewards || []).map((reward, idx) => (
                 <div
                   key={reward.id || idx}
-                  className="bg-[#050911] border border-slate-800 hover:border-purple-500/40 rounded-xl p-3.5 space-y-3 relative group transition"
+                  className="bg-[#050911] border border-slate-800 hover:border-purple-500/50 rounded-2xl p-4 space-y-3 relative group transition shadow-md"
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
                     <div className="flex items-center gap-2">
                       <span
-                        className="w-3.5 h-3.5 rounded-full inline-block border border-white/20 shrink-0 shadow-sm"
+                        className="w-4 h-4 rounded-full inline-block border border-white/30 shrink-0 shadow-sm"
                         style={{ backgroundColor: reward.color || '#10b981' }}
                       />
-                      <span className="text-[11px] font-extrabold text-purple-300 uppercase">
+                      <span className="text-xs font-black text-purple-300 uppercase tracking-wide">
                         Slice #{idx + 1}
                       </span>
                     </div>
@@ -2326,14 +2409,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         });
                         setIsSettingsDirty(true);
                       }}
-                      className="text-slate-600 hover:text-red-400 transition"
+                      className="text-slate-500 hover:text-red-400 transition p-1"
                       title="Delete Slice"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <div className="space-y-2 text-[11px]">
+                  <div className="space-y-2.5 text-xs">
                     <div>
                       <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
                         Reward Label
@@ -2347,21 +2430,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
                           setIsSettingsDirty(true);
                         }}
-                        className="w-full bg-[#0d1726] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-bold focus:outline-none focus:border-purple-400"
-                        placeholder="e.g. $5.00 USDT or Try Again"
+                        className="w-full bg-[#0d1726] border border-slate-700 focus:border-purple-400 rounded-xl px-3 py-2 text-white font-bold text-xs focus:outline-none"
+                        placeholder="e.g. $0.50 USDT or Try Again"
                       />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="text-[9px] text-emerald-400 uppercase font-bold block mb-1 truncate" title="Prize Amount ($ USDT)">
+                        <label className="text-[10px] text-emerald-400 uppercase font-bold block mb-1 truncate" title="Prize Amount ($ USDT)">
                           Amount ($)
                         </label>
                         <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={reward.amount === undefined || reward.amount === null ? '' : reward.amount}
+                          type="text"
+                          inputMode="decimal"
+                          value={reward.amount !== undefined && reward.amount !== null ? String(reward.amount) : ''}
                           onChange={(e) => {
                             const val = e.target.value;
                             const updated = [...(editableSettings.spinWheelRewards || [])];
@@ -2369,20 +2451,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
                             setIsSettingsDirty(true);
                           }}
-                          className="w-full bg-[#0d1726] border border-emerald-500/30 rounded-lg px-1.5 py-1.5 text-emerald-300 font-extrabold focus:outline-none focus:border-emerald-400 text-xs"
-                          placeholder="0.00"
+                          className="w-full bg-[#0d1726] border border-emerald-500/40 focus:border-emerald-400 rounded-xl px-2.5 py-2 text-emerald-300 font-black text-xs focus:outline-none text-center"
+                          placeholder="0"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[9px] text-amber-400 uppercase font-bold block mb-1 truncate" title="Chance / Weight (%)">
+                        <label className="text-[10px] text-amber-400 uppercase font-bold block mb-1 truncate" title="Chance / Weight (%)">
                           Chance (%)
                         </label>
                         <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={reward.probability === undefined || reward.probability === null ? '' : reward.probability}
+                          type="text"
+                          inputMode="decimal"
+                          value={reward.probability !== undefined && reward.probability !== null ? String(reward.probability) : ''}
                           onChange={(e) => {
                             const val = e.target.value;
                             const updated = [...(editableSettings.spinWheelRewards || [])];
@@ -2390,20 +2471,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
                             setIsSettingsDirty(true);
                           }}
-                          className="w-full bg-[#0d1726] border border-amber-500/30 rounded-lg px-1.5 py-1.5 text-amber-300 font-extrabold focus:outline-none focus:border-amber-400 text-xs"
+                          className="w-full bg-[#0d1726] border border-amber-500/40 focus:border-amber-400 rounded-xl px-2.5 py-2 text-amber-300 font-black text-xs focus:outline-none text-center"
                           placeholder="0"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[9px] text-cyan-400 uppercase font-bold block mb-1 truncate" title="Min Level / Rank Required (0 = All Levels)">
+                        <label className="text-[10px] text-cyan-400 uppercase font-bold block mb-1 truncate" title="Min Level / Rank Required (0 = All Levels)">
                           Min Lvl
                         </label>
                         <input
-                          type="number"
-                          step="1"
-                          min="0"
-                          value={reward.minLevel === undefined || reward.minLevel === null ? '' : reward.minLevel}
+                          type="text"
+                          inputMode="numeric"
+                          value={reward.minLevel !== undefined && reward.minLevel !== null ? String(reward.minLevel) : '0'}
                           onChange={(e) => {
                             const val = e.target.value;
                             const updated = [...(editableSettings.spinWheelRewards || [])];
@@ -2411,7 +2491,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
                             setIsSettingsDirty(true);
                           }}
-                          className="w-full bg-[#0d1726] border border-cyan-500/30 rounded-lg px-1.5 py-1.5 text-cyan-300 font-extrabold focus:outline-none focus:border-cyan-400 text-xs"
+                          className="w-full bg-[#0d1726] border border-cyan-500/40 focus:border-cyan-400 rounded-xl px-2.5 py-2 text-cyan-300 font-black text-xs focus:outline-none text-center"
                           placeholder="0"
                         />
                       </div>
@@ -2431,7 +2511,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
                             setIsSettingsDirty(true);
                           }}
-                          className="w-8 h-8 rounded-lg border border-slate-700 bg-[#0d1726] cursor-pointer p-0.5"
+                          className="w-9 h-9 rounded-xl border border-slate-700 bg-[#0d1726] cursor-pointer p-0.5 shrink-0"
                         />
                         <input
                           type="text"
@@ -2442,13 +2522,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             setEditableSettings({ ...editableSettings, spinWheelRewards: updated });
                             setIsSettingsDirty(true);
                           }}
-                          className="w-full bg-[#0d1726] border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 font-mono uppercase text-[10px]"
+                          className="w-full bg-[#0d1726] border border-slate-700 rounded-xl px-3 py-2 text-slate-300 font-mono uppercase text-xs focus:outline-none focus:border-purple-400"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Bottom Direct Save Bar */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800/80">
+              <span className="text-xs text-slate-400">
+                Ensure probability total is 100.0% before saving.
+              </span>
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black rounded-xl text-xs font-black transition flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {savingSettings ? 'Saving All Settings...' : '💾 Save Spin Wheel Settings'}
+              </button>
             </div>
           </div>
 
