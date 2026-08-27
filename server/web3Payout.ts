@@ -70,7 +70,11 @@ export async function getHotWalletStatus(customPrivateKey?: string) {
       });
       if (response.ok) {
         const data = await response.json();
-        return data;
+        return {
+          ...data,
+          usdtBalance: typeof data.usdtBalance === 'number' ? data.usdtBalance : parseFloat(data.usdtBalance || '0') || 0,
+          bnbBalance: typeof data.bnbBalance === 'number' ? data.bnbBalance : parseFloat(data.bnbBalance || '0') || 0,
+        };
       }
     } catch (gatewayErr) {
       console.warn('[Web3 Payout] Gateway status check error, trying local fallback:', gatewayErr);

@@ -3822,7 +3822,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="space-y-1">
               <div className="text-[10px] uppercase font-bold text-slate-400">💵 SafePal USDT Balance</div>
               <div className="font-bold font-mono text-emerald-400">
-                {web3Status?.usdtBalance !== undefined ? `${web3Status.usdtBalance.toFixed(2)} USDT` : 'Checking...'}
+                {web3Status?.usdtBalance !== undefined ? `${(Number(web3Status.usdtBalance) || 0).toFixed(2)} USDT` : 'Checking...'}
               </div>
             </div>
           </div>
@@ -3952,7 +3952,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="space-y-1">
               <div className="text-[10px] uppercase font-bold text-slate-400">💵 SafePal USDT Balance</div>
               <div className="font-bold font-mono text-emerald-400">
-                {web3Status?.usdtBalance !== undefined ? `${web3Status.usdtBalance.toFixed(2)} USDT` : 'Checking...'}
+                {web3Status?.usdtBalance !== undefined ? `${(Number(web3Status.usdtBalance) || 0).toFixed(2)} USDT` : 'Checking...'}
               </div>
             </div>
           </div>
