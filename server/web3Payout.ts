@@ -29,10 +29,19 @@ export const DEFAULT_HOT_WALLET_PRIVATE_KEY =
   process.env.BEP20_HOT_WALLET_PRIVATE_KEY || '';
 
 // Standalone Payment Gateway Configuration (pay.tetherplus.live)
-export const PAYMENT_GATEWAY_URL =
-  process.env.PAYMENT_GATEWAY_URL || '';
-export const PAYMENT_GATEWAY_SECRET =
-  process.env.PAYMENT_GATEWAY_SECRET || '';
+export function getPaymentGatewayUrl(): string {
+  return (
+    process.env.PAYMENT_GATEWAY_URL ||
+    (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:5000' : '')
+  );
+}
+
+export function getPaymentGatewaySecret(): string {
+  return process.env.PAYMENT_GATEWAY_SECRET || '';
+}
+
+export const PAYMENT_GATEWAY_URL = process.env.PAYMENT_GATEWAY_URL || '';
+export const PAYMENT_GATEWAY_SECRET = process.env.PAYMENT_GATEWAY_SECRET || '';
 
 /**
  * Get an active BSC Provider
@@ -47,13 +56,16 @@ export function getBscProvider(): ethers.JsonRpcProvider {
  * Supports querying the standalone payment microservice (pay.tetherplus.live) or local node
  */
 export async function getHotWalletStatus(customPrivateKey?: string) {
+  const gatewayUrl = getPaymentGatewayUrl();
+  const gatewaySecret = getPaymentGatewaySecret();
+
   // 1. Check if standalone payment gateway microservice is configured
-  if (PAYMENT_GATEWAY_URL && !customPrivateKey) {
+  if (gatewayUrl && !customPrivateKey) {
     try {
-      const cleanUrl = PAYMENT_GATEWAY_URL.replace(/\/$/, '');
+      const cleanUrl = gatewayUrl.replace(/\/$/, '');
       const response = await fetch(`${cleanUrl}/api/status`, {
-        headers: PAYMENT_GATEWAY_SECRET
-          ? { Authorization: `Bearer ${PAYMENT_GATEWAY_SECRET}` }
+        headers: gatewaySecret
+          ? { Authorization: `Bearer ${gatewaySecret}` }
           : {},
       });
       if (response.ok) {
@@ -150,14 +162,17 @@ export async function executeBep20Payout(
   }
 
   // 1. Delegate to Standalone Payment Microservice (pay.tetherplus.live)
-  if (PAYMENT_GATEWAY_URL && !customPrivateKey) {
+  const gatewayUrl = getPaymentGatewayUrl();
+  const gatewaySecret = getPaymentGatewaySecret();
+
+  if (gatewayUrl && !customPrivateKey) {
     try {
-      const cleanUrl = PAYMENT_GATEWAY_URL.replace(/\/$/, '');
+      const cleanUrl = gatewayUrl.replace(/\/$/, '');
       const response = await fetch(`${cleanUrl}/api/payout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(PAYMENT_GATEWAY_SECRET ? { Authorization: `Bearer ${PAYMENT_GATEWAY_SECRET}` } : {}),
+          ...(gatewaySecret ? { Authorization: `Bearer ${gatewaySecret}` } : {}),
         },
         body: JSON.stringify({
           toAddress: cleanTo,
