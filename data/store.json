@@ -109,6 +109,7 @@
     "minWithdrawalAmount": 10,
     "winningWithdrawalFeePercent": 10,
     "winningWithdrawalMinAmount": 5,
+    "autoPayoutThresholdUSDT": 20,
     "upgradeFundDeductionPercent": 30,
     "tickerText": "⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | BNB/USDT $680 (+1.9%) | 🚀 GLOBAL BOOSTING POOL CYCLE #142 ACTIVE | TOTAL DISTRIBUTED: $1,485,200 USDT ⚡",
     "spinWheelRewards": [
@@ -3057,9 +3058,9 @@
     ]
   },
   "colorPrediction": {
-    "currentPeriodId": "202608251379",
+    "currentPeriodId": "202608271394",
     "periodDurationSeconds": 60,
-    "startTime": 1787637009642,
+    "startTime": 1787851701040,
     "forcedNextNumber": null,
     "bets": [
       {
@@ -3276,6 +3277,111 @@
       }
     ],
     "history": [
+      {
+        "periodId": "202608271393",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-27T17:28:21.040Z"
+      },
+      {
+        "periodId": "202608271392",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-27T17:27:21.012Z"
+      },
+      {
+        "periodId": "202608271391",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-27T17:26:20.979Z"
+      },
+      {
+        "periodId": "202608271390",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-27T17:25:20.936Z"
+      },
+      {
+        "periodId": "202608271389",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-27T17:24:20.901Z"
+      },
+      {
+        "periodId": "202608271388",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-27T17:23:20.864Z"
+      },
+      {
+        "periodId": "202608271387",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-27T17:22:20.835Z"
+      },
+      {
+        "periodId": "202608271386",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-27T17:21:20.805Z"
+      },
+      {
+        "periodId": "202608271385",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-27T17:20:20.791Z"
+      },
+      {
+        "periodId": "202608271384",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-27T17:19:20.757Z"
+      },
+      {
+        "periodId": "202608271383",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-27T17:18:20.704Z"
+      },
+      {
+        "periodId": "202608271382",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-27T17:17:20.647Z"
+      },
+      {
+        "periodId": "202608271381",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-27T17:16:20.603Z"
+      },
+      {
+        "periodId": "202608271380",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-27T17:15:20.532Z"
+      },
+      {
+        "periodId": "202608251379",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-27T17:14:20.491Z"
+      },
       {
         "periodId": "202608251378",
         "number": 4,
@@ -3870,143 +3976,38 @@
         "color": "violet-green",
         "size": "big",
         "completedAt": "2026-08-17T18:15:13.968Z"
-      },
-      {
-        "periodId": "202608171293",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T18:14:13.935Z"
-      },
-      {
-        "periodId": "202608171292",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T18:13:13.900Z"
-      },
-      {
-        "periodId": "202608171291",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T18:12:13.863Z"
-      },
-      {
-        "periodId": "202608171290",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T18:11:13.833Z"
-      },
-      {
-        "periodId": "202608171289",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T18:10:13.795Z"
-      },
-      {
-        "periodId": "202608171288",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T18:09:13.758Z"
-      },
-      {
-        "periodId": "202608171287",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T18:08:13.044Z"
-      },
-      {
-        "periodId": "202608171286",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T18:07:12.572Z"
-      },
-      {
-        "periodId": "202608171285",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T18:06:12.544Z"
-      },
-      {
-        "periodId": "202608171284",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T18:05:12.523Z"
-      },
-      {
-        "periodId": "202608171283",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T18:04:12.491Z"
-      },
-      {
-        "periodId": "202608171282",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T18:03:12.457Z"
-      },
-      {
-        "periodId": "202608171281",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T18:02:12.421Z"
-      },
-      {
-        "periodId": "202608171280",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T18:01:12.395Z"
-      },
-      {
-        "periodId": "202608171279",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T18:00:11.540Z"
       }
     ],
     "adminMode": "smart_retention_60_40"
   },
   "aviator": {
-    "currentRoundId": "AV-1787637012562",
-    "status": "crashed",
-    "currentMultiplier": 2.91,
-    "targetCrashMultiplier": 2.91,
-    "startTime": 1787637021280,
+    "currentRoundId": "AV-1787851712534",
+    "status": "waiting",
+    "currentMultiplier": 1,
+    "targetCrashMultiplier": 3.27,
+    "startTime": 1787851712534,
     "bets": [],
     "history": [
-      2.91,
-      7.65,
-      1.71,
-      4.39,
-      8.38,
-      7.82,
-      7.06,
-      2.09,
-      3.49,
-      6.41,
-      3.98,
-      5.38,
-      8.22,
-      4.77,
-      7.44,
-      6.58,
-      2.46,
-      8.26,
-      7.5,
-      7.58
+      3.27,
+      7.95,
+      1.78,
+      3.99,
+      5.32,
+      2.15,
+      3.61,
+      5.11,
+      4.97,
+      8.15,
+      2.12,
+      3.34,
+      8.74,
+      3.07,
+      9.06,
+      2.36,
+      4.68,
+      5.9,
+      3.33,
+      9
     ],
     "forcedNextCrash": null,
     "adminMode": "lowest_payout"

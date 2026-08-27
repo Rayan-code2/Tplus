@@ -275,6 +275,7 @@ export interface SystemSettings {
   sponsorGameWinPercent?: number; // Sponsor royalty % on downline game wins (e.g. 5%)
   winningWithdrawalFeePercent?: number; // Admin charge % on winning wallet withdrawals (e.g. 10%)
   winningWithdrawalMinAmount?: number; // Min withdrawal from winning wallet (e.g. $5)
+  autoPayoutThresholdUSDT?: number; // Maximum USDT amount for automatic instant blockchain payout (e.g. $20). Amounts > threshold require Admin approval.
   tickerText: string;
   spinWheelRewards: SpinReward[];
   spinWheelIntervalHours?: number;

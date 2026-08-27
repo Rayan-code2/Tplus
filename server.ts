@@ -116,6 +116,7 @@ const defaultSettings: SystemSettings = {
   sponsorGameWinPercent: 5,
   winningWithdrawalFeePercent: 10,
   winningWithdrawalMinAmount: 5,
+  autoPayoutThresholdUSDT: 20,
   tickerText:
     '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | BNB/USDT $680 (+1.9%) | 🚀 GLOBAL BOOSTING POOL CYCLE #142 ACTIVE | TOTAL DISTRIBUTED: $1,485,200 USDT ⚡',
   spinWheelRewards: [
@@ -2833,12 +2834,18 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
 
     user.winningBalance = (user.winningBalance || 0) - reqAmt;
 
-    // Attempt Instant Hot Wallet Dispatch if BEP20
+    // Attempt Instant Hot Wallet Dispatch if BEP20 AND requested amount is within Auto-Payout Threshold (Default <= $20)
     let autoDispatched = false;
     let liveTxHash = 'Pending Approval';
     let adminNotes = `Submitted - Game Winning Wallet Withdrawal (${feePercent}% Admin Fee)`;
 
-    if (network === 'BEP20' || (!network && targetAddress.startsWith('0x'))) {
+    const autoThreshold = state.settings.autoPayoutThresholdUSDT !== undefined
+      ? Number(state.settings.autoPayoutThresholdUSDT)
+      : 20;
+
+    const isEligibleForAutoPayout = reqAmt <= autoThreshold;
+
+    if (isEligibleForAutoPayout && (network === 'BEP20' || (!network && targetAddress.startsWith('0x')))) {
       try {
         const payoutRes = await executeBep20Payout(targetAddress, netAmount);
         if (payoutRes.success && payoutRes.txHash) {
@@ -2846,11 +2853,13 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
           liveTxHash = payoutRes.txHash;
           adminNotes = `⚡ Instant Auto-Dispatched via Hot Wallet (BSC Tx: ${payoutRes.txHash})`;
         } else if (payoutRes.error) {
-          adminNotes = `Queued for dispatch (${payoutRes.error})`;
+          adminNotes = `Queued for manual dispatch (${payoutRes.error})`;
         }
       } catch (err: any) {
         console.warn('Auto payout execution note:', err);
       }
+    } else if (!isEligibleForAutoPayout) {
+      adminNotes = `High-Value Withdrawal ($${reqAmt.toFixed(2)} > $${autoThreshold} Auto-Limit) - Pending Admin Approval`;
     }
 
     const wd: WithdrawalRequest = {
@@ -3027,12 +3036,18 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
     user.upgradeBalance += upgradeDeduction;
   }
 
-  // Attempt Instant Hot Wallet Dispatch if BEP20
+  // Attempt Instant Hot Wallet Dispatch if BEP20 AND requested amount is within Auto-Payout Threshold (Default <= $20)
   let autoDispatched = false;
   let liveTxHash = 'Pending Approval';
-  let adminNotes = 'Submitted - Pending Admin Approval & Blockchain Dispatched';
+  let adminNotes = 'Submitted - Pending Admin Approval';
 
-  if (network === 'BEP20' || (!network && targetAddress.startsWith('0x'))) {
+  const autoThreshold = state.settings.autoPayoutThresholdUSDT !== undefined
+    ? Number(state.settings.autoPayoutThresholdUSDT)
+    : 20;
+
+  const isEligibleForAutoPayout = reqAmt <= autoThreshold;
+
+  if (isEligibleForAutoPayout && (network === 'BEP20' || (!network && targetAddress.startsWith('0x')))) {
     try {
       const payoutRes = await executeBep20Payout(targetAddress, netAmount);
       if (payoutRes.success && payoutRes.txHash) {
@@ -3040,11 +3055,13 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
         liveTxHash = payoutRes.txHash;
         adminNotes = `⚡ Instant Auto-Dispatched via Hot Wallet (BSC Tx: ${payoutRes.txHash})`;
       } else if (payoutRes.error) {
-        adminNotes = `Queued for dispatch (${payoutRes.error})`;
+        adminNotes = `Queued for manual dispatch (${payoutRes.error})`;
       }
     } catch (err: any) {
       console.warn('Auto payout execution note:', err);
     }
+  } else if (!isEligibleForAutoPayout) {
+    adminNotes = `High-Value Withdrawal ($${reqAmt.toFixed(2)} > $${autoThreshold} Auto-Limit) - Pending Admin Approval`;
   }
 
   const wd: WithdrawalRequest = {
@@ -5267,6 +5284,11 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
     mergedSettings.winningWithdrawalMinAmount = typeof mergedSettings.winningWithdrawalMinAmount === 'number'
       ? mergedSettings.winningWithdrawalMinAmount
       : (parseFloat(mergedSettings.winningWithdrawalMinAmount as any) || 5);
+  }
+  if (mergedSettings.autoPayoutThresholdUSDT !== undefined) {
+    mergedSettings.autoPayoutThresholdUSDT = typeof mergedSettings.autoPayoutThresholdUSDT === 'number'
+      ? mergedSettings.autoPayoutThresholdUSDT
+      : (parseFloat(mergedSettings.autoPayoutThresholdUSDT as any) || 20);
   }
 
   // Sanitize daily tournament configuration

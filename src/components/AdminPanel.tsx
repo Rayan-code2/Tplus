@@ -3150,6 +3150,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <div>
+                  <span className="text-slate-400">Auto Instant Payout Limit ($ USDT):</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editableSettings.autoPayoutThresholdUSDT ?? 20}
+                    onChange={(e) =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        autoPayoutThresholdUSDT: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full bg-[#050911] border border-emerald-500/50 rounded-lg p-2 text-emerald-300 font-bold mt-1"
+                    placeholder="20 (≤$20 Auto, >$20 Admin Manual Approval)"
+                  />
+                  <p className="text-[10px] text-emerald-400/80 mt-0.5">
+                    ≤ ${editableSettings.autoPayoutThresholdUSDT ?? 20} instant auto blockchain transfer, &gt; ${editableSettings.autoPayoutThresholdUSDT ?? 20} requires manual Admin Approval.
+                  </p>
+                </div>
+                <div>
                   <span className="text-slate-400">Withdrawal Upgrade Deduction (%):</span>
                   <input
                     type="number"
