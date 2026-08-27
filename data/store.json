@@ -104,9 +104,13 @@
       "usdtToInr": 100,
       "inrToUsdt": 0.01
     },
-    "withdrawalFeePercent": 2,
-    "upgradeFundDeductionPercent": 20,
-    "tickerText": "⚡ LIVE CRYPTOSPIRAL NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | BNB/USDT $680 (+1.9%) | 🚀 GLOBAL BOOSTING POOL CYCLE #142 ACTIVE | TOTAL DISTRIBUTED: $1,485,200 USDT ⚡",
+    "withdrawalFeePercent": 10,
+    "minDepositAmount": 10,
+    "minWithdrawalAmount": 10,
+    "winningWithdrawalFeePercent": 10,
+    "winningWithdrawalMinAmount": 5,
+    "upgradeFundDeductionPercent": 30,
+    "tickerText": "⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | BNB/USDT $680 (+1.9%) | 🚀 GLOBAL BOOSTING POOL CYCLE #142 ACTIVE | TOTAL DISTRIBUTED: $1,485,200 USDT ⚡",
     "spinWheelRewards": [
       {
         "id": "sp-1",
@@ -255,7 +259,8 @@
           "ticketNumber": ""
         }
       }
-    }
+    },
+    "spinHouseProfitPercent": 55
   },
   "users": [
     {
@@ -3052,9 +3057,9 @@
     ]
   },
   "colorPrediction": {
-    "currentPeriodId": "202608171295",
+    "currentPeriodId": "202608251379",
     "periodDurationSeconds": 60,
-    "startTime": 1786990513968,
+    "startTime": 1787637009642,
     "forcedNextNumber": null,
     "bets": [
       {
@@ -3272,6 +3277,594 @@
     ],
     "history": [
       {
+        "periodId": "202608251378",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:50:09.642Z"
+      },
+      {
+        "periodId": "202608251377",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T05:49:09.606Z"
+      },
+      {
+        "periodId": "202608251376",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T05:48:09.566Z"
+      },
+      {
+        "periodId": "202608251375",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:47:09.532Z"
+      },
+      {
+        "periodId": "202608251374",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:46:09.498Z"
+      },
+      {
+        "periodId": "202608251373",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:45:09.467Z"
+      },
+      {
+        "periodId": "202608251372",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T05:44:09.438Z"
+      },
+      {
+        "periodId": "202608251371",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T05:43:09.407Z"
+      },
+      {
+        "periodId": "202608251370",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:42:09.372Z"
+      },
+      {
+        "periodId": "202608251369",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:41:09.348Z"
+      },
+      {
+        "periodId": "202608251368",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:40:09.319Z"
+      },
+      {
+        "periodId": "202608251367",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:39:09.292Z"
+      },
+      {
+        "periodId": "202608251366",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:38:09.247Z"
+      },
+      {
+        "periodId": "202608251365",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:37:09.204Z"
+      },
+      {
+        "periodId": "202608251364",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:36:09.154Z"
+      },
+      {
+        "periodId": "202608251363",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:35:09.109Z"
+      },
+      {
+        "periodId": "202608251362",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:34:09.072Z"
+      },
+      {
+        "periodId": "202608251361",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T05:33:09.030Z"
+      },
+      {
+        "periodId": "202608251360",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:32:08.988Z"
+      },
+      {
+        "periodId": "202608251359",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:31:08.949Z"
+      },
+      {
+        "periodId": "202608251358",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:30:08.915Z"
+      },
+      {
+        "periodId": "202608251357",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T05:29:08.876Z"
+      },
+      {
+        "periodId": "202608251356",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T05:28:08.833Z"
+      },
+      {
+        "periodId": "202608251355",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T05:27:08.807Z"
+      },
+      {
+        "periodId": "202608251354",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:26:08.775Z"
+      },
+      {
+        "periodId": "202608251353",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T05:25:08.737Z"
+      },
+      {
+        "periodId": "202608251352",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:24:08.704Z"
+      },
+      {
+        "periodId": "202608251351",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:23:08.670Z"
+      },
+      {
+        "periodId": "202608251350",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:22:08.629Z"
+      },
+      {
+        "periodId": "202608251349",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T05:21:08.572Z"
+      },
+      {
+        "periodId": "202608251348",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:20:08.531Z"
+      },
+      {
+        "periodId": "202608251347",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:19:08.486Z"
+      },
+      {
+        "periodId": "202608251346",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T05:18:08.439Z"
+      },
+      {
+        "periodId": "202608251345",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:17:08.394Z"
+      },
+      {
+        "periodId": "202608251344",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:16:08.355Z"
+      },
+      {
+        "periodId": "202608251343",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:15:08.317Z"
+      },
+      {
+        "periodId": "202608251342",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:14:08.277Z"
+      },
+      {
+        "periodId": "202608251341",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T05:13:08.235Z"
+      },
+      {
+        "periodId": "202608251340",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:12:08.194Z"
+      },
+      {
+        "periodId": "202608251339",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T05:11:08.158Z"
+      },
+      {
+        "periodId": "202608251338",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:10:08.126Z"
+      },
+      {
+        "periodId": "202608251337",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:09:08.087Z"
+      },
+      {
+        "periodId": "202608251336",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:08:08.062Z"
+      },
+      {
+        "periodId": "202608251335",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:07:08.036Z"
+      },
+      {
+        "periodId": "202608251334",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T05:06:08.009Z"
+      },
+      {
+        "periodId": "202608251333",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:05:07.980Z"
+      },
+      {
+        "periodId": "202608251332",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:04:07.957Z"
+      },
+      {
+        "periodId": "202608251331",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-25T05:03:07.933Z"
+      },
+      {
+        "periodId": "202608251330",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:02:07.909Z"
+      },
+      {
+        "periodId": "202608251329",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:01:07.881Z"
+      },
+      {
+        "periodId": "202608251328",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T05:00:07.853Z"
+      },
+      {
+        "periodId": "202608251327",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T04:59:07.829Z"
+      },
+      {
+        "periodId": "202608251326",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-25T04:58:07.795Z"
+      },
+      {
+        "periodId": "202608251325",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T04:57:07.753Z"
+      },
+      {
+        "periodId": "202608251324",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:56:07.707Z"
+      },
+      {
+        "periodId": "202608251323",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:55:07.666Z"
+      },
+      {
+        "periodId": "202608251322",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:54:07.629Z"
+      },
+      {
+        "periodId": "202608251321",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-25T04:53:07.590Z"
+      },
+      {
+        "periodId": "202608251320",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:52:07.550Z"
+      },
+      {
+        "periodId": "202608251319",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:51:07.520Z"
+      },
+      {
+        "periodId": "202608251318",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:50:07.491Z"
+      },
+      {
+        "periodId": "202608251317",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:49:07.463Z"
+      },
+      {
+        "periodId": "202608251316",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:48:07.436Z"
+      },
+      {
+        "periodId": "202608251315",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:47:07.411Z"
+      },
+      {
+        "periodId": "202608251314",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:46:07.385Z"
+      },
+      {
+        "periodId": "202608251313",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:45:07.363Z"
+      },
+      {
+        "periodId": "202608251312",
+        "number": 7,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T04:44:07.321Z"
+      },
+      {
+        "periodId": "202608251311",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-25T04:43:07.271Z"
+      },
+      {
+        "periodId": "202608251310",
+        "number": 5,
+        "color": "violet-green",
+        "size": "big",
+        "completedAt": "2026-08-25T04:42:07.220Z"
+      },
+      {
+        "periodId": "202608251309",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:41:07.179Z"
+      },
+      {
+        "periodId": "202608251308",
+        "number": 9,
+        "color": "green",
+        "size": "big",
+        "completedAt": "2026-08-25T04:40:07.139Z"
+      },
+      {
+        "periodId": "202608251307",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T04:39:07.099Z"
+      },
+      {
+        "periodId": "202608251306",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T04:38:07.055Z"
+      },
+      {
+        "periodId": "202608251305",
+        "number": 2,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:37:07.020Z"
+      },
+      {
+        "periodId": "202608251304",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:36:06.984Z"
+      },
+      {
+        "periodId": "202608251303",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:35:06.944Z"
+      },
+      {
+        "periodId": "202608251302",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:34:06.893Z"
+      },
+      {
+        "periodId": "202608251301",
+        "number": 0,
+        "color": "violet-red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:33:06.860Z"
+      },
+      {
+        "periodId": "202608251300",
+        "number": 6,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:32:06.829Z"
+      },
+      {
+        "periodId": "202608251299",
+        "number": 8,
+        "color": "red",
+        "size": "big",
+        "completedAt": "2026-08-25T04:31:06.801Z"
+      },
+      {
+        "periodId": "202608251298",
+        "number": 3,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T04:30:06.770Z"
+      },
+      {
+        "periodId": "202608251297",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T04:29:06.747Z"
+      },
+      {
+        "periodId": "202608251296",
+        "number": 1,
+        "color": "green",
+        "size": "small",
+        "completedAt": "2026-08-25T04:28:06.719Z"
+      },
+      {
+        "periodId": "202608171295",
+        "number": 4,
+        "color": "red",
+        "size": "small",
+        "completedAt": "2026-08-25T04:27:06.684Z"
+      },
+      {
         "periodId": "202608171294",
         "number": 5,
         "color": "violet-green",
@@ -3382,626 +3975,38 @@
         "color": "violet-red",
         "size": "small",
         "completedAt": "2026-08-17T18:00:11.540Z"
-      },
-      {
-        "periodId": "202608171278",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:59:10.673Z"
-      },
-      {
-        "periodId": "202608171277",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:58:10.492Z"
-      },
-      {
-        "periodId": "202608171276",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:57:10.453Z"
-      },
-      {
-        "periodId": "202608171275",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:56:10.414Z"
-      },
-      {
-        "periodId": "202608171274",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:55:10.378Z"
-      },
-      {
-        "periodId": "202608171273",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:54:10.338Z"
-      },
-      {
-        "periodId": "202608171272",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:53:10.292Z"
-      },
-      {
-        "periodId": "202608171271",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:52:10.258Z"
-      },
-      {
-        "periodId": "202608171270",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:51:10.218Z"
-      },
-      {
-        "periodId": "202608171269",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:50:10.185Z"
-      },
-      {
-        "periodId": "202608171268",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:49:10.151Z"
-      },
-      {
-        "periodId": "202608171267",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:48:10.114Z"
-      },
-      {
-        "periodId": "202608171266",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:47:10.082Z"
-      },
-      {
-        "periodId": "202608171265",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:46:10.018Z"
-      },
-      {
-        "periodId": "202608171264",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:45:09.979Z"
-      },
-      {
-        "periodId": "202608171263",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:44:09.944Z"
-      },
-      {
-        "periodId": "202608171262",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:43:09.903Z"
-      },
-      {
-        "periodId": "202608171261",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:42:09.867Z"
-      },
-      {
-        "periodId": "202608171260",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:41:09.821Z"
-      },
-      {
-        "periodId": "202608171259",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:40:09.780Z"
-      },
-      {
-        "periodId": "202608171258",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:39:09.742Z"
-      },
-      {
-        "periodId": "202608171257",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:38:09.692Z"
-      },
-      {
-        "periodId": "202608171256",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:37:09.655Z"
-      },
-      {
-        "periodId": "202608171255",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:36:09.617Z"
-      },
-      {
-        "periodId": "202608171254",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:35:09.591Z"
-      },
-      {
-        "periodId": "202608171253",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:34:09.383Z"
-      },
-      {
-        "periodId": "202608171252",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:33:09.343Z"
-      },
-      {
-        "periodId": "202608171251",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:32:09.311Z"
-      },
-      {
-        "periodId": "202608171250",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:31:09.272Z"
-      },
-      {
-        "periodId": "202608171249",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:30:09.238Z"
-      },
-      {
-        "periodId": "202608171248",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:29:09.205Z"
-      },
-      {
-        "periodId": "202608171247",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:28:09.175Z"
-      },
-      {
-        "periodId": "202608171246",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:27:09.127Z"
-      },
-      {
-        "periodId": "202608171245",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:26:09.086Z"
-      },
-      {
-        "periodId": "202608171244",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:25:09.032Z"
-      },
-      {
-        "periodId": "202608171243",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:24:08.995Z"
-      },
-      {
-        "periodId": "202608171242",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:23:08.955Z"
-      },
-      {
-        "periodId": "202608171241",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:22:08.100Z"
-      },
-      {
-        "periodId": "202608171240",
-        "number": 9,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:21:08.072Z"
-      },
-      {
-        "periodId": "202608171239",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:20:08.050Z"
-      },
-      {
-        "periodId": "202608171238",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:19:08.025Z"
-      },
-      {
-        "periodId": "202608171237",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:18:08.004Z"
-      },
-      {
-        "periodId": "202608171236",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:17:07.978Z"
-      },
-      {
-        "periodId": "202608171235",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:16:07.941Z"
-      },
-      {
-        "periodId": "202608171234",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:15:07.919Z"
-      },
-      {
-        "periodId": "202608171233",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:14:07.893Z"
-      },
-      {
-        "periodId": "202608171232",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:13:07.856Z"
-      },
-      {
-        "periodId": "202608171231",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:12:07.818Z"
-      },
-      {
-        "periodId": "202608171230",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:11:07.780Z"
-      },
-      {
-        "periodId": "202608171229",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-17T17:10:06.894Z"
-      },
-      {
-        "periodId": "202608171228",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-17T17:09:06.864Z"
-      },
-      {
-        "periodId": "202608171227",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:08:06.831Z"
-      },
-      {
-        "periodId": "202608171226",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-17T17:07:06.795Z"
-      },
-      {
-        "periodId": "202608171225",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:06:06.758Z"
-      },
-      {
-        "periodId": "202608151224",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-17T17:05:06.719Z"
-      },
-      {
-        "periodId": "202608151223",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:43:00.628Z"
-      },
-      {
-        "periodId": "202608151222",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:42:00.576Z"
-      },
-      {
-        "periodId": "202608151221",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:41:00.518Z"
-      },
-      {
-        "periodId": "202608151220",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:40:00.485Z"
-      },
-      {
-        "periodId": "202608151219",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:39:00.451Z"
-      },
-      {
-        "periodId": "202608151218",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:38:00.410Z"
-      },
-      {
-        "periodId": "202608151217",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:37:00.373Z"
-      },
-      {
-        "periodId": "202608151216",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T17:36:00.335Z"
-      },
-      {
-        "periodId": "202608151215",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:35:00.293Z"
-      },
-      {
-        "periodId": "202608151214",
-        "number": 0,
-        "color": "violet-red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:34:00.260Z"
-      },
-      {
-        "periodId": "202608151213",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:33:00.218Z"
-      },
-      {
-        "periodId": "202608151212",
-        "number": 6,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T17:32:00.182Z"
-      },
-      {
-        "periodId": "202608151211",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:31:00.154Z"
-      },
-      {
-        "periodId": "202608151210",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:30:00.119Z"
-      },
-      {
-        "periodId": "202608151209",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:28:59.770Z"
-      },
-      {
-        "periodId": "202608151208",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T17:27:59.741Z"
-      },
-      {
-        "periodId": "202608151207",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:26:59.710Z"
-      },
-      {
-        "periodId": "202608151206",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:25:59.673Z"
-      },
-      {
-        "periodId": "202608151205",
-        "number": 8,
-        "color": "red",
-        "size": "big",
-        "completedAt": "2026-08-15T17:24:59.631Z"
-      },
-      {
-        "periodId": "202608151204",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:23:59.593Z"
-      },
-      {
-        "periodId": "202608151203",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:22:59.558Z"
-      },
-      {
-        "periodId": "202608151202",
-        "number": 3,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T17:21:59.525Z"
-      },
-      {
-        "periodId": "202608151201",
-        "number": 2,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:20:59.502Z"
-      },
-      {
-        "periodId": "202608151200",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:19:59.476Z"
-      },
-      {
-        "periodId": "202608151199",
-        "number": 7,
-        "color": "green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:18:59.442Z"
-      },
-      {
-        "periodId": "202608151198",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T17:17:59.408Z"
-      },
-      {
-        "periodId": "202608151197",
-        "number": 4,
-        "color": "red",
-        "size": "small",
-        "completedAt": "2026-08-15T17:16:59.366Z"
-      },
-      {
-        "periodId": "202608151196",
-        "number": 1,
-        "color": "green",
-        "size": "small",
-        "completedAt": "2026-08-15T17:15:59.325Z"
-      },
-      {
-        "periodId": "202608151195",
-        "number": 5,
-        "color": "violet-green",
-        "size": "big",
-        "completedAt": "2026-08-15T17:14:58.468Z"
       }
     ],
     "adminMode": "smart_retention_60_40"
   },
   "aviator": {
-    "currentRoundId": "AV-1786990527638",
-    "status": "flying",
-    "currentMultiplier": 2.15,
-    "targetCrashMultiplier": 4.86,
-    "startTime": 1786990539949,
+    "currentRoundId": "AV-1787637012562",
+    "status": "crashed",
+    "currentMultiplier": 2.91,
+    "targetCrashMultiplier": 2.91,
+    "startTime": 1787637021280,
     "bets": [],
     "history": [
-      8.84,
-      5.03,
-      7.95,
-      9.01,
-      5.57,
-      7.24,
-      5.16,
-      9.11,
-      8.1,
-      4.32,
-      1.67,
-      4.11,
-      6.6,
-      7.64,
-      3.84,
-      5.47,
-      6.84,
-      3.44,
-      3.09,
-      4.1
+      2.91,
+      7.65,
+      1.71,
+      4.39,
+      8.38,
+      7.82,
+      7.06,
+      2.09,
+      3.49,
+      6.41,
+      3.98,
+      5.38,
+      8.22,
+      4.77,
+      7.44,
+      6.58,
+      2.46,
+      8.26,
+      7.5,
+      7.58
     ],
     "forcedNextCrash": null,
     "adminMode": "lowest_payout"

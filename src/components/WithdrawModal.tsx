@@ -52,7 +52,9 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const isWinning = selectedWallet === 'winning';
   const reqAmountNum = parseFloat(amount) || 0;
   const currentAvailableBalance = isWinning ? (user.winningBalance || 0) : user.balance;
-  const minWdAmount = isWinning ? (settings.winningWithdrawalMinAmount || 5) : 10;
+  const minWdAmount = isWinning
+    ? (settings.winningWithdrawalMinAmount !== undefined ? settings.winningWithdrawalMinAmount : 5)
+    : (settings.minWithdrawalAmount !== undefined ? settings.minWithdrawalAmount : 10);
 
   const capacityDetails = getWithdrawalCapacityDetails(user, settings, withdrawalRequests, transactions);
   const { isUpgraded20, isUnlimited, remainingCapacity } = capacityDetails;
@@ -62,9 +64,9 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const hasActivePackage = !!(user.activePackageId || user.isUpgraded || isUpgraded20);
 
   // Fee calculation
-  const winFeePercent = settings.winningWithdrawalFeePercent ?? 10;
-  const mlmUpgradePercent = isUpgraded20 ? (settings.upgradeFundDeductionPercent ?? 30) : 0;
-  const mlmFeePercent = settings.withdrawalFeePercent ?? 2;
+  const winFeePercent = settings.winningWithdrawalFeePercent !== undefined ? settings.winningWithdrawalFeePercent : 10;
+  const mlmUpgradePercent = isUpgraded20 ? (settings.upgradeFundDeductionPercent !== undefined ? settings.upgradeFundDeductionPercent : 30) : 0;
+  const mlmFeePercent = settings.withdrawalFeePercent !== undefined ? settings.withdrawalFeePercent : 10;
 
   const adminFeeAmt = isWinning ? reqAmountNum * (winFeePercent / 100) : reqAmountNum * (mlmFeePercent / 100);
   const upgradeDeductionAmt = isWinning ? 0 : reqAmountNum * (mlmUpgradePercent / 100);
@@ -158,11 +160,16 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-slate-300 font-bold">Withdrawal Amount ($ USDT)</label>
+              <div className="flex justify-between items-center">
+                <label className="text-slate-300 font-bold">Withdrawal Amount ($ USDT)</label>
+                <span className="text-[10px] text-amber-400 font-bold">Min: ${minWdAmount} USDT</span>
+              </div>
               <input
                 type="number"
                 min={minWdAmount}
+                step="any"
                 required
+                placeholder={`Minimum $${minWdAmount} USDT`}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="w-full bg-[#050911] border border-slate-700 rounded-xl p-2.5 text-cyan-300 focus:outline-none"

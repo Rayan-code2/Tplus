@@ -45,9 +45,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const minDeposit = settings.minDepositAmount !== undefined ? settings.minDepositAmount : 10;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || parseFloat(amount) < 10 || !txHash) return;
+    if (!amount || parseFloat(amount) < minDeposit || !txHash) return;
 
     setSubmitting(true);
     try {
@@ -104,11 +106,16 @@ export const DepositModal: React.FC<DepositModalProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="text-slate-300 font-bold">Deposit Amount ($ USDT)</label>
+            <div className="flex justify-between items-center">
+              <label className="text-slate-300 font-bold">Deposit Amount ($ USDT)</label>
+              <span className="text-[10px] text-emerald-400 font-bold">Min: ${minDeposit} USDT</span>
+            </div>
             <input
               type="number"
-              min={10}
+              min={minDeposit}
+              step="any"
               required
+              placeholder={`Minimum $${minDeposit} USDT`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full bg-[#050911] border border-slate-700 rounded-xl p-2.5 text-cyan-300 focus:outline-none"

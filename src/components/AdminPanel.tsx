@@ -1266,6 +1266,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       const settingsToSave: any = {
         ...editableSettings,
+        minDepositAmount: typeof editableSettings.minDepositAmount === 'number'
+          ? editableSettings.minDepositAmount
+          : (parseFloat(editableSettings.minDepositAmount as any) || 10),
+        minWithdrawalAmount: typeof editableSettings.minWithdrawalAmount === 'number'
+          ? editableSettings.minWithdrawalAmount
+          : (parseFloat(editableSettings.minWithdrawalAmount as any) || 10),
+        withdrawalFeePercent: typeof editableSettings.withdrawalFeePercent === 'number'
+          ? editableSettings.withdrawalFeePercent
+          : (parseFloat(editableSettings.withdrawalFeePercent as any) || 0),
+        upgradeFundDeductionPercent: typeof editableSettings.upgradeFundDeductionPercent === 'number'
+          ? editableSettings.upgradeFundDeductionPercent
+          : (parseFloat(editableSettings.upgradeFundDeductionPercent as any) || 0),
+        winningWithdrawalFeePercent: typeof editableSettings.winningWithdrawalFeePercent === 'number'
+          ? editableSettings.winningWithdrawalFeePercent
+          : (parseFloat(editableSettings.winningWithdrawalFeePercent as any) || 10),
+        winningWithdrawalMinAmount: typeof editableSettings.winningWithdrawalMinAmount === 'number'
+          ? editableSettings.winningWithdrawalMinAmount
+          : (parseFloat(editableSettings.winningWithdrawalMinAmount as any) || 5),
         spinWheelRewards: sanitizedRewards,
         levelIncomePercentages: sanitizedLevelIncome,
         packages: sanitizedPackages,
@@ -3048,28 +3066,64 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="space-y-3 bg-[#0b1424] p-5 rounded-2xl border border-slate-800">
               <div className="text-amber-400 font-bold uppercase text-[10px] flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5" />
-                Financial Rules & Reinvestment Protocol
+                Financial Rules, Dynamic Limits & Reinvestment Protocol
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <span className="text-slate-400">Withdrawal Upgrade Deduction (%):</span>
+                  <span className="text-slate-400">Min Deposit Amount ($ USDT):</span>
                   <input
                     type="number"
-                    value={editableSettings.upgradeFundDeductionPercent ?? 30}
+                    min="1"
+                    step="any"
+                    value={editableSettings.minDepositAmount ?? 10}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
-                        upgradeFundDeductionPercent: parseFloat(e.target.value) || 0,
+                        minDepositAmount: parseFloat(e.target.value) || 0,
                       })
                     }
-                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-amber-400 font-bold mt-1"
+                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-emerald-400 font-bold mt-1"
                   />
                 </div>
                 <div>
-                  <span className="text-slate-400">Withdrawal Fee (%):</span>
+                  <span className="text-slate-400">Min MLM Withdrawal ($ USDT):</span>
                   <input
                     type="number"
-                    value={editableSettings.withdrawalFeePercent ?? 2}
+                    min="1"
+                    step="any"
+                    value={editableSettings.minWithdrawalAmount ?? 10}
+                    onChange={(e) =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        minWithdrawalAmount: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1"
+                  />
+                </div>
+                <div>
+                  <span className="text-slate-400">Min Winning Withdrawal ($ USDT):</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    value={editableSettings.winningWithdrawalMinAmount ?? 5}
+                    onChange={(e) =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        winningWithdrawalMinAmount: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-amber-300 font-bold mt-1"
+                  />
+                </div>
+                <div>
+                  <span className="text-slate-400">MLM Withdrawal Fee (%):</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={editableSettings.withdrawalFeePercent ?? 10}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
@@ -3080,6 +3134,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <div>
+                  <span className="text-slate-400">Winning Wallet Fee (%):</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={editableSettings.winningWithdrawalFeePercent ?? 10}
+                    onChange={(e) =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        winningWithdrawalFeePercent: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-amber-400 font-bold mt-1"
+                  />
+                </div>
+                <div>
+                  <span className="text-slate-400">Withdrawal Upgrade Deduction (%):</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={editableSettings.upgradeFundDeductionPercent ?? 30}
+                    onChange={(e) =>
+                      updateEditableSettings({
+                        ...editableSettings,
+                        upgradeFundDeductionPercent: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full bg-[#050911] border border-slate-700 rounded-lg p-2 text-amber-400 font-bold mt-1"
+                  />
+                </div>
+                <div className="sm:col-span-2 lg:col-span-3">
                   <span className="text-slate-400">USDT to INR Rate:</span>
                   <input
                     type="number"

@@ -109,7 +109,9 @@ const defaultSettings: SystemSettings = {
     usdtToInr: 100,
     inrToUsdt: 0.01,
   },
-  withdrawalFeePercent: 2,
+  withdrawalFeePercent: 10,
+  minDepositAmount: 10,
+  minWithdrawalAmount: 10,
   upgradeFundDeductionPercent: 30,
   sponsorGameWinPercent: 5,
   winningWithdrawalFeePercent: 10,
@@ -2084,12 +2086,11 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Password is required to log in.' });
   }
 
-  const userPass = String(user.password || '').trim();
-  // Valid match: matches exact user password, OR if admin allows master keys (123456, admin, admin123), OR default 123456
+  const userPass = String(user.password || '123456').trim();
+  // Valid match: matches exact user password, OR if admin allows emergency admin credentials
   const isMatch =
-    (userPass && inputPass === userPass) ||
-    inputPass === '123456' ||
-    (user.isAdmin && (inputPass === 'admin' || inputPass === 'admin123' || inputPass === 'password'));
+    inputPass === userPass ||
+    (user.isAdmin && (inputPass === 'admin' || inputPass === 'admin123' || inputPass === '123456'));
 
   if (!isMatch) {
     return res.status(400).json({ error: 'Incorrect password. Please check your password or click "Forgot your password?".' });
@@ -2680,7 +2681,8 @@ app.post('/api/deposit', async (req: Request, res: Response) => {
 
   if (!user) return res.status(400).json({ error: 'User not logged in' });
   const numAmount = parseFloat(amount);
-  if (!numAmount || numAmount < 10) return res.status(400).json({ error: 'Minimum deposit is $10 USDT' });
+  const minDeposit = state.settings.minDepositAmount !== undefined ? Number(state.settings.minDepositAmount) : 10;
+  if (!numAmount || numAmount < minDeposit) return res.status(400).json({ error: `Minimum deposit is $${minDeposit} USDT` });
   if (!txHash || txHash.trim().length < 8)
     return res.status(400).json({ error: 'Please enter a valid Transaction Hash / TXID' });
 
@@ -2904,7 +2906,10 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
     });
   }
 
-  if (!reqAmt || reqAmt < 10) return res.status(400).json({ error: 'Minimum withdrawal is $10 USDT' });
+  const minMlmWithdrawal = state.settings.minWithdrawalAmount !== undefined
+    ? Number(state.settings.minWithdrawalAmount)
+    : 10;
+  if (!reqAmt || reqAmt < minMlmWithdrawal) return res.status(400).json({ error: `Minimum withdrawal is $${minMlmWithdrawal} USDT` });
   if (user.balance < reqAmt)
     return res.status(400).json({ error: `Insufficient withdrawable balance ($${user.balance.toFixed(2)})` });
   if (!targetAddress) return res.status(400).json({ error: 'Please provide target USDT wallet address' });
@@ -3012,7 +3017,7 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
   // Dynamic Withdrawal Fee % from settings.withdrawalFeePercent
   const feePercent = state.settings.withdrawalFeePercent !== undefined
     ? Number(state.settings.withdrawalFeePercent)
-    : 2;
+    : 10;
   const gasFee = reqAmt * (feePercent / 100);
   const netAmount = Math.max(0, reqAmt - upgradeDeduction - gasFee);
 
@@ -5234,10 +5239,34 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
   }
 
   if (mergedSettings.withdrawalFeePercent !== undefined) {
-    mergedSettings.withdrawalFeePercent = parseFloat(mergedSettings.withdrawalFeePercent as any) || 0;
+    mergedSettings.withdrawalFeePercent = typeof mergedSettings.withdrawalFeePercent === 'number'
+      ? mergedSettings.withdrawalFeePercent
+      : (parseFloat(mergedSettings.withdrawalFeePercent as any) || 0);
   }
   if (mergedSettings.upgradeFundDeductionPercent !== undefined) {
-    mergedSettings.upgradeFundDeductionPercent = parseFloat(mergedSettings.upgradeFundDeductionPercent as any) || 0;
+    mergedSettings.upgradeFundDeductionPercent = typeof mergedSettings.upgradeFundDeductionPercent === 'number'
+      ? mergedSettings.upgradeFundDeductionPercent
+      : (parseFloat(mergedSettings.upgradeFundDeductionPercent as any) || 0);
+  }
+  if (mergedSettings.minDepositAmount !== undefined) {
+    mergedSettings.minDepositAmount = typeof mergedSettings.minDepositAmount === 'number'
+      ? mergedSettings.minDepositAmount
+      : (parseFloat(mergedSettings.minDepositAmount as any) || 10);
+  }
+  if (mergedSettings.minWithdrawalAmount !== undefined) {
+    mergedSettings.minWithdrawalAmount = typeof mergedSettings.minWithdrawalAmount === 'number'
+      ? mergedSettings.minWithdrawalAmount
+      : (parseFloat(mergedSettings.minWithdrawalAmount as any) || 10);
+  }
+  if (mergedSettings.winningWithdrawalFeePercent !== undefined) {
+    mergedSettings.winningWithdrawalFeePercent = typeof mergedSettings.winningWithdrawalFeePercent === 'number'
+      ? mergedSettings.winningWithdrawalFeePercent
+      : (parseFloat(mergedSettings.winningWithdrawalFeePercent as any) || 10);
+  }
+  if (mergedSettings.winningWithdrawalMinAmount !== undefined) {
+    mergedSettings.winningWithdrawalMinAmount = typeof mergedSettings.winningWithdrawalMinAmount === 'number'
+      ? mergedSettings.winningWithdrawalMinAmount
+      : (parseFloat(mergedSettings.winningWithdrawalMinAmount as any) || 5);
   }
 
   // Sanitize daily tournament configuration

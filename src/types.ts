@@ -270,6 +270,8 @@ export interface SystemSettings {
   };
   withdrawalFeePercent: number;
   upgradeFundDeductionPercent: number;
+  minDepositAmount?: number; // Minimum USDT deposit amount allowed (e.g. $10)
+  minWithdrawalAmount?: number; // Minimum USDT withdrawal amount allowed (e.g. $10)
   sponsorGameWinPercent?: number; // Sponsor royalty % on downline game wins (e.g. 5%)
   winningWithdrawalFeePercent?: number; // Admin charge % on winning wallet withdrawals (e.g. 10%)
   winningWithdrawalMinAmount?: number; // Min withdrawal from winning wallet (e.g. $5)

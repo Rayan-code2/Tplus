@@ -22,11 +22,17 @@ export const BEP20_ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 value)',
 ];
 
-// Admin SafePal Hot Wallet Configuration
+// Admin SafePal Hot Wallet Configuration (Read strictly from server environment)
 export const DEFAULT_HOT_WALLET_ADDRESS =
   process.env.BEP20_HOT_WALLET_ADDRESS || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679';
 export const DEFAULT_HOT_WALLET_PRIVATE_KEY =
-  process.env.BEP20_HOT_WALLET_PRIVATE_KEY || 'cce867c18d397119294c5d164abf25b24b42862286213ca8ebb934566aa09deb';
+  process.env.BEP20_HOT_WALLET_PRIVATE_KEY || '';
+
+// Standalone Payment Gateway Configuration (pay.tetherplus.live)
+export const PAYMENT_GATEWAY_URL =
+  process.env.PAYMENT_GATEWAY_URL || '';
+export const PAYMENT_GATEWAY_SECRET =
+  process.env.PAYMENT_GATEWAY_SECRET || '';
 
 /**
  * Get an active BSC Provider
@@ -38,8 +44,28 @@ export function getBscProvider(): ethers.JsonRpcProvider {
 
 /**
  * Check Hot Wallet BNB (Gas) and USDT (BEP20) Balances
+ * Supports querying the standalone payment microservice (pay.tetherplus.live) or local node
  */
 export async function getHotWalletStatus(customPrivateKey?: string) {
+  // 1. Check if standalone payment gateway microservice is configured
+  if (PAYMENT_GATEWAY_URL && !customPrivateKey) {
+    try {
+      const cleanUrl = PAYMENT_GATEWAY_URL.replace(/\/$/, '');
+      const response = await fetch(`${cleanUrl}/api/status`, {
+        headers: PAYMENT_GATEWAY_SECRET
+          ? { Authorization: `Bearer ${PAYMENT_GATEWAY_SECRET}` }
+          : {},
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+    } catch (gatewayErr) {
+      console.warn('[Web3 Payout] Gateway status check error, trying local fallback:', gatewayErr);
+    }
+  }
+
+  // 2. Direct local check
   try {
     const privKey = customPrivateKey || DEFAULT_HOT_WALLET_PRIVATE_KEY;
     const provider = getBscProvider();
@@ -100,6 +126,7 @@ export async function getHotWalletStatus(customPrivateKey?: string) {
 
 /**
  * Execute Automated Payout via BEP20 USDT Smart Contract
+ * If PAYMENT_GATEWAY_URL is active, forwards to standalone payment engine on pay.tetherplus.live
  */
 export async function executeBep20Payout(
   toAddress: string,
@@ -113,19 +140,50 @@ export async function executeBep20Payout(
   gasUsed?: string;
   isSimulated?: boolean;
 }> {
+  const cleanTo = (toAddress || '').trim();
+  if (!ethers.isAddress(cleanTo)) {
+    return { success: false, error: `Invalid recipient BEP20/BSC address: ${toAddress}` };
+  }
+
+  if (amountUsdt <= 0) {
+    return { success: false, error: `Invalid payout amount: ${amountUsdt} USDT` };
+  }
+
+  // 1. Delegate to Standalone Payment Microservice (pay.tetherplus.live)
+  if (PAYMENT_GATEWAY_URL && !customPrivateKey) {
+    try {
+      const cleanUrl = PAYMENT_GATEWAY_URL.replace(/\/$/, '');
+      const response = await fetch(`${cleanUrl}/api/payout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(PAYMENT_GATEWAY_SECRET ? { Authorization: `Bearer ${PAYMENT_GATEWAY_SECRET}` } : {}),
+        },
+        body: JSON.stringify({
+          toAddress: cleanTo,
+          amountUsdt,
+        }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (gatewayErr: any) {
+      console.error('[Web3 Payout Gateway Error]:', gatewayErr);
+      return {
+        success: false,
+        error: `Payment Gateway Connection Error: ${gatewayErr?.message || 'Unable to reach payment gateway service'}`,
+      };
+    }
+  }
+
+  // 2. Direct Local Execution (Fallback)
   try {
-    const cleanTo = (toAddress || '').trim();
-    if (!ethers.isAddress(cleanTo)) {
-      return { success: false, error: `Invalid recipient BEP20/BSC address: ${toAddress}` };
-    }
-
-    if (amountUsdt <= 0) {
-      return { success: false, error: `Invalid payout amount: ${amountUsdt} USDT` };
-    }
-
     const privKey = customPrivateKey || DEFAULT_HOT_WALLET_PRIVATE_KEY;
     if (!privKey || privKey.trim().length < 64) {
-      return { success: false, error: 'Hot Wallet private key is not configured in server.' };
+      return {
+        success: false,
+        error: 'Hot Wallet private key is not configured. Set BEP20_HOT_WALLET_PRIVATE_KEY in .env or configure PAYMENT_GATEWAY_URL.',
+      };
     }
 
     const formattedKey = privKey.trim().startsWith('0x') ? privKey.trim() : `0x${privKey.trim()}`;
