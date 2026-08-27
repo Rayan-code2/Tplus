@@ -37,7 +37,11 @@ export function getPaymentGatewayUrl(): string {
 }
 
 export function getPaymentGatewaySecret(): string {
-  return process.env.PAYMENT_GATEWAY_SECRET || '';
+  return (
+    process.env.PAYMENT_GATEWAY_SECRET ||
+    process.env.INTERNAL_PAYOUT_SECRET ||
+    'tetherplus_secure_internal_key_2026'
+  );
 }
 
 export const PAYMENT_GATEWAY_URL = process.env.PAYMENT_GATEWAY_URL || '';
@@ -185,6 +189,12 @@ export async function executeBep20Payout(
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data?.error || `Payment gateway returned status ${response.status}`,
+        };
+      }
       return data;
     } catch (gatewayErr: any) {
       console.error('[Web3 Payout Gateway Error]:', gatewayErr);
