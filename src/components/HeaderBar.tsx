@@ -106,37 +106,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-[#0b1320]/95 backdrop-blur-md border-b border-cyan-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-      {/* Dynamic Marquee Ticker */}
-      <div className="bg-[#050911] border-b border-cyan-500/10 py-1.5 px-3 overflow-hidden text-[11px] text-cyan-400 font-mono flex items-center gap-2">
-        <span className="bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded text-[9px] font-bold text-cyan-300 uppercase tracking-wider shrink-0 flex items-center gap-1.5 z-10 shadow-[0_0_10px_rgba(6,182,212,0.2)]">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          Live
-        </span>
-        <div className="overflow-hidden relative w-full flex items-center">
-          <div className="animate-marquee flex items-center gap-8 text-slate-300 shrink-0">
-            <span className="font-bold text-cyan-300">
-              {(settings?.tickerText || '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | 🚀 GLOBAL YIELD POOL: $1,485,200 USDT ⚡').replace(/CRYPTOSPIRAL/gi, 'TETHERPLUS')}
-            </span>
-            <span>•</span>
-            <span className="text-emerald-400 font-semibold">BEP-20 Gas: 3 Gwei</span>
-            <span>•</span>
-            <span className="text-cyan-400 font-bold">LIVE TETHERPLUS NETWORK</span>
-            <span>•</span>
-            <span className="text-amber-400 font-bold">24/7 AUTOMATED SMART CONTRACT YIELD</span>
-            <span>•</span>
-            <span className="font-bold text-cyan-300">
-              {(settings?.tickerText || '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | 🚀 GLOBAL YIELD POOL: $1,485,200 USDT ⚡').replace(/CRYPTOSPIRAL/gi, 'TETHERPLUS')}
-            </span>
-            <span>•</span>
-            <span className="text-emerald-400 font-semibold">BEP-20 Gas: 3 Gwei</span>
-            <span>•</span>
-            <span className="text-cyan-400 font-bold">LIVE TETHERPLUS NETWORK</span>
-            <span>•</span>
-            <span className="text-amber-400 font-bold">24/7 AUTOMATED SMART CONTRACT YIELD</span>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 md:h-16 flex items-center justify-between gap-2">
         {/* Mobile Menu Button & Brand Logo */}
         <div className="flex items-center gap-2 sm:gap-3">
@@ -151,8 +120,9 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           )}
 
           <TetherPlusLogo size="md" showTagline={true} />
-          <span className="hidden xl:inline-block text-[10px] bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-mono font-semibold self-center">
-            v3.8 WEB3
+          <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-gradient-to-r from-amber-500/20 to-rose-500/20 border border-amber-500/40 text-amber-300 px-2.5 py-0.5 rounded-full font-mono font-black self-center shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            CASINO ARENA
           </span>
         </div>
 
@@ -163,37 +133,32 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             <span className="text-slate-300">BSC</span>
           </div>
           <span className="text-slate-600">|</span>
-          <div className="text-cyan-300 font-semibold flex items-center gap-1" title="Deposit Wallet for buying packages & bets">
+          <div className="text-cyan-300 font-semibold flex items-center gap-1" title="Deposit Wallet for gaming bets">
             <Wallet className="w-3.5 h-3.5 text-[#0ef]" />
             <span className="text-[10px] text-slate-400 uppercase">Deposit:</span>
             <span className="text-[#0ef] font-bold">${(user?.depositBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
           </div>
           <span className="text-slate-600">|</span>
-          <div className="text-amber-300 font-semibold flex items-center gap-1" title="Game Winning Wallet (10% Fee, No MLM limits)">
+          <div className="text-amber-300 font-semibold flex items-center gap-1" title="Game Winning Wallet">
             <span className="text-[10px] text-amber-400 uppercase font-bold">🎮 Winning:</span>
             <span className="text-amber-300 font-bold">${(user?.winningBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-          </div>
-          <span className="text-slate-600">|</span>
-          <div className="text-emerald-400 font-semibold flex items-center gap-1" title="Withdrawable MLM Network Balance">
-            <span className="text-[10px] text-slate-400 uppercase">MLM Earned:</span>
-            <span>${(user?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
-          {/* Quick Deposit & Withdraw Buttons (Desktop) */}
+          {/* Quick Deposit & Cashout Buttons (Desktop) */}
           <button
             onClick={onOpenDeposit}
-            className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+            className="hidden sm:flex items-center gap-1 text-xs font-black px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.35)] transition transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            Deposit
+            <span>+ Deposit</span>
           </button>
           <button
             onClick={onOpenWithdraw}
-            className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 transition"
+            className="hidden sm:flex items-center gap-1 text-xs font-black px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.2)] transition transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            Withdraw
+            <span>Cash Out</span>
           </button>
 
           {/* Admin Switcher Toggle (Only visible for Admin Nodes) */}
@@ -326,25 +291,20 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             <span className="text-[9px] text-amber-400 font-bold">🎮 Win:</span>
             <strong className="text-amber-300 font-bold">${(user?.winningBalance || 0).toFixed(2)}</strong>
           </div>
-          <div className="h-3 w-[1px] bg-slate-800" />
-          <div className="flex items-center gap-1 text-emerald-400">
-            <span className="text-[9px] text-slate-400">MLM:</span>
-            <strong className="text-emerald-400 font-bold">${(user?.balance || 0).toFixed(2)}</strong>
-          </div>
         </div>
 
         <div className="flex items-center gap-1.5">
           <button
             onClick={onOpenDeposit}
-            className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold"
+            className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-black shadow-[0_0_8px_rgba(16,185,129,0.3)] transition"
           >
-            + Dep
+            + Deposit
           </button>
           <button
             onClick={onOpenWithdraw}
-            className="px-2 py-0.5 rounded-md bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[10px] font-bold"
+            className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/50 hover:bg-amber-500/30 text-amber-300 text-[10px] font-black shadow-[0_0_8px_rgba(245,158,11,0.2)] transition"
           >
-            ↑ With
+            Cash Out
           </button>
         </div>
       </div>

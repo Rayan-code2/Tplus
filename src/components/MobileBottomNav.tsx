@@ -5,8 +5,8 @@ import {
   Dices,
   Ticket,
   Users,
-  ShoppingBag,
   Disc,
+  Rocket,
   Menu,
 } from 'lucide-react';
 
@@ -28,15 +28,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const navItems = [
     {
       id: 'dashboard',
-      label: 'Home',
+      label: 'Lobby',
       icon: LayoutDashboard,
     },
     {
-      id: 'spinwheel',
-      label: 'Spin Wheel',
-      icon: Disc,
+      id: 'aviator',
+      label: 'Aviator',
+      icon: Rocket,
+      badge: '100X',
       isGold: true,
-      badge: user?.spinCredits ? `${user.spinCredits} SP` : 'WIN',
     },
     {
       id: 'colorprediction',
@@ -51,22 +51,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       badge: '2X',
     },
     {
+      id: 'spinwheel',
+      label: 'Spin',
+      icon: Disc,
+      badge: user?.spinCredits ? `${user.spinCredits} SP` : 'WIN',
+    },
+    {
       id: 'agency',
       label: 'Agency',
       icon: Users,
       badge: '5-Lvl',
-    },
-    {
-      id: 'luckydraw',
-      label: 'Draw',
-      icon: Ticket,
-      badge: '100X',
-    },
-    {
-      id: 'store',
-      label: 'Store',
-      icon: ShoppingBag,
-      badge: 'Deals',
     },
   ];
 

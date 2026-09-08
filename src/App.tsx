@@ -707,22 +707,17 @@ export default function App() {
               onOpenDeposit={() => setIsDepositOpen(true)}
               onOpenWithdraw={() => setIsWithdrawOpen(true)}
             />
-          ) : activeTab === 'agency' ? (
+          ) : activeTab === 'agency' || activeTab === 'matrix' || activeTab === 'rankrewards' ? (
             <ReferralAgencyView user={currentUser} />
           ) : activeTab === 'store' ? (
-            <StoreView
-              currentUser={currentUser}
+            <DashboardView
+              user={currentUser}
               settings={settings}
-              products={products}
-              productOrders={productOrders}
-              onBuyProduct={handleBuyProduct}
+              transactions={transactions}
+              onSelectTab={setActiveTab}
+              onOpenTournament={() => setIsTournamentOpen(true)}
               onOpenDeposit={() => setIsDepositOpen(true)}
-            />
-          ) : activeTab === 'matrix' ? (
-            <MatrixTreeView
-              currentUser={currentUser}
-              users={users}
-              settings={settings}
+              onOpenWithdraw={() => setIsWithdrawOpen(true)}
             />
           ) : activeTab === 'finance' ? (
             <FinanceView
@@ -746,12 +741,7 @@ export default function App() {
               onBuySpinTicket={handleBuySpinTicket}
               onDailyCheckin={handleDailyCheckin}
               onOpenTournament={() => setIsTournamentOpen(true)}
-            />
-          ) : activeTab === 'rankrewards' ? (
-            <RankRewardsView
-              user={currentUser}
-              settings={settings}
-              onClaimRankBonus={handleClaimRankBonus}
+              onOpenDeposit={() => setIsDepositOpen(true)}
             />
           ) : (
             <DashboardView

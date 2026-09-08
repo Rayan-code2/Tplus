@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Disc, ShoppingBag, Sparkles, ShieldCheck, Ticket, Gift, Clock, Flame, CalendarCheck, Trophy, CheckCircle2, Zap } from 'lucide-react';
+import { Disc, ShoppingBag, Sparkles, ShieldCheck, Ticket, Gift, Clock, Flame, CalendarCheck, Trophy, CheckCircle2, Zap, Wallet, ArrowDownLeft } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { User, SystemSettings, SpinReward } from '../types';
 
@@ -11,6 +11,7 @@ interface GamificationViewProps {
   onDailyCheckin?: () => Promise<void>;
   onOpenTournament?: () => void;
   onClaimRankBonus?: (rankId: string) => Promise<void>;
+  onOpenDeposit?: () => void;
 }
 
 export const GamificationView: React.FC<GamificationViewProps> = ({
@@ -20,6 +21,7 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
   onBuySpinTicket,
   onDailyCheckin,
   onOpenTournament,
+  onOpenDeposit,
 }) => {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -361,21 +363,37 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
         </div>
       </div>
 
-      {/* SECTION 2: BUY SPIN TICKETS WITH BALANCE */}
-      <div id="buy-tickets-section" className="bg-[#0b1320] border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4">
+      {/* SECTION 2: BUY SPIN TICKETS WITH GAMING/DEPOSIT BALANCE */}
+      <div id="buy-tickets-section" className="bg-[#0b1320] border border-cyan-500/30 rounded-3xl p-6 space-y-4 shadow-[0_0_25px_rgba(6,182,212,0.1)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-amber-400" />
               Buy Extra Spin Tickets
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Purchase spin credits directly using your main deposit balance @ <span className="text-amber-400 font-bold">${ticketPrice.toFixed(2)} USDT</span> per spin.
+              Purchase spin credits directly using your <span className="text-cyan-400 font-bold">Deposit Wallet (Gaming Balance)</span> @ <span className="text-amber-400 font-bold">${ticketPrice.toFixed(2)} USDT</span> per spin.
             </p>
           </div>
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 uppercase block font-bold">Main Balance</span>
-            <span className="text-sm font-extrabold text-emerald-400">${(user.balance || 0).toFixed(2)} USDT</span>
+          <div className="flex items-center gap-3">
+            <div className="text-right bg-[#060c16] border border-cyan-500/30 px-3.5 py-1.5 rounded-xl">
+              <span className="text-[10px] text-slate-400 uppercase block font-bold flex items-center justify-end gap-1">
+                <Wallet className="w-3 h-3 text-cyan-400" />
+                Deposit / Play Balance
+              </span>
+              <span className="text-sm font-extrabold text-[#0ef]">
+                ${(user.depositBalance || 0).toFixed(2)} <span className="text-xs text-cyan-300">USDT</span>
+              </span>
+            </div>
+            {onOpenDeposit && (
+              <button
+                onClick={onOpenDeposit}
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition flex items-center gap-1 shrink-0"
+              >
+                <ArrowDownLeft className="w-3.5 h-3.5 text-cyan-400" />
+                + Deposit
+              </button>
+            )}
           </div>
         </div>
 
@@ -383,7 +401,8 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[1, 5, 10].map((count) => {
             const cost = count * ticketPrice;
-            const canAfford = (user.balance || 0) >= cost;
+            const availableGamingBal = (user.depositBalance || 0) + (user.winningBalance || 0);
+            const canAfford = availableGamingBal >= cost;
 
             return (
               <button
@@ -432,17 +451,23 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
               onChange={(e) => setBuyQty(Math.max(1, parseInt(e.target.value) || 1))}
               className="w-20 bg-[#0d1726] border border-slate-700 rounded-xl px-3 py-2 text-white font-extrabold text-xs text-center focus:outline-none focus:border-purple-400"
             />
-            <button
-              onClick={() => handleBuyTickets(buyQty)}
-              disabled={(user.balance || 0) < buyQty * ticketPrice || buying}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-                (user.balance || 0) >= buyQty * ticketPrice && !buying
-                  ? 'bg-amber-500 hover:bg-amber-400 text-black font-extrabold shadow-md'
-                  : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              {buying ? 'Processing...' : `Buy for $${(buyQty * ticketPrice).toFixed(2)}`}
-            </button>
+            {(() => {
+              const availableGamingBal = (user.depositBalance || 0) + (user.winningBalance || 0);
+              const canAfford = availableGamingBal >= buyQty * ticketPrice;
+              return (
+                <button
+                  onClick={() => handleBuyTickets(buyQty)}
+                  disabled={!canAfford || buying}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                    canAfford && !buying
+                      ? 'bg-amber-500 hover:bg-amber-400 text-black font-extrabold shadow-md'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  {buying ? 'Processing...' : `Buy for $${(buyQty * ticketPrice).toFixed(2)}`}
+                </button>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -470,9 +495,9 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
             <div className="bg-[#050911] border border-slate-800/80 p-3.5 rounded-2xl flex items-start gap-3">
               <Flame className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold text-slate-200 block">2. Package Purchase Bonus</span>
+                <span className="font-bold text-slate-200 block">2. Gaming Activity Bonus</span>
                 <span className="text-slate-400 text-[11px]">
-                  Activate MLM Investment Packages to receive bonus spins instantly (1 Spin per $10 package value).
+                  Play games and build turnover across Aviator, WinGo, and Dragon vs Tiger to unlock bonus spin credits.
                 </span>
               </div>
             </div>

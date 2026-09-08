@@ -39,7 +39,7 @@ export const RankRewardsView: React.FC<RankRewardsViewProps> = ({
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold text-amber-400 uppercase">
               <Award className="w-4 h-4 text-amber-400" />
-              MLM Leadership Rewards
+              VIP Agent Leadership Rewards
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Rank Leadership Qualification & Cash Bonuses

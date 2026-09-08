@@ -1957,7 +1957,7 @@ function tickAviatorGame() {
   }
 }
 
-setInterval(tickAviatorGame, 300);
+setInterval(tickAviatorGame, 150);
 
 // Helper Functions
 function generateNodeId(): string {
@@ -2426,253 +2426,18 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
   res.json({ success: true, user: newUser });
 });
 
-// 4. Buy / Upgrade Package & Distribute Sponsor Bonus + Matrix Level Income
+// 4. Packages/MLM Buy endpoint - Retired for Pure Gaming Platform
 app.post('/api/packages/buy', (req: Request, res: Response) => {
-  const { packageId } = req.body;
-  const user = getUserFromReq(req);
-  const pkg = state.settings.packages.find((p) => p.id === packageId);
-
-  if (!user || !pkg) {
-    return res.status(400).json({ error: 'Invalid user or package' });
-  }
-
-  const depositBal = user.depositBalance || 0;
-  if (depositBal < pkg.price) {
-    return res.status(400).json({
-      error: `Insufficient Deposit Wallet balance ($${depositBal.toFixed(2)} USDT available). Please deposit at least $${(pkg.price - depositBal).toFixed(2)} USDT to your Deposit Wallet first.`,
-    });
-  }
-
-  // Deduct package price from Deposit Wallet
-  user.depositBalance = depositBal - pkg.price;
-
-  // Check if this package is an Upgrade / Booster Package (0% ROI)
-  const isUpgradePkg = pkg.isUpgradePackage || pkg.dailyRoiPercent === 0;
-
-  if (isUpgradePkg) {
-    user.isUpgraded = true;
-    // Keep active ROI package if user already had one with dailyRoiPercent > 0
-    if (!user.activePackageId) {
-      user.activePackageId = pkg.id;
-    }
-  } else {
-    user.activePackageId = pkg.id;
-  }
-
-  user.packageActivatedAt = new Date().toISOString();
-  user.packageExpiryDays = pkg.durationDays || 100;
-
-  // Create Package Purchase Transaction
-  const pkgTx: Transaction = {
-    id: `tx-${Date.now()}-pkg`,
-    userId: user.id,
-    userNodeId: user.nodeId,
-    type: 'admin_adjust',
-    amount: pkg.price,
-    status: 'completed',
-    notes: `Activated Package: ${pkg.name} ($${pkg.price}) [Paid via Deposit Wallet]`,
-    createdAt: new Date().toISOString(),
-  };
-  state.transactions.unshift(pkgTx);
-
-  // 1. Direct Sponsor Bonus (Configured per package)
-  if (user.sponsorId) {
-    const sponsor = state.users.find((u) => u.id === user.sponsorId);
-    if (sponsor) {
-      // Upgrade / Qualifier packages ($20 or 0% ROI) do NOT yield direct sponsor bonus
-      const isUpgrade = pkg.isUpgradePackage || pkg.dailyRoiPercent === 0 || pkg.price === 20;
-      const spPercent = isUpgrade ? 0 : (pkg.sponsorBonusPercent !== undefined ? pkg.sponsorBonusPercent : 10);
-      const sponsorBonus = pkg.price * (spPercent / 100);
-      if (sponsorBonus > 0) {
-        sponsor.balance += sponsorBonus;
-        sponsor.sponsorEarned += sponsorBonus;
-        sponsor.totalEarned += sponsorBonus;
-        sponsor.teamVolume += pkg.price;
-
-        state.transactions.unshift({
-          id: `tx-${Date.now()}-sp`,
-          userId: sponsor.id,
-          userNodeId: sponsor.nodeId,
-          type: 'sponsor_bonus',
-          amount: sponsorBonus,
-          status: 'completed',
-          notes: `${spPercent}% Direct Sponsor Bonus from #${user.nodeId} (${pkg.name})`,
-          createdAt: new Date().toISOString(),
-        });
-      }
-    }
-  }
-
-  // 2. Matrix Level Income (Distributed via 2x2 Matrix Placement Upline Chain)
-  const isUpgrade = pkg.isUpgradePackage || pkg.dailyRoiPercent === 0 || pkg.price === 20;
-  if (!isUpgrade) {
-    let currentPlacementUplineId = user.placementUplineId || user.sponsorId;
-    const maxLevels = state.settings.levelIncomePercentages.length;
-    for (let level = 1; level <= maxLevels && currentPlacementUplineId; level++) {
-      const upline = state.users.find((u) => u.id === currentPlacementUplineId);
-      if (!upline) break;
-
-      const levelConfig = state.settings.levelIncomePercentages.find((l) => l.level === level);
-      if (levelConfig && upline.activePackageId) {
-        const uplinePkg = state.settings.packages.find((p) => p.id === upline.activePackageId);
-        if (uplinePkg && level <= uplinePkg.maxMatrixLevels) {
-          const levelBonus = pkg.price * (levelConfig.percent / 100);
-          upline.balance += levelBonus;
-          upline.levelEarned += levelBonus;
-          upline.totalEarned += levelBonus;
-
-          state.transactions.unshift({
-            id: `tx-${Date.now()}-lvl-${level}`,
-            userId: upline.id,
-            userNodeId: upline.nodeId,
-            type: 'level_income',
-            amount: levelBonus,
-            status: 'completed',
-            notes: `Level ${level} Matrix Income (${levelConfig.percent}%) from #${user.nodeId}`,
-            createdAt: new Date().toISOString(),
-          });
-
-          // Special 100% Sponsor Level Matching Bonus Logic
-          // Sponsor of "upline" gets matching bonus when "upline" earns from target level (e.g. Level 7)
-          const bonusConfig = state.settings.specialSponsorBonus;
-          if (
-            bonusConfig &&
-            bonusConfig.enabled &&
-            level === (bonusConfig.targetLevel || 7) &&
-            upline.sponsorId
-          ) {
-            const sponsorOfUpline = state.users.find((u) => u.id === upline.sponsorId);
-            if (sponsorOfUpline && sponsorOfUpline.activePackageId) {
-              const sponsorPkg = state.settings.packages.find((p) => p.id === sponsorOfUpline.activePackageId);
-              const sponsorPkgPrice = sponsorPkg ? sponsorPkg.price : 0;
-              const sponsorDirects = sponsorOfUpline.directReferralsCount || 0;
-
-              const reqPkgPrice = bonusConfig.requiredSelfPackagePrice !== undefined ? bonusConfig.requiredSelfPackagePrice : 10;
-              const reqDirects = bonusConfig.requiredDirectsCount !== undefined ? bonusConfig.requiredDirectsCount : 2;
-
-              if (sponsorPkgPrice >= reqPkgPrice && sponsorDirects >= reqDirects) {
-                const matchPct = bonusConfig.matchingPercent !== undefined ? bonusConfig.matchingPercent : 100;
-                const specialMatchAmount = levelBonus * (matchPct / 100);
-
-                if (specialMatchAmount > 0) {
-                  sponsorOfUpline.balance += specialMatchAmount;
-                  sponsorOfUpline.specialBonusEarned = (sponsorOfUpline.specialBonusEarned || 0) + specialMatchAmount;
-                  sponsorOfUpline.totalEarned += specialMatchAmount;
-
-                  state.transactions.unshift({
-                    id: `tx-${Date.now()}-spmatch-lvl${level}`,
-                    userId: sponsorOfUpline.id,
-                    userNodeId: sponsorOfUpline.nodeId,
-                    type: 'special_matching_bonus',
-                    amount: specialMatchAmount,
-                    status: 'completed',
-                    notes: `${matchPct}% Special Sponsor Level Matching Bonus from Direct Referral #${upline.nodeId} (Level ${level} Income)`,
-                    createdAt: new Date().toISOString(),
-                  });
-                }
-              }
-            }
-          }
-        }
-      }
-
-      currentPlacementUplineId = upline.placementUplineId || upline.sponsorId;
-    }
-  }
-
-  // 3. Check Qualification for Global Boosting Pool
-  const minDirects = state.settings.boostingPool.minDirects;
-  const minPkgPrice = state.settings.boostingPool.minPackagePrice;
-
-  if (user.directReferralsCount >= minDirects && pkg.price >= minPkgPrice) {
-    const exists = state.boostingQueue.find((b) => b.userId === user.id);
-    if (!exists) {
-      const maxPos = state.boostingQueue.reduce((max, b) => Math.max(max, b.position), 0);
-      state.boostingQueue.push({
-        id: `bst-${Date.now()}`,
-        userId: user.id,
-        nodeId: user.nodeId,
-        userName: user.name,
-        packageId: pkg.id,
-        rebirthCount: 0,
-        position: maxPos + 1,
-        maxRebirthLimit: state.settings.boostingPool.maxRebirthLimit,
-        qualifiedAt: new Date().toISOString(),
-        status: 'queued',
-      });
-    }
-  }
-
-  saveStore();
-  res.json({ success: true, user, package: pkg });
+  return res.status(400).json({
+    error: 'TetherPlus is now a 100% pure gaming platform. No MLM package purchase is required! Deposit USDT to play Color Prediction, Aviator, Dragon vs Tiger, and earn via the 5-Level Agent Referral Turnover.',
+  });
 });
 
-// 5. Claim Node Yield ROI
+// 5. ROI Yield Claim endpoint - Retired for Pure Gaming Platform
 app.post('/api/roi/claim', (req: Request, res: Response) => {
-  const user = getUserFromReq(req);
-  if (!user || !user.activePackageId) {
-    return res.status(400).json({ error: 'No active package to claim ROI' });
-  }
-
-  let pkg = state.settings.packages.find((p) => p.id === user.activePackageId);
-  
-  // If activePackageId points to a 0% ROI upgrade package, find the primary ROI-generating package ($10 package or similar)
-  if (!pkg || !pkg.dailyRoiPercent || pkg.dailyRoiPercent <= 0) {
-    const primaryRoiPkg = state.settings.packages.find((p) => p.dailyRoiPercent && p.dailyRoiPercent > 0);
-    if (primaryRoiPkg) {
-      pkg = primaryRoiPkg;
-    }
-  }
-
-  if (!pkg) return res.status(400).json({ error: 'Package config not found' });
-
-  if (!pkg.dailyRoiPercent || pkg.dailyRoiPercent <= 0) {
-    return res.status(400).json({ error: 'This package does not generate daily ROI yield.' });
-  }
-
-  // Max Capping Check (totalRoiReturnPercent e.g. 200% or 300%)
-  const maxRoiCap = pkg.price * (pkg.totalRoiReturnPercent / 100);
-  if (user.roiEarned >= maxRoiCap) {
-    return res.status(400).json({
-      error: `Maximum ROI Capping Limit of ${pkg.totalRoiReturnPercent}% ($${maxRoiCap.toFixed(2)}) reached for package ${pkg.name}. Please re-topup or upgrade your package to continue.`,
-    });
-  }
-
-  // Calculate elapsed time
-  const lastClaim = new Date(user.lastRoiClaimAt).getTime();
-  const now = Date.now();
-  const elapsedMs = now - lastClaim;
-  const elapsedDays = elapsedMs / (1000 * 60 * 60 * 24);
-
-  const dailyAmount = pkg.price * (pkg.dailyRoiPercent / 100);
-  let claimable = Math.max(0.01, parseFloat((dailyAmount * elapsedDays).toFixed(4)));
-
-  if (user.roiEarned + claimable > maxRoiCap) {
-    claimable = Math.max(0, parseFloat((maxRoiCap - user.roiEarned).toFixed(4)));
-  }
-
-  if (claimable < 0.01) {
-    return res.status(400).json({ error: 'Mining ROI yield building up. Minimum claim is $0.01 USDT.' });
-  }
-
-  user.balance += claimable;
-  user.roiEarned += claimable;
-  user.totalEarned += claimable;
-  user.lastRoiClaimAt = new Date().toISOString();
-
-  state.transactions.unshift({
-    id: `tx-${Date.now()}-roi`,
-    userId: user.id,
-    userNodeId: user.nodeId,
-    type: 'roi',
-    amount: claimable,
-    status: 'completed',
-    notes: `Claimed Real-time Node Mining Yield (${pkg.name})`,
-    createdAt: new Date().toISOString(),
+  return res.status(400).json({
+    error: 'ROI yield has been deprecated. All earnings are generated through live game winnings and the 5-level team betting turnover commission.',
   });
-
-  saveStore();
-  res.json({ success: true, claimedAmount: claimable, user });
 });
 
 // 6. Submit Deposit Request (With Automated Blockchain Verification)
@@ -2907,139 +2672,33 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
     });
   }
 
-  // MLM NETWORK WALLET WITHDRAWAL (WITH NETWORK CONDITIONS)
-  // 0. Active Package Requirement Check
-  if (!user.activePackageId) {
-    return res.status(400).json({
-      error: 'Active Package Required! You must have an active package ($10 Starter or $20 Booster) to request MLM network withdrawals.',
-    });
-  }
-
-  const minMlmWithdrawal = state.settings.minWithdrawalAmount !== undefined
+  // 5-LEVEL REFERRAL AGENCY COMMISSION WALLET WITHDRAWAL (CLEAN GAMING RULES)
+  const minAgencyWithdrawal = state.settings.minWithdrawalAmount !== undefined
     ? Number(state.settings.minWithdrawalAmount)
     : 10;
-  if (!reqAmt || reqAmt < minMlmWithdrawal) return res.status(400).json({ error: `Minimum withdrawal is $${minMlmWithdrawal} USDT` });
-  if (user.balance < reqAmt)
-    return res.status(400).json({ error: `Insufficient withdrawable balance ($${user.balance.toFixed(2)})` });
+  if (!reqAmt || reqAmt < minAgencyWithdrawal) {
+    return res.status(400).json({ error: `Minimum 5-Level Agency Commission withdrawal is $${minAgencyWithdrawal} USDT` });
+  }
+  if (user.balance < reqAmt) {
+    return res.status(400).json({ error: `Insufficient commission balance ($${user.balance.toFixed(2)} USDT available)` });
+  }
   if (!targetAddress) return res.status(400).json({ error: 'Please provide target USDT wallet address' });
 
-  // User's past non-rejected withdrawal history
-  const userWithdrawals = state.withdrawalRequests.filter((w) => w.userId === user.id && w.status !== 'rejected');
-  const totalWithdrawnSoFar = userWithdrawals.reduce((sum, w) => sum + w.requestedAmount, 0);
-
-  // Daily withdrawals today
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayWithdrawnSoFar = userWithdrawals
-    .filter((w) => w.createdAt.startsWith(todayStr))
-    .reduce((sum, w) => sum + w.requestedAmount, 0);
-
-  // 1. Check Daily Capping Rule ($100 / day Max)
-  const MAX_DAILY_CAP = 100;
-  if (todayWithdrawnSoFar + reqAmt > MAX_DAILY_CAP) {
-    const remainingDaily = Math.max(0, MAX_DAILY_CAP - todayWithdrawnSoFar);
-    return res.status(400).json({
-      error: `Daily Withdrawal Limit Exceeded! Maximum allowed per day is $${MAX_DAILY_CAP} USDT. You have already withdrawn $${todayWithdrawnSoFar.toFixed(2)} USDT today. Maximum remaining allowed today: $${remainingDaily.toFixed(2)} USDT.`,
-    });
-  }
-
-  // 2. Check Total Lifetime Capacity Capping Rule:
-  // - $10 Package + 2 Directs: $100 Lifetime Cap (Without 2 directs: $10 limit)
-  // - $20 Package + 2 Directs: $200 Lifetime Cap
-  // - $20 Package + 4 Directs (2 previous + 2 new = 4): $400 Lifetime Cap
-  // - $20 Package + 6 Directs: $600 Lifetime Cap
-  // - Bronze Rank: $1,000 Lifetime Cap
-  // - Silver Rank: $2,000 Lifetime Cap
-  // - Gold Rank: $4,000 Lifetime Cap
-  // - Diamond Rank (or higher): No Limit (Unlimited)
-  const activePkg = state.settings.packages.find((p) => p.id === user.activePackageId);
-  const hasBoosterTx = state.transactions.some(
-    (t) =>
-      t.userId === user.id &&
-      t.notes &&
-      !t.notes.toLowerCase().includes('deposit') &&
-      (t.notes.includes('Activated Package') || t.notes.includes('Booster Pass') || t.notes.includes('pkg-20'))
-  );
-  const isUpgraded20 = !!(
-    user.isUpgraded ||
-    (activePkg && (activePkg.price >= 20 || activePkg.isUpgradePackage)) ||
-    user.activePackageId === 'pkg-20' ||
-    hasBoosterTx
-  );
-
-  const rankLower = (user.rank || '').toLowerCase();
-  const directsCount = user.directReferralsCount || 0;
-
-  let capacityLimit = 10;
-  let tierName = '$10 Starter Package ($10 Max Cap)';
-  let isUnlimited = false;
-
-  if (
-    rankLower.includes('diamond') ||
-    rankLower.includes('apex') ||
-    rankLower.includes('sovereign') ||
-    rankLower.includes('crown')
-  ) {
-    capacityLimit = Infinity;
-    tierName = 'Diamond Rank (No Limit)';
-    isUnlimited = true;
-  } else if (rankLower.includes('gold')) {
-    capacityLimit = 4000;
-    tierName = 'Gold Rank ($4,000 Lifetime Cap)';
-  } else if (rankLower.includes('silver')) {
-    capacityLimit = 2000;
-    tierName = 'Silver Rank ($2,000 Lifetime Cap)';
-  } else if (rankLower.includes('bronze')) {
-    capacityLimit = 1000;
-    tierName = 'Bronze Rank ($1,000 Lifetime Cap)';
-  } else if (isUpgraded20 && directsCount >= 6) {
-    capacityLimit = 600;
-    tierName = '$20 Package + 6 Directs ($600 Lifetime Cap)';
-  } else if (isUpgraded20 && directsCount >= 4) {
-    capacityLimit = 400;
-    tierName = '$20 Package + 4 Directs ($400 Lifetime Cap)';
-  } else if (isUpgraded20 && directsCount >= 2) {
-    capacityLimit = 200;
-    tierName = '$20 Package + 2 Directs ($200 Lifetime Cap)';
-  } else if (directsCount >= 2) {
-    capacityLimit = 100;
-    tierName = '$10 Package + 2 Directs ($100 Lifetime Cap)';
-  } else {
-    capacityLimit = 10;
-    tierName = isUpgraded20
-      ? '$20 Package (<2 Directs) ($10 Lifetime Cap)'
-      : '$10 Package (<2 Directs) ($10 Lifetime Cap)';
-  }
-
-  if (!isUnlimited && (reqAmt > capacityLimit || totalWithdrawnSoFar + reqAmt > capacityLimit)) {
-    const remainingCap = Math.max(0, capacityLimit - totalWithdrawnSoFar);
-    return res.status(400).json({
-      error: `Withdrawal Capping Limit Exceeded! Your current tier (${tierName}) permits a maximum total lifetime withdrawal of $${capacityLimit} USDT. You requested $${reqAmt.toFixed(2)} USDT (already withdrawn: $${totalWithdrawnSoFar.toFixed(2)} USDT). Remaining allowed capacity: $${remainingCap.toFixed(2)} USDT. Please refer direct members or upgrade rank/package to unlock higher limits.`,
-    });
-  }
-
-  // Shopping Wallet Deduction Rule: Dynamic from settings.upgradeFundDeductionPercent
-  const deductionPercent = state.settings.upgradeFundDeductionPercent !== undefined
-    ? Number(state.settings.upgradeFundDeductionPercent)
-    : 30;
-  const upgradeDeduction = reqAmt * (deductionPercent / 100);
-
-  // Dynamic Withdrawal Fee % from settings.withdrawalFeePercent
+  // Dynamic Withdrawal Fee % from settings.withdrawalFeePercent (default 5%)
   const feePercent = state.settings.withdrawalFeePercent !== undefined
     ? Number(state.settings.withdrawalFeePercent)
-    : 10;
+    : 5;
   const gasFee = reqAmt * (feePercent / 100);
-  const netAmount = Math.max(0, reqAmt - upgradeDeduction - gasFee);
+  const upgradeDeduction = 0;
+  const netAmount = Math.max(0, reqAmt - gasFee);
 
   // Deduct requested amount from available balance
   user.balance -= reqAmt;
-  if (upgradeDeduction > 0) {
-    user.upgradeBalance += upgradeDeduction;
-  }
 
   // Attempt Instant Hot Wallet Dispatch if BEP20 AND requested amount is within Auto-Payout Threshold (Default <= $20)
   let autoDispatched = false;
   let liveTxHash = 'Pending Approval';
-  let adminNotes = 'Submitted - Pending Admin Approval';
+  let adminNotes = `Submitted - 5-Level Agency Commission Withdrawal (${feePercent}% Fee)`;
 
   const autoThreshold = state.settings.autoPayoutThresholdUSDT !== undefined
     ? Number(state.settings.autoPayoutThresholdUSDT)
@@ -3070,7 +2729,7 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
     userNodeId: user.nodeId,
     userName: user.name,
     requestedAmount: reqAmt,
-    upgradeDeduction,
+    upgradeDeduction: 0,
     gasFee,
     netAmount,
     targetAddress: targetAddress.trim(),
@@ -3094,12 +2753,12 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
     network,
     notes: autoDispatched
       ? `⚡ Instant Payout: Net ${netAmount.toFixed(2)} USDT sent to ${targetAddress.substring(0, 8)}... (Tx: ${liveTxHash})`
-      : `Withdrawal Request: ${reqAmt} USDT (${upgradeDeduction.toFixed(2)} to Upgrade Wallet, Net ${netAmount.toFixed(2)})`,
+      : `5-Level Agency Commission Withdrawal: ${reqAmt} USDT (${feePercent}% Fee: ${gasFee.toFixed(2)}, Net: ${netAmount.toFixed(2)})`,
     createdAt: new Date().toISOString(),
   });
 
   saveStore();
-  res.json({
+  return res.json({
     success: true,
     autoDispatched,
     message: autoDispatched
@@ -3188,15 +2847,40 @@ app.post('/api/spin/buy-ticket', (req: Request, res: Response) => {
   const ticketPrice = state.settings.spinTicketPrice !== undefined ? Number(state.settings.spinTicketPrice) : 1.0;
   const totalCost = qty * ticketPrice;
 
-  if ((user.balance || 0) < totalCost) {
+  const depositBal = Number(user.depositBalance || 0);
+  const winningBal = Number(user.winningBalance || 0);
+  const availableForGaming = depositBal + winningBal;
+
+  if (availableForGaming < totalCost) {
     return res.status(400).json({
-      error: `Insufficient balance! Total cost for ${qty} spin ticket(s) is $${totalCost.toFixed(2)}, but your current main balance is $${(user.balance || 0).toFixed(2)}.`,
+      error: `Insufficient deposit/gaming balance! Total cost for ${qty} spin ticket(s) is $${totalCost.toFixed(2)} USDT, but your Deposit & Gaming Balance is $${availableForGaming.toFixed(2)} USDT. Please deposit funds into your Deposit Wallet.`,
     });
   }
 
-  // Deduct main balance and add spin credits
-  user.balance -= totalCost;
+  // Deduct from Deposit Balance first, then Winning Balance if needed
+  let remainingCost = totalCost;
+  let deductedDeposit = 0;
+  let deductedWinning = 0;
+
+  if (depositBal >= remainingCost) {
+    user.depositBalance = depositBal - remainingCost;
+    deductedDeposit = remainingCost;
+    remainingCost = 0;
+  } else {
+    deductedDeposit = depositBal;
+    remainingCost -= depositBal;
+    user.depositBalance = 0;
+
+    user.winningBalance = winningBal - remainingCost;
+    deductedWinning = remainingCost;
+    remainingCost = 0;
+  }
+
   user.spinCredits = (user.spinCredits || 0) + qty;
+
+  const deductionDetails = deductedWinning > 0
+    ? `($${deductedDeposit.toFixed(2)} from Deposit Wallet + $${deductedWinning.toFixed(2)} from Winning Wallet)`
+    : `(from Deposit Wallet)`;
 
   state.transactions.unshift({
     id: `tx-spin-buy-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -3205,7 +2889,7 @@ app.post('/api/spin/buy-ticket', (req: Request, res: Response) => {
     type: 'admin_adjust' as any,
     amount: -totalCost,
     status: 'completed',
-    notes: `Purchased ${qty} Spin Ticket(s) ($${totalCost.toFixed(2)}) @ $${ticketPrice.toFixed(2)}/spin`,
+    notes: `Purchased ${qty} Spin Ticket(s) ($${totalCost.toFixed(2)}) ${deductionDetails} @ $${ticketPrice.toFixed(2)}/spin`,
     createdAt: new Date().toISOString(),
   });
 
@@ -3213,8 +2897,10 @@ app.post('/api/spin/buy-ticket', (req: Request, res: Response) => {
   res.json({
     success: true,
     message: `Successfully purchased ${qty} Spin Credit(s)!`,
-    balance: user.balance,
+    depositBalance: user.depositBalance,
+    winningBalance: user.winningBalance,
     spinCredits: user.spinCredits,
+    user,
   });
 });
 
@@ -4627,6 +4313,7 @@ app.get('/api/aviator', (req: Request, res: Response) => {
 
   res.json({
     success: true,
+    serverTime: Date.now(),
     state: av,
     myBet,
   });

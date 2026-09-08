@@ -75,32 +75,22 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   };
 
   // Withdrawal Live Calculation Breakdown
-  const capacityDetails = getWithdrawalCapacityDetails(user, settings, withdrawalRequests, transactions);
-  const { isUpgraded20, capacityLimit, tierTitle, isUnlimited, remainingCapacity, totalWithdrawnSoFar } = capacityDetails;
-
   const reqAmountNum = parseFloat(wdAmount) || 0;
   const isWinning = selectedWallet === 'winning';
 
   const currentAvailableBalance = isWinning ? (user.winningBalance || 0) : user.balance;
-  const minWdAmount = isWinning ? (settings.winningWithdrawalMinAmount || 5) : 10;
-
-  const hasActivePackage = !!(user.activePackageId || user.isUpgraded || isUpgraded20);
-  const isExceeding10PkgLimit = !isWinning && !isUpgraded20 && reqAmountNum > 10;
-  const isExceedingCapacityLimit = !isWinning && !isUnlimited && reqAmountNum > remainingCapacity;
+  const minWdAmount = isWinning ? (settings.winningWithdrawalMinAmount || 5) : (settings.minWithdrawalAmount || 10);
 
   // Fees calculation
   const winFeePercent = settings.winningWithdrawalFeePercent ?? 10;
-  const mlmUpgradeDeductionPercent = isUpgraded20 ? (settings.upgradeFundDeductionPercent ?? 30) : 0;
-  const mlmFeePercent = settings.withdrawalFeePercent ?? 2;
+  const agencyFeePercent = settings.withdrawalFeePercent ?? 5;
 
-  const adminFeeAmt = isWinning ? reqAmountNum * (winFeePercent / 100) : reqAmountNum * (mlmFeePercent / 100);
-  const upgradeDeductionAmt = isWinning ? 0 : reqAmountNum * (mlmUpgradeDeductionPercent / 100);
-  const netPayout = Math.max(0, reqAmountNum - adminFeeAmt - upgradeDeductionAmt);
+  const adminFeeAmt = isWinning ? reqAmountNum * (winFeePercent / 100) : reqAmountNum * (agencyFeePercent / 100);
+  const netPayout = Math.max(0, reqAmountNum - adminFeeAmt);
 
   const handleWithdrawSubmitAction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reqAmountNum || reqAmountNum < minWdAmount) return;
-    if (!isWinning && (isExceeding10PkgLimit || isExceedingCapacityLimit || !hasActivePackage)) return;
     if (currentAvailableBalance < reqAmountNum) return;
     if (!wdAddress || wdAddress.trim().length < 10) return;
 
@@ -313,8 +303,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               </p>
             </div>
 
-            {/* 4 Wallet Overview Cards in Finance */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-[#050911] border border-slate-800 rounded-xl p-3 text-center">
+            {/* 3 Gaming Wallet Overview Cards in Finance */}
+            <div className="grid grid-cols-3 gap-2 bg-[#050911] border border-slate-800 rounded-xl p-3 text-center">
               <div className="bg-[#070d18] p-2 rounded-lg border border-cyan-500/20">
                 <span className="text-[9px] text-cyan-400 font-bold uppercase block">Deposit Wallet</span>
                 <div className="text-sm font-bold text-cyan-300">${(user.depositBalance || 0).toFixed(2)}</div>
@@ -323,17 +313,12 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               <div className="bg-[#070d18] p-2 rounded-lg border border-amber-500/20">
                 <span className="text-[9px] text-amber-400 font-bold uppercase block">Winning Wallet</span>
                 <div className="text-sm font-bold text-amber-300">${(user.winningBalance || 0).toFixed(2)}</div>
-                <span className="text-[8px] text-emerald-400">10% Admin Fee</span>
+                <span className="text-[8px] text-emerald-400">{winFeePercent}% Admin Fee</span>
               </div>
               <div className="bg-[#070d18] p-2 rounded-lg border border-emerald-500/20">
-                <span className="text-[9px] text-emerald-400 font-bold uppercase block">MLM Wallet</span>
+                <span className="text-[9px] text-emerald-400 font-bold uppercase block">5-Level Agency</span>
                 <div className="text-sm font-bold text-emerald-300">${user.balance.toFixed(2)}</div>
-                <span className="text-[8px] text-slate-500">Network Income</span>
-              </div>
-              <div className="bg-[#070d18] p-2 rounded-lg border border-indigo-500/20">
-                <span className="text-[9px] text-indigo-400 font-bold uppercase block">Shopping Fund</span>
-                <div className="text-sm font-bold text-indigo-300">${user.upgradeBalance.toFixed(2)}</div>
-                <span className="text-[8px] text-slate-500">Reinvestment</span>
+                <span className="text-[8px] text-slate-400">Team Bet Turnover</span>
               </div>
             </div>
 
@@ -352,10 +337,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 >
                   <div className="text-xs font-bold flex items-center justify-between">
                     <span>🎮 Game Winning Wallet</span>
-                    <span className="text-[10px] bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded font-extrabold">10% Fee</span>
+                    <span className="text-[10px] bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded font-extrabold">{winFeePercent}% Fee</span>
                   </div>
                   <div className="text-sm font-extrabold text-white mt-1">${(user.winningBalance || 0).toFixed(2)} USDT</div>
-                  <div className="text-[9px] text-emerald-400 mt-1">No MLM Conditions • Instant Payout</div>
+                  <div className="text-[9px] text-emerald-400 mt-1">Game Winnings • Instant Auto Payout ≤ $20</div>
                 </button>
 
                 <button
@@ -368,63 +353,14 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                   }`}
                 >
                   <div className="text-xs font-bold flex items-center justify-between">
-                    <span>🌐 MLM Network Wallet</span>
-                    <span className="text-[10px] bg-cyan-500/30 text-cyan-300 px-1.5 py-0.5 rounded font-extrabold">MLM Rules</span>
+                    <span>👥 5-Level Agency Wallet</span>
+                    <span className="text-[10px] bg-cyan-500/30 text-cyan-300 px-1.5 py-0.5 rounded font-extrabold">{agencyFeePercent}% Fee</span>
                   </div>
                   <div className="text-sm font-extrabold text-white mt-1">${user.balance.toFixed(2)} USDT</div>
-                  <div className="text-[9px] text-amber-400 mt-1">Package & Directs Capping Rules</div>
+                  <div className="text-[9px] text-cyan-400 mt-1">Turnover Commission • Instant Auto Payout ≤ $20</div>
                 </button>
               </div>
             </div>
-
-            {/* MLM Wallet Capacity & Daily Cap Status Box (Shown only if MLM Wallet Selected) */}
-            {selectedWallet === 'mlm' && (
-              <>
-                <div className="bg-[#050911] border border-amber-500/30 rounded-xl p-4 space-y-3 text-xs">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="text-amber-300 font-extrabold uppercase flex items-center gap-1.5">
-                      <ShieldAlert className="w-4 h-4 text-amber-400" />
-                      MLM Network Withdrawal Capping
-                    </span>
-                    <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded text-[10px] font-bold">
-                      {tierTitle}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
-                      <span className="text-slate-400 block text-[9px] uppercase">Lifetime Capping Limit</span>
-                      <span className="font-extrabold text-amber-300">
-                        {isUnlimited ? 'Unlimited' : `$${capacityLimit} USDT`}
-                      </span>
-                    </div>
-
-                    <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
-                      <span className="text-slate-400 block text-[9px] uppercase">Total Withdrawn So Far</span>
-                      <span className="font-bold text-cyan-300">${totalWithdrawnSoFar.toFixed(2)} USDT</span>
-                    </div>
-
-                    <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
-                      <span className="text-slate-400 block text-[9px] uppercase">Daily Max Capping</span>
-                      <span className="font-bold text-emerald-400">$100.00 / Day</span>
-                    </div>
-
-                    <div className="bg-[#070e1b] border border-slate-800 p-2.5 rounded-xl">
-                      <span className="text-slate-400 block text-[9px] uppercase">Today Remaining Daily</span>
-                      <span className="font-bold text-indigo-300">${remainingDaily.toFixed(2)} USDT</span>
-                    </div>
-                  </div>
-                </div>
-
-                <WithdrawalCapacityTracker
-                  user={user}
-                  settings={settings}
-                  withdrawalRequests={withdrawalRequests}
-                  transactions={transactions}
-                  onNavigateToPackages={onNavigateToPackages}
-                />
-              </>
-            )}
 
             <form onSubmit={handleWithdrawSubmitAction} className="space-y-4">
               <div className="space-y-1.5">
@@ -457,28 +393,14 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 />
               </div>
 
-              {selectedWallet === 'mlm' && !user.activePackageId && (
-                <div className="bg-red-500/10 border border-red-500/40 rounded-xl p-3 text-red-400 text-xs font-bold flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span>Withdrawal Condition Alert: Active Package Required for MLM Network withdrawals!</span>
-                </div>
-              )}
-
-              {selectedWallet === 'mlm' && isExceeding10PkgLimit && (
-                <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-3 text-amber-400 text-xs font-bold flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span>$10 Starter Package Limit: Maximum allowed withdrawal is $10 USDT per request.</span>
-                </div>
-              )}
-
               {/* Breakdown Box */}
-              <div className="bg-[#0d1726] border border-amber-500/30 rounded-xl p-4 space-y-2 text-xs font-mono">
-                <div className="flex items-center justify-between text-amber-300 font-bold border-b border-slate-800 pb-2">
+              <div className="bg-[#0d1726] border border-cyan-500/30 rounded-xl p-4 space-y-2 text-xs font-mono">
+                <div className="flex items-center justify-between text-cyan-300 font-bold border-b border-slate-800 pb-2">
                   <span className="flex items-center gap-1">
                     <ShieldAlert className="w-3.5 h-3.5" />
-                    {selectedWallet === 'winning' ? 'Game Winning Wallet Fee Breakdown' : 'MLM Shopping & Fee Rule Breakdown'}
+                    {selectedWallet === 'winning' ? 'Game Winning Wallet Payout Breakdown' : '5-Level Agency Commission Payout Breakdown'}
                   </span>
-                  <span>{selectedWallet === 'winning' ? `${winFeePercent}% Admin Charge` : (isUpgraded20 ? '30% Active' : '0% Exempt')}</span>
+                  <span>{selectedWallet === 'winning' ? `${winFeePercent}% Admin Charge` : `${agencyFeePercent}% Fee`}</span>
                 </div>
 
                 <div className="flex justify-between text-slate-300">
@@ -486,23 +408,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                   <span className="font-bold">${reqAmountNum.toFixed(2)} USDT</span>
                 </div>
 
-                {selectedWallet === 'winning' ? (
-                  <div className="flex justify-between text-amber-400">
-                    <span>Admin Processing Charge ({winFeePercent}%):</span>
-                    <span>-${adminFeeAmt.toFixed(2)} USDT</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between text-amber-400">
-                      <span>{mlmUpgradeDeductionPercent}% Shopping Wallet Fund:</span>
-                      <span>-${upgradeDeductionAmt.toFixed(2)} USDT</span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Network Processing Fee ({mlmFeePercent}%):</span>
-                      <span>-${adminFeeAmt.toFixed(2)} USDT</span>
-                    </div>
-                  </>
-                )}
+                <div className="flex justify-between text-amber-400">
+                  <span>Processing Charge ({isWinning ? winFeePercent : agencyFeePercent}%):</span>
+                  <span>-${adminFeeAmt.toFixed(2)} USDT</span>
+                </div>
 
                 <div className="flex justify-between text-emerald-400 font-extrabold text-sm pt-2 border-t border-slate-800">
                   <span>Net Dispatched To Wallet:</span>
@@ -515,13 +424,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 disabled={
                   submittingWd ||
                   reqAmountNum < minWdAmount ||
-                  currentAvailableBalance < reqAmountNum ||
-                  (!isWinning && (!hasActivePackage || isExceeding10PkgLimit))
+                  currentAvailableBalance < reqAmountNum
                 }
                 className={`w-full py-3.5 rounded-xl font-extrabold text-xs transition shadow-lg ${
-                  reqAmountNum >= minWdAmount &&
-                  currentAvailableBalance >= reqAmountNum &&
-                  (isWinning || (hasActivePackage && !isExceeding10PkgLimit))
+                  reqAmountNum >= minWdAmount && currentAvailableBalance >= reqAmountNum
                     ? 'bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-black font-extrabold shadow-[0_0_15px_rgba(245,158,11,0.3)]'
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                 }`}
@@ -530,9 +436,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                   ? 'Processing Request...'
                   : currentAvailableBalance < reqAmountNum
                   ? `Insufficient Balance ($${currentAvailableBalance.toFixed(2)} USDT)`
-                  : !isWinning && !hasActivePackage
-                  ? 'Active Package Required'
-                  : `Confirm ${selectedWallet === 'winning' ? 'Winning' : 'MLM'} Withdrawal ($${reqAmountNum} USDT)`}
+                  : `Confirm ${selectedWallet === 'winning' ? 'Winning' : 'Agency'} Withdrawal ($${reqAmountNum} USDT)`}
               </button>
             </form>
           </div>

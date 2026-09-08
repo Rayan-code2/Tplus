@@ -140,12 +140,12 @@ export const TetherPlusLogo: React.FC<TetherPlusLogoProps> = ({
         </div>
 
         {showTagline && (
-          <div className={`font-mono text-cyan-400/80 font-bold uppercase mt-1 tracking-[0.2em] flex items-center gap-1 ${currentSize.tagline}`}>
-            <span>CONNECT</span>
-            <span className="text-amber-400/60 font-black">•</span>
-            <span>GROW</span>
-            <span className="text-amber-400/60 font-black">•</span>
-            <span>EARN</span>
+          <div className={`font-mono text-cyan-400/90 font-extrabold uppercase mt-1 tracking-[0.2em] flex items-center gap-1 ${currentSize.tagline}`}>
+            <span className="text-cyan-400">PLAY</span>
+            <span className="text-amber-400 font-black">•</span>
+            <span className="text-amber-300">BET</span>
+            <span className="text-amber-400 font-black">•</span>
+            <span className="text-emerald-400">WIN</span>
           </div>
         )}
       </div>
