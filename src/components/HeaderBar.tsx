@@ -16,6 +16,7 @@ import {
   UserPlus,
   Key,
   Disc,
+  Ticket,
   Eye,
   EyeOff,
   Menu,
@@ -147,6 +148,21 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Quick Lucky Draw Nav Button */}
+          {onSelectTab && (
+            <button
+              onClick={() => onSelectTab('luckydraw')}
+              className="flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)] transition transform hover:scale-[1.02] active:scale-[0.98]"
+              title="Open Lucky Draw Jackpot"
+            >
+              <Ticket className="w-3.5 h-3.5 text-amber-400" />
+              <span className="inline">Draw</span>
+              <span className="text-[8px] bg-amber-400 text-black px-1 rounded font-extrabold uppercase leading-none py-0.5">
+                Jackpot
+              </span>
+            </button>
+          )}
+
           {/* Quick Deposit & Cashout Buttons (Desktop) */}
           <button
             onClick={onOpenDeposit}
@@ -212,6 +228,17 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                       <span className="text-[10px] text-slate-400 block uppercase font-bold">Node Account</span>
                       <span className="text-cyan-400 font-bold truncate block">{user.nodeId}</span>
                     </div>
+
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        onSelectTab?.('luckydraw');
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-amber-500/10 hover:text-amber-300 text-slate-300 flex items-center gap-2.5 transition"
+                    >
+                      <Ticket className="w-4 h-4 text-amber-400" />
+                      <span>Lucky Draw Jackpot</span>
+                    </button>
 
                     <button
                       onClick={() => {

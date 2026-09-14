@@ -15,6 +15,9 @@ import {
   Flame,
   Share2,
   Crown,
+  Ticket,
+  Rocket,
+  Disc,
 } from 'lucide-react';
 import { User, Transaction, SystemSettings } from '../types';
 
@@ -108,6 +111,107 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-[10px] text-amber-300 font-bold group-hover:translate-x-1 inline-flex items-center gap-0.5 transition">
               View Pot →
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Games & Draw Navigation Bar */}
+      {onSelectTab && (
+        <div className="bg-[#0b1320]/80 border border-cyan-500/30 rounded-2xl p-2.5 sm:p-3 shadow-lg backdrop-blur-md">
+          <div className="flex items-center justify-between gap-2 mb-2 px-1">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-cyan-400 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              Featured Games & Instant Jackpot
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+              Instant Payouts • 100% On-Chain
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {/* Lucky Draw Nav Button */}
+            <button
+              onClick={() => onSelectTab('luckydraw')}
+              className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/15 border border-amber-500/50 hover:border-amber-400 text-amber-300 transition group shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/30 flex items-center justify-center text-amber-300 group-hover:scale-110 transition">
+                  <Ticket className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-black text-white group-hover:text-amber-300">Lucky Draw</div>
+                  <div className="text-[9px] text-amber-400 font-bold">JACKPOT WIN</div>
+                </div>
+              </div>
+              <span className="text-amber-400 text-xs group-hover:translate-x-0.5 transition">→</span>
+            </button>
+
+            {/* Aviator Crash Nav Button */}
+            <button
+              onClick={() => onSelectTab('aviator')}
+              className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-rose-500/20 to-red-500/15 border border-rose-500/50 hover:border-rose-400 text-rose-300 transition group shadow-[0_0_15px_rgba(244,63,94,0.15)]"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-rose-500/30 flex items-center justify-center text-rose-300 group-hover:scale-110 transition">
+                  <Rocket className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-black text-white group-hover:text-rose-300">Aviator</div>
+                  <div className="text-[9px] text-rose-400 font-bold">100X HOT</div>
+                </div>
+              </div>
+              <span className="text-rose-400 text-xs group-hover:translate-x-0.5 transition">→</span>
+            </button>
+
+            {/* WinGo Color Prediction */}
+            <button
+              onClick={() => onSelectTab('colorprediction')}
+              className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/15 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 transition group shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/30 flex items-center justify-center text-emerald-300 group-hover:scale-110 transition">
+                  <Dices className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-black text-white group-hover:text-emerald-300">Win Go</div>
+                  <div className="text-[9px] text-emerald-400 font-bold">9X COLOR</div>
+                </div>
+              </div>
+              <span className="text-emerald-400 text-xs group-hover:translate-x-0.5 transition">→</span>
+            </button>
+
+            {/* Dragon vs Tiger */}
+            <button
+              onClick={() => onSelectTab('dragontiger')}
+              className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/15 border border-cyan-500/50 hover:border-cyan-400 text-cyan-300 transition group shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-cyan-500/30 flex items-center justify-center text-cyan-300 group-hover:scale-110 transition">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-black text-white group-hover:text-cyan-300">Dragon vs Tiger</div>
+                  <div className="text-[9px] text-cyan-400 font-bold">2X LIVE</div>
+                </div>
+              </div>
+              <span className="text-cyan-400 text-xs group-hover:translate-x-0.5 transition">→</span>
+            </button>
+
+            {/* Spin & Win */}
+            <button
+              onClick={() => onSelectTab('spinwheel')}
+              className="col-span-2 sm:col-span-1 flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-purple-500/20 to-indigo-500/15 border border-purple-500/50 hover:border-purple-400 text-purple-300 transition group shadow-[0_0_15px_rgba(168,85,247,0.15)]"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-purple-500/30 flex items-center justify-center text-purple-300 group-hover:scale-110 transition">
+                  <Disc className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-black text-white group-hover:text-purple-300">Spin & Win</div>
+                  <div className="text-[9px] text-purple-400 font-bold">{user?.spinCredits || 0} SPINS</div>
+                </div>
+              </div>
+              <span className="text-purple-400 text-xs group-hover:translate-x-0.5 transition">→</span>
+            </button>
           </div>
         </div>
       )}

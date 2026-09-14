@@ -32,6 +32,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       icon: LayoutDashboard,
     },
     {
+      id: 'luckydraw',
+      label: 'Draw',
+      icon: Ticket,
+      badge: 'JACKPOT',
+      isGold: true,
+    },
+    {
       id: 'aviator',
       label: 'Aviator',
       icon: Rocket,
