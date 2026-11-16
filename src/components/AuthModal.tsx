@@ -460,7 +460,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span>Register New Member Node</span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                Join the TetherPlus matrix protocol under your sponsor.
+                Join the SportX gaming platform under your sponsor.
               </p>
             </div>
 

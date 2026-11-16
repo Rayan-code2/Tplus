@@ -73,16 +73,16 @@ export const BoostingQueueView: React.FC<BoostingQueueViewProps> = ({
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-              Global Boosting Queue (${rewardAmt} USDT Payout)
+              Global Boosting Queue (₹{rewardAmt.toLocaleString('en-IN')} INR Payout)
             </h2>
             <p className="text-xs text-slate-300">
-              A fair First-In-First-Out global matrix queue. Qualify once, collect ${rewardAmt} USDT payouts continuously, and auto-rebirth up to {maxRebirth} times!
+              A fair First-In-First-Out global matrix queue. Qualify once, collect ₹{rewardAmt.toLocaleString('en-IN')} INR payouts continuously, and auto-rebirth up to {maxRebirth} times!
             </p>
           </div>
 
           <div className="bg-[#050911] border border-emerald-500/30 p-4 rounded-xl text-center space-y-1.5 shrink-0 w-full md:w-auto">
             <div className="text-[10px] text-slate-400 uppercase">Payout Reward</div>
-            <div className="text-3xl font-extrabold text-emerald-400">${rewardAmt} USDT</div>
+            <div className="text-3xl font-extrabold text-emerald-400">₹{rewardAmt.toLocaleString('en-IN')} INR</div>
             <div className="text-[10px] text-slate-400">Paid directly to wallet</div>
           </div>
         </div>
@@ -131,7 +131,7 @@ export const BoostingQueueView: React.FC<BoostingQueueViewProps> = ({
                 <div>
                   <div className="text-slate-200 font-bold">Minimum Package Threshold</div>
                   <div className="text-[10px] text-slate-400">
-                    Required: Min ${minPkgPrice} Active Package (You have ${pkgPrice})
+                    Required: Min ₹{minPkgPrice.toLocaleString('en-IN')} Active Package (You have ₹{pkgPrice.toLocaleString('en-IN')})
                   </div>
                 </div>
               </div>
@@ -183,7 +183,7 @@ export const BoostingQueueView: React.FC<BoostingQueueViewProps> = ({
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-[10px] text-slate-400">
                     <span>Queue Entry</span>
-                    <span>Payout Cycle ($50 USDT)</span>
+                    <span>Payout Cycle (₹{rewardAmt.toLocaleString('en-IN')} INR)</span>
                   </div>
                   <div className="w-full bg-[#050911] rounded-full h-3 p-0.5 border border-slate-700 overflow-hidden">
                     <div
@@ -275,7 +275,7 @@ export const BoostingQueueView: React.FC<BoostingQueueViewProps> = ({
                         {new Date(entry.qualifiedAt).toLocaleDateString()}
                       </td>
                       <td className="p-3.5 font-bold text-emerald-400">
-                        {entry.position === 1 ? 'NEXT IN LINE ($50 USDT)' : 'In Queue'}
+                        {entry.position === 1 ? `NEXT IN LINE (₹${rewardAmt.toLocaleString('en-IN')} INR)` : 'In Queue'}
                       </td>
                     </tr>
                   );

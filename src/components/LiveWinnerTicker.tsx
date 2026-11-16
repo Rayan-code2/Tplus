@@ -11,6 +11,7 @@ interface WinnerFeed {
 }
 
 const CASINO_GAMES: { name: string; icon: string; multipliers: string[] }[] = [
+  { name: 'Cricket Fantasy 11', icon: '🏏', multipliers: ['Rank 1 Mega', 'Rank 2 Grand', 'Captain 2X', 'Top 5 Winner'] },
   { name: 'Aviator Crash', icon: '🚀', multipliers: ['3.40x', '7.85x', '18.20x', '45.00x', '92.40x'] },
   { name: 'Win Go 1M', icon: '🎲', multipliers: ['9.00x', '2.00x', '4.50x', '9.00x'] },
   { name: 'Dragon vs Tiger', icon: '🐅', multipliers: ['2.00x', '8.00x', '2.00x'] },
@@ -24,12 +25,12 @@ export const LiveWinnerTicker: React.FC = () => {
   useEffect(() => {
     // Initial realistic casino feeds
     const initialFeeds: WinnerFeed[] = [
-      { id: '1', userNode: 'NX-8204', game: 'Aviator Crash 🚀', multiplier: '18.40x', amount: 368.0, time: 'Just now' },
-      { id: '2', userNode: 'NX-1092', game: 'Win Go 1M 🎲', multiplier: '9.00x', amount: 450.0, time: '1s ago' },
-      { id: '3', userNode: 'NX-3041', game: 'Dragon vs Tiger 🐅', multiplier: '2.00x', amount: 160.0, time: '3s ago' },
-      { id: '4', userNode: 'NX-7718', game: 'Lucky Draw 🎟️', multiplier: 'Jackpot', amount: 250.0, time: '5s ago' },
-      { id: '5', userNode: 'NX-0051', game: 'Aviator Crash 🚀', multiplier: '42.10x', amount: 421.0, time: '7s ago' },
-      { id: '6', userNode: 'NX-4412', game: 'Dragon vs Tiger 🐅', multiplier: '8.00x Tie', amount: 320.0, time: '9s ago' },
+      { id: '1', userNode: 'NX-8204', game: 'Aviator Crash 🚀', multiplier: '18.40x', amount: 18400, time: 'Just now' },
+      { id: '2', userNode: 'NX-1092', game: 'Win Go 1M 🎲', multiplier: '9.00x', amount: 4500, time: '1s ago' },
+      { id: '3', userNode: 'NX-3041', game: 'Dragon vs Tiger 🐅', multiplier: '2.00x', amount: 1600, time: '3s ago' },
+      { id: '4', userNode: 'NX-7718', game: 'Lucky Draw 🎟️', multiplier: 'Jackpot', amount: 25000, time: '5s ago' },
+      { id: '5', userNode: 'NX-0051', game: 'Aviator Crash 🚀', multiplier: '42.10x', amount: 21050, time: '7s ago' },
+      { id: '6', userNode: 'NX-4412', game: 'Dragon vs Tiger 🐅', multiplier: '8.00x Tie', amount: 8000, time: '9s ago' },
     ];
     setWinners(initialFeeds);
 
@@ -38,7 +39,7 @@ export const LiveWinnerTicker: React.FC = () => {
       const randomNode = `NX-${Math.floor(1000 + Math.random() * 9000)}`;
       const selectedGame = CASINO_GAMES[Math.floor(Math.random() * CASINO_GAMES.length)];
       const randomMultiplier = selectedGame.multipliers[Math.floor(Math.random() * selectedGame.multipliers.length)];
-      const randomAmount = Math.floor(15 + Math.random() * 485);
+      const randomAmount = Math.floor(250 + Math.random() * 14750);
 
       const newWinner: WinnerFeed = {
         id: Date.now().toString(),
@@ -73,7 +74,7 @@ export const LiveWinnerTicker: React.FC = () => {
                 <span className="text-cyan-400 font-bold">#{w.userNode}</span>
                 <span className="text-slate-500">won</span>
                 <span className="text-emerald-400 font-extrabold bg-emerald-500/15 border border-emerald-500/40 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(16,185,129,0.2)]">
-                  +${w.amount.toFixed(2)} USDT
+                  +₹{w.amount.toLocaleString('en-IN')} INR
                 </span>
                 {w.multiplier && (
                   <span className="text-amber-400 font-bold text-[10px] bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 rounded">

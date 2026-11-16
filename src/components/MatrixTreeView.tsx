@@ -133,8 +133,8 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
 
       const earned = volume * (levelPercent / 100);
 
-      // Income per active node (e.g., for $10 node at 5% = $0.50 USDT per node)
-      const avgNodePrice = activeCount > 0 ? volume / activeCount : settings.packages[0]?.price || 10;
+      // Income per active node in INR
+      const avgNodePrice = activeCount > 0 ? volume / activeCount : settings.packages[0]?.price || 1000;
       const incomePerNode = avgNodePrice * (levelPercent / 100);
 
       rows.push({
@@ -285,7 +285,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
                           <span>
                             {pkg ? pkg.name : 'No Package'}
                           </span>
-                          <span className="text-cyan-400 font-bold">${child.teamVolume} Vol</span>
+                          <span className="text-cyan-400 font-bold">₹{child.teamVolume.toLocaleString('en-IN')} Vol</span>
                         </div>
                         <div className="text-[9px] text-slate-500 pt-1.5 border-t border-slate-800/80 text-center group-hover:text-cyan-300">
                           Click to focus this node →
@@ -354,7 +354,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
           </div>
           <div className="bg-[#0b1424] border border-amber-500/30 rounded-xl p-3 bg-amber-500/5">
             <div className="text-[10px] text-amber-400 font-bold uppercase">Total Level Income</div>
-            <div className="text-sm font-extrabold text-amber-300 mt-0.5">${totalEstEarnings.toFixed(2)} USDT</div>
+            <div className="text-sm font-extrabold text-amber-300 mt-0.5">₹{totalEstEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</div>
             <div className="text-[10px] text-amber-500/80 mt-1">Calculated Level Commission</div>
           </div>
         </div>
@@ -369,7 +369,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
                   <th className="p-3.5">Level Comm. %</th>
                   <th className="p-3.5">Total Members</th>
                   <th className="p-3.5">Active / Inactive Status</th>
-                  <th className="p-3.5 text-right">Level Income (USDT)</th>
+                  <th className="p-3.5 text-right">Level Income (INR)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80 text-slate-300">
@@ -394,7 +394,7 @@ export const MatrixTreeView: React.FC<MatrixTreeViewProps> = ({
                       </div>
                     </td>
                     <td className="p-3.5 font-bold text-amber-300 text-right">
-                      ${row.earned.toFixed(2)} USDT
+                      ₹{row.earned.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR
                     </td>
                   </tr>
                 ))}

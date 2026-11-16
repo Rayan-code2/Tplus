@@ -129,9 +129,9 @@ export const StoreView: React.FC<StoreViewProps> = ({
         ];
         const style = colorGradients[i % colorGradients.length];
         return {
-          badge: b.badge || 'OFFICIAL PROMO • TETHER MART',
-          title: b.title || 'Exclusive Web3 Offer',
-          subtitle: b.subtitle || 'Discover premium items with instant USDT rewards and global shipping.',
+          badge: b.badge || 'OFFICIAL PROMO • SPORTX MART',
+          title: b.title || 'Exclusive SportX Offer',
+          subtitle: b.subtitle || 'Discover premium items with instant INR cashback rewards and express delivery.',
           discount: b.discount || 'SPECIAL OFFER',
           cta: b.cta || 'Shop Now',
           category: b.category || 'All',
@@ -142,33 +142,33 @@ export const StoreView: React.FC<StoreViewProps> = ({
       })
     : [
         {
-          badge: 'OFFICIAL CYBER MALL • TETHER MART',
-          title: 'Next-Gen DePIN & Web3 Mining Rigs',
-          subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets with instant USDT rewards.',
+          badge: 'OFFICIAL CYBER MALL • SPORTX MART',
+          title: 'Next-Gen Gaming & Tech Gear',
+          subtitle: 'Equip your setup with pro peripherals, smart watches, and exclusive gadgets with instant INR cashback.',
           discount: 'UP TO 35% OFF',
-          cta: 'Explore DePIN Rigs',
+          cta: 'Explore Tech Gear',
           category: 'Mining Hardware',
           image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
           tagColor: 'border-cyan-500/40 text-cyan-300',
           btnGradient: 'from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)]',
         },
         {
-          badge: 'NEW ARRIVALS • WEB3 APPAREL',
-          title: 'TetherMart Official Cyberpunk Merch',
+          badge: 'NEW ARRIVALS • SPORTX APPAREL',
+          title: 'SportX Mart Official Merch',
           subtitle: 'Exclusive hoodies, embroidered polo tees & custom cap collections crafted with premium cotton blends.',
           discount: 'BUY 1 GET 1 20% OFF',
-          cta: 'Shop Web3 Apparel',
+          cta: 'Shop Official Apparel',
           category: 'Apparel & Merch',
           image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80',
           tagColor: 'border-amber-500/40 text-amber-300',
           btnGradient: 'from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]',
         },
         {
-          badge: 'MILITARY-GRADE COLD STORAGE',
-          title: 'Unhackable Hardware Wallets & Vaults',
-          subtitle: 'Keep your USDT, Bitcoin & Ethereum bulletproof with certified offline storage devices & physical seed cards.',
+          badge: 'MILITARY-GRADE PROTECTION',
+          title: 'Pro Security Devices & Smart Vaults',
+          subtitle: 'Certified hardware security keys, smart locks, and travel essentials with free Pan-India air shipping.',
           discount: 'FREE EXPRESS AIR SHIPPING',
-          cta: 'Explore Cold Storage',
+          cta: 'Explore Security Gear',
           category: 'Hardware Wallets',
           image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80',
           tagColor: 'border-emerald-500/40 text-emerald-300',
@@ -363,8 +363,8 @@ export const StoreView: React.FC<StoreViewProps> = ({
               Shopping Fund:
             </div>
             <div className="text-xs sm:text-sm font-black text-white flex items-center gap-1">
-              <span>${currentUser.upgradeBalance.toFixed(2)}</span>
-              <span className="text-[9px] text-amber-400 font-normal">USDT</span>
+              <span>₹{currentUser.upgradeBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="text-[9px] text-amber-400 font-normal">INR</span>
             </div>
           </div>
 
@@ -603,10 +603,10 @@ export const StoreView: React.FC<StoreViewProps> = ({
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-6">
               {sortedProducts.map((product) => {
-                const inrPrice = product.priceInr || product.priceUsdt * (settings.rates.usdtToInr || 100);
+                const inrPrice = product.priceInr || product.priceUsdt;
                 const isOutOfStock = product.stock <= 0;
                 const isSaved = wishlist.includes(product.id);
-                const originalPrice = (product.priceUsdt * 1.25).toFixed(0); // Display 20% original price strikethrough
+                const originalPrice = Math.round(inrPrice * 1.25); // Display 20% original price strikethrough
 
                 return (
                   <div
@@ -726,12 +726,12 @@ export const StoreView: React.FC<StoreViewProps> = ({
                       <div className="flex flex-col xs:flex-row xs:items-baseline justify-between font-mono pt-1">
                         <div>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-sm sm:text-lg font-black text-emerald-400">${product.priceUsdt}</span>
-                            <span className="text-[9px] sm:text-[10px] text-emerald-500 font-bold">USDT</span>
-                            <span className="text-[10px] sm:text-xs text-slate-500 line-through">${originalPrice}</span>
+                            <span className="text-sm sm:text-lg font-black text-emerald-400">₹{inrPrice.toLocaleString('en-IN')}</span>
+                            <span className="text-[9px] sm:text-[10px] text-emerald-500 font-bold">INR</span>
+                            <span className="text-[10px] sm:text-xs text-slate-500 line-through">₹{originalPrice.toLocaleString('en-IN')}</span>
                           </div>
                           <div className="text-[9px] sm:text-[10px] text-slate-400">
-                            ≈ ₹{inrPrice.toLocaleString('en-IN')}
+                            Free Pan-India Delivery
                           </div>
                         </div>
                       </div>
@@ -775,7 +775,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
             /* LIST VIEW LAYOUT */
             <div className="space-y-4">
               {sortedProducts.map((product) => {
-                const inrPrice = product.priceInr || product.priceUsdt * (settings.rates.usdtToInr || 100);
+                const inrPrice = product.priceInr || product.priceUsdt;
                 const isOutOfStock = product.stock <= 0;
                 const isSaved = wishlist.includes(product.id);
 
@@ -815,8 +815,8 @@ export const StoreView: React.FC<StoreViewProps> = ({
 
                     <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3 font-mono border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-800">
                       <div className="text-right">
-                        <div className="text-lg font-black text-emerald-400">${product.priceUsdt} USDT</div>
-                        <div className="text-[10px] text-slate-400">≈ ₹{inrPrice.toLocaleString('en-IN')} INR</div>
+                        <div className="text-lg font-black text-emerald-400">₹{inrPrice.toLocaleString('en-IN')} INR</div>
+                        <div className="text-[10px] text-slate-400">Free Express Delivery</div>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -888,7 +888,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     <img src={product.image} alt={product.title} className="w-16 h-16 object-cover rounded-lg shrink-0" />
                     <div className="flex-1 space-y-1">
                       <div className="text-xs font-bold text-white line-clamp-1">{product.title}</div>
-                      <div className="text-xs font-black text-emerald-400">${product.priceUsdt} USDT</div>
+                      <div className="text-xs font-black text-emerald-400">₹{(product.priceInr || product.priceUsdt).toLocaleString('en-IN')} INR</div>
                       <div className="flex items-center gap-2 pt-1 font-mono text-[10px]">
                         <button
                           type="button"
@@ -957,7 +957,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     <div className="space-y-1">
                       <div className="text-xs font-bold text-white line-clamp-1">{order.productTitle}</div>
                       <div className="text-[11px] text-slate-400">
-                        Qty: <b className="text-white">{order.quantity}</b> • Paid: <span className="text-emerald-400 font-bold">${order.totalUsdt} USDT</span>
+                        Qty: <b className="text-white">{order.quantity}</b> • Paid: <span className="text-emerald-400 font-bold">₹{order.totalUsdt.toLocaleString('en-IN')} INR</span>
                       </div>
 
                       {(order.selectedSize || order.selectedColor) && (
@@ -1053,9 +1053,9 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     <h2 className="text-xl font-bold text-white tracking-tight">{quickViewProduct.title}</h2>
 
                     <div className="font-mono">
-                      <div className="text-2xl font-black text-emerald-400">${quickViewProduct.priceUsdt} USDT</div>
+                      <div className="text-2xl font-black text-emerald-400">₹{(quickViewProduct.priceInr || quickViewProduct.priceUsdt).toLocaleString('en-IN')} INR</div>
                       <div className="text-xs text-slate-400">
-                        ≈ ₹{(quickViewProduct.priceInr || quickViewProduct.priceUsdt * 100).toLocaleString('en-IN')} INR
+                        100% Pure INR • Free Pan-India Shipping
                       </div>
                     </div>
 
@@ -1158,7 +1158,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                       }}
                       className="py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-extrabold rounded-xl shadow-lg flex items-center justify-center gap-2"
                     >
-                      <span>Buy Now (${(quickViewProduct.priceUsdt * quickViewQty).toFixed(2)})</span>
+                      <span>Buy Now (₹{(quickViewProduct.priceUsdt * quickViewQty).toLocaleString('en-IN')})</span>
                     </button>
                   </div>
                 </div>
@@ -1228,7 +1228,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     <img src={item.product.image} alt={item.product.title} className="w-16 h-16 object-cover rounded-lg shrink-0" />
                     <div className="flex-1 space-y-1">
                       <div className="text-xs font-bold text-white line-clamp-1">{item.product.title}</div>
-                      <div className="text-xs font-black text-emerald-400">${item.product.priceUsdt} USDT</div>
+                      <div className="text-xs font-black text-emerald-400">₹{item.product.priceUsdt.toLocaleString('en-IN')} INR</div>
 
                       {(item.selectedSize || item.selectedColor) && (
                         <div className="text-[10px] text-slate-400 flex items-center gap-2">
@@ -1276,7 +1276,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                 <div className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-1.5 text-xs">
                   <div className="flex justify-between text-slate-400">
                     <span>Cart Items ({cartItems.length}):</span>
-                    <span>${cartTotalUsdt.toFixed(2)} USDT</span>
+                    <span>₹{cartTotalUsdt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</span>
                   </div>
                   <div className="flex justify-between text-slate-400">
                     <span>Shipping:</span>
@@ -1284,11 +1284,11 @@ export const StoreView: React.FC<StoreViewProps> = ({
                   </div>
                   <div className="flex justify-between text-amber-300 font-bold pt-1 border-t border-slate-800">
                     <span>Shopping Fund Balance:</span>
-                    <span>${currentUser.upgradeBalance.toFixed(2)} USDT</span>
+                    <span>₹{currentUser.upgradeBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</span>
                   </div>
                   <div className="flex justify-between text-white font-black text-sm pt-1">
                     <span>Total Payable:</span>
-                    <span className="text-emerald-400">${cartTotalUsdt.toFixed(2)} USDT</span>
+                    <span className="text-emerald-400">₹{cartTotalUsdt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</span>
                   </div>
                 </div>
 
@@ -1314,7 +1314,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                   {isCartCheckingOut ? (
                     <span>Processing Cart Order...</span>
                   ) : (
-                    <span>Checkout All Items (${cartTotalUsdt.toFixed(2)} USDT)</span>
+                    <span>Checkout All Items (₹{cartTotalUsdt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR)</span>
                   )}
                 </button>
               </div>
@@ -1347,7 +1347,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                   </p>
                   <div className="p-3 bg-[#050911] border border-slate-800 rounded-xl text-left text-xs space-y-1">
                     <div className="text-slate-400">
-                      Total Paid: <span className="text-emerald-400 font-bold">${checkoutSuccess.totalUsdt} USDT</span>
+                      Total Paid: <span className="text-emerald-400 font-bold">₹{checkoutSuccess.totalUsdt.toLocaleString('en-IN')} INR</span>
                     </div>
                     <div className="text-slate-400">
                       Delivery Node: <span className="text-slate-200">{checkoutSuccess.shippingAddress}</span>
@@ -1369,8 +1369,8 @@ export const StoreView: React.FC<StoreViewProps> = ({
                   <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
                     <ShoppingCart className="w-5 h-5 text-amber-400" />
                     <div>
-                      <h3 className="font-bold text-white text-sm">TetherMart Checkout Order</h3>
-                      <p className="text-[11px] text-slate-400">Pay directly using your node withdrawable balance</p>
+                      <h3 className="font-bold text-white text-sm">SportX Mart Checkout Order</h3>
+                      <p className="text-[11px] text-slate-400">Pay directly using your INR Shopping Wallet</p>
                     </div>
                   </div>
 
@@ -1383,7 +1383,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     />
                     <div>
                       <div className="text-xs font-bold text-white line-clamp-1">{checkoutProduct.title}</div>
-                      <div className="text-xs font-black text-emerald-400 mt-1">${checkoutProduct.priceUsdt} USDT</div>
+                      <div className="text-xs font-black text-emerald-400 mt-1">₹{checkoutProduct.priceUsdt.toLocaleString('en-IN')} INR</div>
                       <div className="text-[10px] text-slate-500">In stock: {checkoutProduct.stock} items</div>
                     </div>
                   </div>
@@ -1486,7 +1486,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                   <div className="bg-[#050911]/80 border border-slate-800/80 rounded-xl p-3.5 space-y-2 text-xs">
                     <div className="flex justify-between text-slate-400">
                       <span>Unit Price:</span>
-                      <span>${checkoutProduct.priceUsdt} USDT</span>
+                      <span>₹{checkoutProduct.priceUsdt.toLocaleString('en-IN')} INR</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
                       <span>Quantity:</span>
@@ -1494,11 +1494,11 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     </div>
                     <div className="flex justify-between text-amber-300 font-bold">
                       <span>Shopping Fund Balance:</span>
-                      <span>${currentUser.upgradeBalance.toFixed(2)} USDT</span>
+                      <span>₹{currentUser.upgradeBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</span>
                     </div>
                     <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-white text-sm">
                       <span>Total Payable:</span>
-                      <span className="text-amber-400">${(checkoutProduct.priceUsdt * checkoutQty).toFixed(2)} USDT</span>
+                      <span className="text-amber-400">₹{(checkoutProduct.priceUsdt * checkoutQty).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</span>
                     </div>
                   </div>
 
@@ -1519,7 +1519,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                         </button>
                       </div>
                       <p className="text-[10px] text-slate-400">
-                        Mall orders are paid via Upgrade / Marketing Fund. Main Wallet (${currentUser.balance.toFixed(2)} USDT) is reserved for withdrawals.
+                        Mall orders are paid via Shopping Fund. Agency Wallet (₹{currentUser.balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR) is reserved for withdrawals.
                       </p>
                     </div>
                   )}
@@ -1540,7 +1540,7 @@ export const StoreView: React.FC<StoreViewProps> = ({
                     ) : (
                       <>
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>Confirm & Pay ${(checkoutProduct.priceUsdt * checkoutQty).toFixed(2)} USDT</span>
+                        <span>Confirm & Pay ₹{(checkoutProduct.priceUsdt * checkoutQty).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</span>
                       </>
                     )}
                   </button>

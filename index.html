@@ -1,13 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="bg-[#080d14]">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TETHERPLUS - PLAY • BET • WIN</title>
-    <meta name="description" content="Premier Web3 Crypto Gaming Platform featuring Aviator Crash (100x), Color Prediction (Win Go 9x), Dragon vs Tiger (2x/8x), Lucky Draw Mega Jackpot, Daily $250+ Tournament, and 5-Level Referral Turnover Agency." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>SportX - PLAY • BET • WIN</title>
+    <meta name="description" content="SportX Gaming Platform featuring Aviator Crash (100x), Color Prediction (Win Go 9x), Dragon vs Tiger (2x/8x), Lucky Draw Mega Jackpot, Cricket Fantasy 11, Daily Tournament, and 5-Level Referral Agency." />
+    <style>
+      html, body {
+        background-color: #080d14 !important;
+        color: #f8fafc;
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      @keyframes tp-spin {
+        to { transform: rotate(360deg); }
+      }
+      .tp-loader {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(0, 238, 255, 0.2);
+        border-top-color: #00ffff;
+        border-radius: 50%;
+        animation: tp-spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+      }
+    </style>
   </head>
-  <body>
-    <div id="root"></div>
+  <body class="bg-[#080d14] text-slate-100">
+    <div id="root">
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #080d14; color: #00ffff; padding: 20px; text-align: center;">
+        <div class="tp-loader"></div>
+        <div style="font-weight: 800; font-size: 18px; letter-spacing: 0.14em; color: #00ffff; margin-bottom: 6px;">SPORTX</div>
+        <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">Connecting to SportX Gaming Engine...</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

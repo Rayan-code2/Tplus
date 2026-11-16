@@ -25,8 +25,17 @@ import {
   Lock,
   Layers,
   RotateCcw,
+  ChevronLeft,
+  Headphones,
+  Music2,
+  Wallet,
+  X,
+  HelpCircle,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { User, LuckyDrawState, DrawnPrizeTicket, LuckyDrawWinner } from '../types';
+import { JalwaLogo } from './JalwaLogo';
 
 interface LuckyDrawViewProps {
   currentUser: User;
@@ -34,6 +43,8 @@ interface LuckyDrawViewProps {
   onOpenDeposit?: () => void;
   onOpenWithdraw?: () => void;
   onRefreshState?: () => void;
+  onBack?: () => void;
+  showToast?: (message: string, type?: 'success' | 'error') => void;
 }
 
 // Shared AudioContext Singleton to eliminate browser stutter and audio thread leaks
@@ -61,6 +72,8 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   onOpenDeposit,
   onOpenWithdraw,
   onRefreshState,
+  onBack,
+  showToast,
 }) => {
   const [luckyDraw, setLuckyDraw] = useState<LuckyDrawState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,6 +82,20 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   const [selectionMode, setSelectionMode] = useState<'random' | 'custom'>('custom');
   const [customCouponInput, setCustomCouponInput] = useState<string>('');
   const [customCouponList, setCustomCouponList] = useState<string[]>([]);
+  const [activeLotteryTab, setActiveLotteryTab] = useState<'draw' | 'tickets' | 'winners' | 'rules' | 'admin'>('draw');
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [localToast, setLocalToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const displayToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    if (showToast) {
+      showToast(msg, type);
+    } else {
+      setLocalToast({ message: msg, type });
+      setTimeout(() => setLocalToast(null), 3500);
+    }
+  };
 
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
     days: 0,
@@ -282,13 +309,13 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   const [previewLast5Input, setPreviewLast5Input] = useState<string>('');
   const [assignTargetUsers, setAssignTargetUsers] = useState<Record<string, string>>({});
 
-  const [adminTicketPrice, setAdminTicketPrice] = useState<number | string>(5);
-  const [adminPrizeAmount, setAdminPrizeAmount] = useState<number | string>(250);
-  const [adminSecondPrize, setAdminSecondPrize] = useState<number | string>(100);
-  const [adminThirdPrize, setAdminThirdPrize] = useState<number | string>(50);
-  const [adminFourthPrize, setAdminFourthPrize] = useState<number | string>(25);
-  const [adminFifthPrize, setAdminFifthPrize] = useState<number | string>(15);
-  const [adminGuaranteedPrize, setAdminGuaranteedPrize] = useState<number | string>(5);
+  const [adminTicketPrice, setAdminTicketPrice] = useState<number | string>(100);
+  const [adminPrizeAmount, setAdminPrizeAmount] = useState<number | string>(25000);
+  const [adminSecondPrize, setAdminSecondPrize] = useState<number | string>(10000);
+  const [adminThirdPrize, setAdminThirdPrize] = useState<number | string>(5000);
+  const [adminFourthPrize, setAdminFourthPrize] = useState<number | string>(2500);
+  const [adminFifthPrize, setAdminFifthPrize] = useState<number | string>(1500);
+  const [adminGuaranteedPrize, setAdminGuaranteedPrize] = useState<number | string>(500);
   const [adminCountdownMins, setAdminCountdownMins] = useState<number>(60);
   const [adminSearchUser, setAdminSearchUser] = useState('');
   const [adminCouponSearch, setAdminCouponSearch] = useState('');
@@ -307,7 +334,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       alert('No active coupons found in the current pool.');
       return;
     }
-    const headers = ['Ticket Number', 'User Node ID', 'User Name', 'User ID', 'Price (USDT)', 'Purchased At'];
+    const headers = ['Ticket Number', 'User Node ID', 'User Name', 'User ID', 'Price (INR)', 'Purchased At'];
     const csvRows = [
       headers.join(','),
       ...tickets.map((t) =>
@@ -316,7 +343,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           `"${t.userNodeId || ''}"`,
           `"${(t.userName || '').replace(/"/g, '""')}"`,
           `"${t.userId}"`,
-          t.price ?? 5,
+          t.price ?? 100,
           `"${t.purchasedAt || ''}"`,
         ].join(',')
       ),
@@ -342,7 +369,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       'Draw Title',
       'Winning Ticket Number',
       'Prize Tier',
-      'Prize Amount (USDT)',
+      'Prize Amount (INR)',
       'Winner Name',
       'Winner Node ID',
       'Winner User ID',
@@ -504,11 +531,11 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   const handleAddCustomCoupon = () => {
     const cleaned = customCouponInput.trim();
     if (!/^\d{6}$/.test(cleaned)) {
-      alert('Please enter a valid 6-digit coupon number (e.g. 786910, 123456).');
+      displayToast('Please enter a valid 6-digit coupon number (e.g. 786910, 123456).', 'error');
       return;
     }
     if (customCouponList.includes(cleaned)) {
-      alert('Coupon number already added to your list!');
+      displayToast('Coupon number already added to your list!', 'error');
       return;
     }
     const updated = [...customCouponList, cleaned];
@@ -540,10 +567,13 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
     const finalQty = selectionMode === 'custom' && effectiveCustomList.length > 0 ? effectiveCustomList.length : ticketQty;
     const totalCost = luckyDraw.ticketPrice * finalQty;
+    const totalCostInr = totalCost;
 
     const totalUserAvail = (currentUser.depositBalance || 0) + (currentUser.winningBalance || 0) + (currentUser.balance || 0);
+    const totalUserAvailInr = totalUserAvail;
+
     if (totalUserAvail < totalCost) {
-      alert(`Insufficient funds! Total cost is $${totalCost} USDT. (Available Balance: $${totalUserAvail.toFixed(2)} USDT). Please deposit funds.`);
+      displayToast(`Insufficient funds! Total cost is ₹${totalCostInr.toLocaleString('en-IN', { minimumFractionDigits: 2 })} INR. Available: ₹${totalUserAvailInr.toLocaleString('en-IN', { minimumFractionDigits: 2 })} INR. Please deposit funds.`, 'error');
       if (onOpenDeposit) onOpenDeposit();
       return;
     }
@@ -564,7 +594,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       });
       const data = await res.json();
       if (!res.ok || data.error) {
-        alert(data.error || 'Failed to purchase tickets');
+        displayToast(data.error || 'Failed to purchase tickets', 'error');
       } else {
         setCustomCouponList([]);
         setCustomCouponInput('');
@@ -573,10 +603,10 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         }
         await fetchLuckyDraw();
         if (onRefreshState) onRefreshState();
-        alert(`🎉 Success! Purchased ${finalQty} Lucky Draw coupon(s)!`);
+        displayToast(`🎉 Success! Purchased ${finalQty} Lucky Draw coupon(s) for ₹${totalCostInr.toLocaleString('en-IN', { minimumFractionDigits: 2 })} INR!`, 'success');
       }
     } catch (err: any) {
-      alert('Error purchasing tickets: ' + err.message);
+      displayToast('Error purchasing tickets: ' + err.message, 'error');
     } finally {
       setBuying(false);
     }
@@ -593,13 +623,13 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           : luckyDraw?.targetEndTime);
 
       const payload = {
-        ticketPrice: overrides?.ticketPrice !== undefined ? overrides.ticketPrice : (adminTicketPrice === '' ? 5 : Number(adminTicketPrice)),
-        prizeAmount: overrides?.prizeAmount !== undefined ? overrides.prizeAmount : (adminPrizeAmount === '' ? 250 : Number(adminPrizeAmount)),
-        secondPrizeAmount: overrides?.secondPrizeAmount !== undefined ? overrides.secondPrizeAmount : (adminSecondPrize === '' ? 100 : Number(adminSecondPrize)),
-        thirdPrizeAmount: overrides?.thirdPrizeAmount !== undefined ? overrides.thirdPrizeAmount : (adminThirdPrize === '' ? 50 : Number(adminThirdPrize)),
-        fourthPrizeAmount: overrides?.fourthPrizeAmount !== undefined ? overrides.fourthPrizeAmount : (adminFourthPrize === '' ? 25 : Number(adminFourthPrize)),
-        fifthPrizeAmount: overrides?.fifthPrizeAmount !== undefined ? overrides.fifthPrizeAmount : (adminFifthPrize === '' ? 15 : Number(adminFifthPrize)),
-        guaranteedPrizeAmount: overrides?.guaranteedPrizeAmount !== undefined ? overrides.guaranteedPrizeAmount : (adminGuaranteedPrize === '' ? 5 : Number(adminGuaranteedPrize)),
+        ticketPrice: overrides?.ticketPrice !== undefined ? overrides.ticketPrice : (adminTicketPrice === '' ? 100 : Number(adminTicketPrice)),
+        prizeAmount: overrides?.prizeAmount !== undefined ? overrides.prizeAmount : (adminPrizeAmount === '' ? 25000 : Number(adminPrizeAmount)),
+        secondPrizeAmount: overrides?.secondPrizeAmount !== undefined ? overrides.secondPrizeAmount : (adminSecondPrize === '' ? 10000 : Number(adminSecondPrize)),
+        thirdPrizeAmount: overrides?.thirdPrizeAmount !== undefined ? overrides.thirdPrizeAmount : (adminThirdPrize === '' ? 5000 : Number(adminThirdPrize)),
+        fourthPrizeAmount: overrides?.fourthPrizeAmount !== undefined ? overrides.fourthPrizeAmount : (adminFourthPrize === '' ? 2500 : Number(adminFourthPrize)),
+        fifthPrizeAmount: overrides?.fifthPrizeAmount !== undefined ? overrides.fifthPrizeAmount : (adminFifthPrize === '' ? 1500 : Number(adminFifthPrize)),
+        guaranteedPrizeAmount: overrides?.guaranteedPrizeAmount !== undefined ? overrides.guaranteedPrizeAmount : (adminGuaranteedPrize === '' ? 500 : Number(adminGuaranteedPrize)),
         targetEndTime,
         status: 'active',
         forcedPrizes: overrides?.forcedPrizes || forcedPrizesState,
@@ -615,13 +645,13 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       if (res.ok && data.success) {
         if (data.luckyDraw) {
           setLuckyDraw(data.luckyDraw);
-          setAdminTicketPrice(data.luckyDraw.ticketPrice !== undefined ? data.luckyDraw.ticketPrice : 5);
-          setAdminPrizeAmount(data.luckyDraw.prizeAmount !== undefined ? data.luckyDraw.prizeAmount : 250);
-          setAdminSecondPrize(data.luckyDraw.secondPrizeAmount !== undefined ? data.luckyDraw.secondPrizeAmount : 100);
-          setAdminThirdPrize(data.luckyDraw.thirdPrizeAmount !== undefined ? data.luckyDraw.thirdPrizeAmount : 50);
-          setAdminFourthPrize(data.luckyDraw.fourthPrizeAmount !== undefined ? data.luckyDraw.fourthPrizeAmount : 25);
-          setAdminFifthPrize(data.luckyDraw.fifthPrizeAmount !== undefined ? data.luckyDraw.fifthPrizeAmount : 15);
-          setAdminGuaranteedPrize(data.luckyDraw.guaranteedPrizeAmount !== undefined ? data.luckyDraw.guaranteedPrizeAmount : 5);
+          setAdminTicketPrice(data.luckyDraw.ticketPrice !== undefined ? data.luckyDraw.ticketPrice : 100);
+          setAdminPrizeAmount(data.luckyDraw.prizeAmount !== undefined ? data.luckyDraw.prizeAmount : 25000);
+          setAdminSecondPrize(data.luckyDraw.secondPrizeAmount !== undefined ? data.luckyDraw.secondPrizeAmount : 10000);
+          setAdminThirdPrize(data.luckyDraw.thirdPrizeAmount !== undefined ? data.luckyDraw.thirdPrizeAmount : 5000);
+          setAdminFourthPrize(data.luckyDraw.fourthPrizeAmount !== undefined ? data.luckyDraw.fourthPrizeAmount : 2500);
+          setAdminFifthPrize(data.luckyDraw.fifthPrizeAmount !== undefined ? data.luckyDraw.fifthPrizeAmount : 1500);
+          setAdminGuaranteedPrize(data.luckyDraw.guaranteedPrizeAmount !== undefined ? data.luckyDraw.guaranteedPrizeAmount : 500);
           if (data.luckyDraw.forcedPrizes) {
             setForcedPrizesState({
               '1': { userId: data.luckyDraw.forcedPrizes['1']?.userId || '', ticketNumber: data.luckyDraw.forcedPrizes['1']?.ticketNumber || '' },
@@ -656,13 +686,13 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         body: JSON.stringify({
           step: stepToDraw,
           forcedPrizes: forcedPrizesState,
-          ticketPrice: adminTicketPrice === '' ? 5 : Number(adminTicketPrice),
-          prizeAmount: adminPrizeAmount === '' ? 250 : Number(adminPrizeAmount),
-          secondPrizeAmount: adminSecondPrize === '' ? 100 : Number(adminSecondPrize),
-          thirdPrizeAmount: adminThirdPrize === '' ? 50 : Number(adminThirdPrize),
-          fourthPrizeAmount: adminFourthPrize === '' ? 25 : Number(adminFourthPrize),
-          fifthPrizeAmount: adminFifthPrize === '' ? 15 : Number(adminFifthPrize),
-          guaranteedPrizeAmount: adminGuaranteedPrize === '' ? 5 : Number(adminGuaranteedPrize),
+          ticketPrice: adminTicketPrice === '' ? 100 : Number(adminTicketPrice),
+          prizeAmount: adminPrizeAmount === '' ? 25000 : Number(adminPrizeAmount),
+          secondPrizeAmount: adminSecondPrize === '' ? 10000 : Number(adminSecondPrize),
+          thirdPrizeAmount: adminThirdPrize === '' ? 5000 : Number(adminThirdPrize),
+          fourthPrizeAmount: adminFourthPrize === '' ? 2500 : Number(adminFourthPrize),
+          fifthPrizeAmount: adminFifthPrize === '' ? 1500 : Number(adminFifthPrize),
+          guaranteedPrizeAmount: adminGuaranteedPrize === '' ? 500 : Number(adminGuaranteedPrize),
         }),
       });
       const data = await res.json();
@@ -742,793 +772,967 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
 
   // Prize rank configuration summary
   const prizeCardsConfig = [
-    { rank: 1, name: '1st Prize', amount: luckyDraw?.prizeAmount ?? 250, badge: '🥇 1st', color: 'border-amber-500/60 text-amber-300 bg-amber-500/10' },
-    { rank: 2, name: '2nd Prize', amount: luckyDraw?.secondPrizeAmount ?? 100, badge: '🥈 2nd', color: 'border-purple-500/60 text-purple-300 bg-purple-500/10' },
-    { rank: 3, name: '3rd Prize', amount: luckyDraw?.thirdPrizeAmount ?? 50, badge: '🥉 3rd', color: 'border-cyan-500/60 text-cyan-300 bg-cyan-500/10' },
-    { rank: 4, name: '4th Prize', amount: luckyDraw?.fourthPrizeAmount ?? 25, badge: '⭐ 4th', color: 'border-emerald-500/60 text-emerald-300 bg-emerald-500/10' },
-    { rank: 5, name: '5th Prize', amount: luckyDraw?.fifthPrizeAmount ?? 15, badge: '🎖️ 5th', color: 'border-rose-500/60 text-rose-300 bg-rose-500/10' },
-    { rank: 6, name: 'Guaranteed (45x)', amount: luckyDraw?.guaranteedPrizeAmount ?? 5, badge: '🎁 45 Series', color: 'border-yellow-500/60 text-yellow-300 bg-yellow-500/10' },
+    { rank: 1, name: '1st Prize', amount: luckyDraw?.prizeAmount ?? 25000, badge: '🥇 1st', color: 'border-amber-500/60 text-amber-300 bg-amber-500/10' },
+    { rank: 2, name: '2nd Prize', amount: luckyDraw?.secondPrizeAmount ?? 10000, badge: '🥈 2nd', color: 'border-purple-500/60 text-purple-300 bg-purple-500/10' },
+    { rank: 3, name: '3rd Prize', amount: luckyDraw?.thirdPrizeAmount ?? 5000, badge: '🥉 3rd', color: 'border-cyan-500/60 text-cyan-300 bg-cyan-500/10' },
+    { rank: 4, name: '4th Prize', amount: luckyDraw?.fourthPrizeAmount ?? 2500, badge: '⭐ 4th', color: 'border-emerald-500/60 text-emerald-300 bg-emerald-500/10' },
+    { rank: 5, name: '5th Prize', amount: luckyDraw?.fifthPrizeAmount ?? 1500, badge: '🎖️ 5th', color: 'border-rose-500/60 text-rose-300 bg-rose-500/10' },
+    { rank: 6, name: 'Guaranteed (45x)', amount: luckyDraw?.guaranteedPrizeAmount ?? 500, badge: '🎁 45 Series', color: 'border-yellow-500/60 text-yellow-300 bg-yellow-500/10' },
   ];
 
   return (
-    <div className="space-y-6 font-mono text-slate-100 pb-16">
-      {/* 1. ELECTRIC HERO HEADER BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a1120] via-[#050c18] to-[#0d0720] border border-cyan-500/40 p-5 sm:p-8 shadow-[0_0_40px_rgba(6,182,212,0.2)]">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-3 text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-xs font-bold uppercase tracking-wider animate-pulse">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>5-Step Sequential Draw (1st to 5th Prize + 45 Guaranteed Winners)</span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center justify-center md:justify-start gap-2">
-              <span className="bg-gradient-to-r from-cyan-400 via-amber-300 to-rose-400 bg-clip-text text-transparent">
-                {luckyDraw?.title || 'MEGA USDT ELECTRIC 5-TIER DRAW'}
-              </span>
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-              Admin triggers 5 sequential draws (1st to 5th Prize). Plus, all <strong className="text-amber-300">45 Guaranteed Winners</strong> (matching last 5 digits across 9 other series for all 5 prizes) win guaranteed cash prizes!
-            </p>
-          </div>
-
-          {/* 5 Tiered Prizes + Guaranteed Pool Overview Cards */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 shrink-0 w-full md:w-auto">
-            {prizeCardsConfig.map((p) => (
-              <div key={p.rank} className={`bg-[#030712]/90 border rounded-2xl p-2 sm:p-2.5 text-center shadow-md ${p.color}`}>
-                <div className="text-[9px] uppercase font-bold tracking-wider">{p.badge}</div>
-                <div className="text-sm sm:text-base font-black">${p.amount}</div>
-                <div className="text-[8px] text-slate-400 truncate">{p.rank === 6 ? 'Match 5 Digits' : 'Exact 6 Digits'}</div>
-              </div>
-            ))}
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 space-y-4 font-sans text-slate-100 pb-24">
+      {/* 1. TOP HEADER BAR */}
+      <header className="flex items-center justify-between pb-1">
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="w-9 h-9 rounded-full bg-[#0b1430] border border-blue-900/60 hover:border-cyan-500/40 flex items-center justify-center text-slate-300 hover:text-white transition active:scale-95"
+              title="Go Back"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div className="flex items-center gap-2">
+            <JalwaLogo size="sm" showSubtext={false} />
+            <span className="text-xs font-black tracking-widest uppercase bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
+              Mega Lottery
+            </span>
           </div>
         </div>
 
-        {/* User Balance Display Bar */}
-        <div className="mt-4 pt-3 border-t border-cyan-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#040812]/80 rounded-2xl p-3 px-4">
-          <div className="flex items-center gap-4">
-            <div>
-              <div className="text-[10px] text-cyan-400 uppercase tracking-wider font-extrabold flex items-center gap-1">
-                <span>💳 Deposit Wallet</span>
-              </div>
-              <div className="text-base font-black text-cyan-300">${(currentUser?.depositBalance || 0).toFixed(2)} USDT</div>
+        <div className="flex items-center gap-2">
+          {/* Customer Support */}
+          <button
+            onClick={() => setShowSupportModal(true)}
+            className="w-9 h-9 rounded-full bg-[#0b1430] border border-blue-900/60 hover:border-cyan-500/40 flex items-center justify-center text-cyan-300 transition active:scale-95"
+            title="Customer Support"
+          >
+            <Headphones className="w-4 h-4" />
+          </button>
+
+          {/* Sound FX Toggle */}
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition border ${
+              soundEnabled
+                ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+                : 'bg-[#0b1430] border-blue-900/60 text-slate-500'
+            }`}
+            title="Toggle Sound Effects"
+          >
+            <Music2 className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* 2. TOP WALLET BALANCE CARD (Matching 1_8cbf79a2.jpeg & Jalwa-Game-Deposit_16b672e4.webp) */}
+      <div className="rounded-2xl bg-gradient-to-r from-[#0d1e48] via-[#0b1739] to-[#08122c] border border-blue-900/40 p-3.5 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-black text-white tracking-tight">
+                ₹{((currentUser?.depositBalance || 0) + (currentUser?.winningBalance || 0) + (currentUser?.balance || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <button
+                onClick={() => {
+                  setIsRefreshing(true);
+                  if (onRefreshState) onRefreshState();
+                  fetchLuckyDraw();
+                  setTimeout(() => setIsRefreshing(false), 600);
+                }}
+                className={`text-slate-400 hover:text-white transition ${isRefreshing ? 'animate-spin' : ''}`}
+                title="Refresh Balance"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <div className="h-8 w-[1px] bg-slate-800" />
-            <div>
-              <div className="text-[10px] text-amber-400 uppercase tracking-wider font-extrabold flex items-center gap-1">
-                <span>🎮 Winning Wallet</span>
-              </div>
-              <div className="text-base font-black text-amber-300">${(currentUser?.winningBalance || 0).toFixed(2)} USDT</div>
+            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-300 font-medium">
+              <Wallet className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Wallet balance</span>
+              <span className="text-[10px] text-emerald-400 font-mono ml-1">
+                Pure INR
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {onOpenDeposit && (
-              <button
-                onClick={onOpenDeposit}
-                className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-xs font-black transition shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-              >
-                + Deposit
-              </button>
-            )}
             {onOpenWithdraw && (
               <button
                 onClick={onOpenWithdraw}
-                className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 text-xs font-black transition shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#ff4d4f] to-[#d9363e] hover:from-[#ff7875] hover:to-[#ff4d4f] text-white font-bold text-xs shadow-md transition active:scale-95"
               >
                 Withdraw
               </button>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* 2. ELECTRIC ROLLER SLOT REEL DISPLAY & LIVE 5-STEP DRAW STAGE */}
-      <div
-        className={`bg-[#070d18] border-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-8 text-center relative overflow-hidden transition-all duration-300 ${
-          isRolling
-            ? 'border-cyan-400 shadow-[0_0_70px_rgba(6,182,212,0.45)] ring-2 ring-cyan-500/50'
-            : 'border-cyan-500/50 shadow-[0_0_50px_rgba(6,182,212,0.25)]'
-        }`}
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent pointer-events-none" />
-
-        {/* Top Roller Controls Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 sm:mb-4 relative z-10">
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-            <span className="text-xs sm:text-sm font-black text-cyan-300 uppercase tracking-wider sm:tracking-widest flex items-center gap-1.5">
-              <span>Electric Roller</span>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40">
-                {isRolling ? `Drawing ${currentRollingPrizeName}` : currentStepNum > 0 ? `Step ${currentStepNum}/5 Complete` : 'Ready For Draw'}
-              </span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
-            {/* Audio Toggle Button */}
-            <button
-              onClick={() => setSoundEnabled((prev) => !prev)}
-              type="button"
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl text-xs font-bold transition border ${
-                soundEnabled
-                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
-                  : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:bg-slate-800'
-              }`}
-              title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
-            >
-              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-cyan-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
-              <span>{soundEnabled ? 'FX On' : 'Muted'}</span>
-            </button>
-
-            {/* Live Status Badge */}
-            <div
-              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl border font-bold uppercase text-[11px] sm:text-xs ${
-                isRolling
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
-                  : currentStepNum >= 5
-                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                  : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full ${isRolling ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
-              <span>{isRolling ? `⚡ ROLLING (${rollSecondsLeft.toFixed(1)}s)` : currentStepNum >= 5 ? 'ROUND COMPLETED' : `STEP ${currentStepNum} OF 5`}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 10-Second High-Voltage Tension Progress Meter (Smooth transition, zero layout jolt) */}
-        <div className={`transition-all duration-300 overflow-hidden ${isRolling ? 'max-h-24 opacity-100 mb-3 sm:mb-4' : 'max-h-0 opacity-0 mb-0 pointer-events-none'}`}>
-          <div className="bg-[#030712]/90 border border-cyan-500/40 rounded-2xl p-2.5 sm:p-3 space-y-1.5 shadow-[0_0_20px_rgba(6,182,212,0.25)]">
-            <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold">
-              <span className="flex items-center gap-1.5 text-cyan-300">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span className="tracking-wide">DRAWING {currentRollingPrizeName.toUpperCase()} (10-SECOND ROLLER)...</span>
-              </span>
-              <span className="font-mono text-amber-300 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px]">
-                {rollSecondsLeft.toFixed(1)}s remaining
-              </span>
-            </div>
-            <div className="w-full bg-slate-900 rounded-full h-2.5 sm:h-3 border border-cyan-500/40 p-0.5 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-amber-400 to-emerald-400 transition-all duration-75"
-                style={{ width: `${Math.min(100, Math.max(0, rollProgress))}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Roller Slots Container */}
-        <div className="my-2.5 sm:my-5 py-2.5 sm:py-5 px-1.5 sm:px-4 bg-[#02050b] rounded-2xl border border-cyan-500/30 shadow-inner w-full max-w-2xl mx-auto">
-          <div className="grid grid-cols-6 gap-1 xs:gap-1.5 sm:gap-3 md:gap-4 select-none w-full">
-            {displayDigits.map((digit, idx) => {
-              const isThisLocked = isRolling ? lockedReelMask[idx] : true;
-              return (
-                <div key={idx} className="flex flex-col items-center gap-1 w-full min-w-0">
-                  {/* Reel Status Pill */}
-                  {isRolling ? (
-                    <div
-                      className={`text-[8px] xs:text-[9px] font-black uppercase px-1 py-0.5 rounded-full transition-all duration-200 flex items-center justify-center gap-0.5 w-full truncate ${
-                        !isThisLocked
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50'
-                          : 'bg-amber-500/30 text-amber-300 border border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
-                      }`}
-                    >
-                      {isThisLocked ? (
-                        <>
-                          <Lock className="w-2 h-2 text-amber-400 shrink-0" />
-                          <span className="truncate">L#{idx + 1}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-2 h-2 text-cyan-400 shrink-0" />
-                          <span className="truncate">SPIN</span>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-[8px] xs:text-[9px] font-black uppercase px-1 py-0.5 rounded-full bg-slate-800/80 text-slate-400 border border-slate-700 w-full text-center truncate">
-                      #{idx + 1}
-                    </div>
-                  )}
-
-                  {/* Digit Display Reel Box */}
-                  <div
-                    className={`w-full aspect-[3/4] max-w-[80px] rounded-lg xs:rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xl xs:text-2xl sm:text-3xl md:text-4xl transition-colors duration-150 ${
-                      isRolling && !isThisLocked
-                        ? 'bg-gradient-to-b from-cyan-500/30 via-cyan-400/20 to-indigo-600/30 text-cyan-200 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.6)]'
-                        : isRolling && isThisLocked
-                        ? 'bg-gradient-to-b from-amber-500/30 via-yellow-500/20 to-amber-600/30 text-amber-300 border-2 border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.7)]'
-                        : 'bg-[#0b1424] text-amber-300 border-2 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                    }`}
-                  >
-                    <span>{digit}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 🌟 SEQUENTIAL 5 DRAWN TICKETS BOARD (Fixed heights, perfectly stable) */}
-        <div className="mt-4 p-4 bg-[#030612]/90 border border-cyan-500/30 rounded-2xl space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-            <div className="flex items-center gap-2 text-cyan-300 font-bold text-xs sm:text-sm">
-              <Layers className="w-4 h-4 text-amber-400" />
-              <span>Current Round Drawn Tickets ({currentDrawnPrizes.length} / 5 Revealed)</span>
-            </div>
-            {currentDrawnPrizes.length > 0 && (
-              <span className="text-[10px] text-slate-400 font-normal">
-                Drawn sequential tickets stay placed on the board!
-              </span>
+            {onOpenDeposit && (
+              <button
+                onClick={onOpenDeposit}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#10b981] to-[#059669] hover:from-[#34d399] hover:to-[#10b981] text-white font-bold text-xs shadow-md transition active:scale-95"
+              >
+                Deposit
+              </button>
             )}
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
-            {[1, 2, 3, 4, 5].map((step) => {
-              const drawn = currentDrawnPrizes.find((p) => p.prizeRank === step);
-              const prizeConf = prizeCardsConfig[step - 1];
-
-              return (
-                <div
-                  key={step}
-                  className={`p-3 rounded-2xl border transition-all flex flex-col justify-between text-left h-[115px] min-h-[115px] ${
-                    drawn
-                      ? 'bg-gradient-to-b from-[#081226] to-[#040814] border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
-                      : 'bg-[#02050c]/80 border-slate-800/80 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1 shrink-0">
-                    <span className="text-[10px] font-black uppercase text-amber-300">{prizeConf.badge}</span>
-                    <span className="text-xs font-black text-emerald-400">${prizeConf.amount} USDT</span>
-                  </div>
-
-                  <div className="my-auto text-center">
-                    {drawn ? (
-                      <div className="space-y-0.5">
-                        <div className="text-lg font-black font-mono tracking-widest text-amber-300 leading-tight">
-                          #{drawn.ticketNumber}
-                        </div>
-                        <div className="text-[10px] font-bold text-white truncate max-w-[140px] mx-auto">
-                          {drawn.userName ? `${drawn.userName} (#${drawn.userNodeId || ''})` : 'Winner'}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-slate-600 font-bold italic py-1">
-                        {isRolling && currentRollingStep === step ? '⚡ Rolling...' : 'Pending Draw'}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="text-[9px] text-slate-500 text-center shrink-0">
-                    {drawn ? `Drawn at ${new Date(drawn.drawnAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `Step ${step}`}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
+      </div>
 
-        {/* Winner Announcement Banner */}
-        {winnerAnnouncedList && winnerAnnouncedList.length > 0 && (
-          <div className="mt-4 p-4 bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-amber-400 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.4)] space-y-2 animate-fadeIn">
-            <div className="flex items-center justify-center gap-2 text-amber-300 font-black text-sm sm:text-base">
-              <Trophy className="w-5 h-5 text-amber-400" />
-              <span>🎉 STEP WINNERS ANNOUNCED ({winnerAnnouncedList.length}):</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-              {winnerAnnouncedList.map((w, idx) => (
-                <div key={idx} className="bg-[#030712]/90 border border-amber-500/40 p-2.5 rounded-xl text-left space-y-1">
-                  <div className="font-bold text-amber-300 flex items-center justify-between">
-                    <span>{w.prizeTier || 'Winner'}</span>
-                    <span className="text-emerald-400 font-black">+${w.prizeAmount} USDT</span>
-                  </div>
-                  <div className="text-[11px] text-white">
-                    {w.userName} (<span className="text-cyan-300">#{w.userNodeId}</span>)
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    Coupon: <strong className="text-amber-300">#{w.ticketNumber}</strong>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Countdown Timer */}
-        <div className="mt-6 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-slate-300 text-xs sm:text-sm">
-            <Clock className="w-4 h-4 text-cyan-400" />
-            <span>Next Weekly Mega Grand Draw (Sunday 9:00 PM):</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2 font-black">
-            <div className="bg-[#0b1424] border border-amber-500/50 rounded-xl px-2.5 sm:px-3 py-1.5 text-center min-w-[46px] sm:min-w-[50px] shadow-[0_0_10px_rgba(245,158,11,0.2)]">
-              <div className="text-base sm:text-lg text-amber-300">{String(timeLeft.days).padStart(2, '0')}</div>
-              <div className="text-[8px] sm:text-[9px] text-amber-400 uppercase font-bold">Days</div>
-            </div>
-            <span className="text-cyan-400 font-bold">:</span>
-            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-2.5 sm:px-3 py-1.5 text-center min-w-[46px] sm:min-w-[50px]">
-              <div className="text-base sm:text-lg text-cyan-300">{String(timeLeft.hours).padStart(2, '0')}</div>
-              <div className="text-[8px] sm:text-[9px] text-slate-400 uppercase font-bold">Hours</div>
-            </div>
-            <span className="text-cyan-400 font-bold">:</span>
-            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-2.5 sm:px-3 py-1.5 text-center min-w-[46px] sm:min-w-[50px]">
-              <div className="text-base sm:text-lg text-cyan-300">{String(timeLeft.minutes).padStart(2, '0')}</div>
-              <div className="text-[8px] sm:text-[9px] text-slate-400 uppercase font-bold">Mins</div>
-            </div>
-            <span className="text-cyan-400 font-bold">:</span>
-            <div className="bg-[#0b1424] border border-cyan-500/40 rounded-xl px-2.5 sm:px-3 py-1.5 text-center min-w-[46px] sm:min-w-[50px]">
-              <div className="text-base sm:text-lg text-emerald-300">{String(timeLeft.seconds).padStart(2, '0')}</div>
-              <div className="text-[8px] sm:text-[9px] text-slate-400 uppercase font-bold">Secs</div>
-            </div>
+      {/* 3. MARQUEE ANNOUNCEMENT TICKER */}
+      <div className="rounded-xl bg-[#09122c] border border-blue-900/50 p-2.5 flex items-center gap-2 overflow-hidden text-xs text-slate-300">
+        <Volume2 className="w-4 h-4 text-cyan-400 shrink-0" />
+        <div className="whitespace-nowrap overflow-hidden relative w-full">
+          <div className="inline-block animate-marquee font-medium">
+            🎉 Welcome to SportX 6-Digit Mega Lottery Draw! 1st Prize ₹{(luckyDraw?.prizeAmount ?? 25000).toLocaleString('en-IN')} INR • 45 Guaranteed Cash Winners • Next Draw: Sunday 9:00 PM • Pick your 6 lucky digits now!
           </div>
         </div>
       </div>
 
-      {/* 3. BUY TICKETS SECTION & USER TICKETS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Buy Tickets Form Card */}
-        <div className="lg:col-span-1 bg-[#0a1120] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Ticket className="w-4 h-4 text-cyan-400" />
-              <span>Get Lucky Coupons</span>
-            </div>
-            <span className="text-xs text-amber-400 font-bold">
-              ${luckyDraw?.ticketPrice ?? 5} USDT / coupon
-            </span>
-          </div>
+      {/* 4. PRIMARY TABS NAVIGATION */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+        <button
+          onClick={() => setActiveLotteryTab('draw')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-black transition whitespace-nowrap ${
+            activeLotteryTab === 'draw'
+              ? 'bg-gradient-to-r from-[#38bdf8] to-[#2dd4bf] text-[#070d1e] shadow-md'
+              : 'bg-[#0b1433] text-slate-300 border border-blue-900/40 hover:text-white'
+          }`}
+        >
+          🎯 Live Draw
+        </button>
 
-          {/* User Available Balance */}
-          <div className="bg-[#050a14] border border-slate-800 rounded-2xl p-3 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Your Wallet Balance:</span>
-            <span className="text-emerald-400 font-bold text-sm">
-              ${((currentUser.depositBalance || 0) + (currentUser.winningBalance || 0) + (currentUser.balance || 0)).toFixed(2)} USDT
-            </span>
-          </div>
+        <button
+          onClick={() => setActiveLotteryTab('tickets')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-black transition whitespace-nowrap flex items-center gap-1 ${
+            activeLotteryTab === 'tickets'
+              ? 'bg-gradient-to-r from-[#38bdf8] to-[#2dd4bf] text-[#070d1e] shadow-md'
+              : 'bg-[#0b1433] text-slate-300 border border-blue-900/40 hover:text-white'
+          }`}
+        >
+          <Ticket className="w-3.5 h-3.5" />
+          <span>My Coupons ({userTickets.length})</span>
+        </button>
 
-          {/* Selection Mode Toggle */}
-          <div className="space-y-2">
-            <label className="text-xs text-slate-400 font-bold block">Coupon Selection Mode:</label>
-            <div className="grid grid-cols-2 gap-2 bg-[#050a14] p-1 rounded-2xl border border-slate-800">
-              <button
-                type="button"
-                onClick={() => setSelectionMode('custom')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                  selectionMode === 'custom'
-                    ? 'bg-cyan-500/30 border border-cyan-400 text-cyan-200 shadow'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                Custom Choice
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectionMode('random')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                  selectionMode === 'random'
-                    ? 'bg-cyan-500/30 border border-cyan-400 text-cyan-200 shadow'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
-                Random Auto
-              </button>
-            </div>
-          </div>
+        <button
+          onClick={() => setActiveLotteryTab('winners')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-black transition whitespace-nowrap flex items-center gap-1 ${
+            activeLotteryTab === 'winners'
+              ? 'bg-gradient-to-r from-[#38bdf8] to-[#2dd4bf] text-[#070d1e] shadow-md'
+              : 'bg-[#0b1433] text-slate-300 border border-blue-900/40 hover:text-white'
+          }`}
+        >
+          <Trophy className="w-3.5 h-3.5" />
+          <span>Winners Hall</span>
+        </button>
 
-          {/* Custom Number Picker Input */}
-          {selectionMode === 'custom' ? (
-            <div className="space-y-3 bg-[#050a14] border border-cyan-500/20 rounded-2xl p-3.5">
-              <label className="text-xs text-amber-300 font-bold flex items-center justify-between">
-                <span>Enter Your Preferred 6-Digit Coupon:</span>
-                <button
-                  type="button"
-                  onClick={handleGenerateRandomCoupon}
-                  className="text-[10px] text-cyan-400 hover:underline flex items-center gap-1 font-bold"
-                >
-                  <RefreshCw className="w-3 h-3" /> Random Number
-                </button>
-              </label>
+        <button
+          onClick={() => setActiveLotteryTab('rules')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-black transition whitespace-nowrap flex items-center gap-1 ${
+            activeLotteryTab === 'rules'
+              ? 'bg-gradient-to-r from-[#38bdf8] to-[#2dd4bf] text-[#070d1e] shadow-md'
+              : 'bg-[#0b1433] text-slate-300 border border-blue-900/40 hover:text-white'
+          }`}
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+          <span>Draw Rules</span>
+        </button>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="e.g. 786910"
-                  value={customCouponInput}
-                  onChange={(e) => setCustomCouponInput(e.target.value.replace(/\D/g, ''))}
-                  className="w-full bg-[#0d1726] border border-cyan-500/40 rounded-xl px-3 py-2 text-center text-amber-300 font-black tracking-widest text-base focus:outline-none focus:border-amber-400"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddCustomCoupon}
-                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl shrink-0 transition"
-                >
-                  + Add
-                </button>
-              </div>
-
-              {/* Added Custom Coupons List */}
-              {customCouponList.length > 0 && (
-                <div className="space-y-1.5 pt-2 border-t border-slate-800">
-                  <div className="text-[10px] text-slate-400 font-bold uppercase">Chosen Coupons ({customCouponList.length}):</div>
-                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                    {customCouponList.map((num, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan-950 border border-cyan-500/40 rounded-lg text-xs font-bold text-cyan-300"
-                      >
-                        #{num}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCustomCoupon(idx)}
-                          className="text-slate-400 hover:text-red-400 text-xs font-bold"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Quantity Selector for Random Mode */
-            <div className="space-y-2">
-              <label className="text-xs text-slate-400 font-bold">Select Ticket Quantity:</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[1, 3, 5, 10].map((qty) => (
-                  <button
-                    key={qty}
-                    type="button"
-                    onClick={() => setTicketQty(qty)}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      ticketQty === qty
-                        ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
-                        : 'bg-[#050a14] border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {qty} {qty === 1 ? 'Coupon' : 'Coupons'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Cost Summary */}
-          <div className="bg-[#050a14] border border-cyan-500/20 rounded-2xl p-3 space-y-1 text-xs">
-            <div className="flex justify-between text-slate-400">
-              <span>Total Coupons:</span>
-              <span className="text-white font-bold">
-                {selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty}
-              </span>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Unit Price:</span>
-              <span className="text-white font-bold">${luckyDraw?.ticketPrice ?? 5} USDT</span>
-            </div>
-            <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-sm">
-              <span className="text-cyan-300">Total Price:</span>
-              <span className="text-amber-400 font-black">
-                $
-                {(
-                  (luckyDraw?.ticketPrice ?? 5) *
-                  (selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty)
-                ).toFixed(2)}{' '}
-                USDT
-              </span>
-            </div>
-          </div>
-
-          {/* Buy Button */}
+        {(currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
           <button
-            type="button"
-            onClick={handleBuyTickets}
-            disabled={buying}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-indigo-600 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-white font-bold text-sm shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            onClick={() => setActiveLotteryTab('admin')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition whitespace-nowrap flex items-center gap-1 ${
+              activeLotteryTab === 'admin'
+                ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-black shadow-md'
+                : 'bg-rose-950/40 text-rose-300 border border-rose-500/40 hover:text-white'
+            }`}
           >
-            {buying ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                <span>Purchasing Coupons...</span>
-              </>
-            ) : (
-              <>
-                <Ticket className="w-4 h-4 text-cyan-200" />
-                <span>
-                  Buy{' '}
-                  {selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty}{' '}
-                  Lucky Coupon(s)
-                </span>
-              </>
-            )}
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Admin Controls</span>
           </button>
-        </div>
-
-        {/* User's Ticket Numbers List */}
-        <div className="lg:col-span-2 bg-[#0a1120] border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>My Active Coupons ({userTickets.length})</span>
-            </div>
-            <span className="text-xs text-slate-400">
-              Total Pool Coupons: {luckyDraw?.tickets?.length || 0}
-            </span>
-          </div>
-
-          {userTickets.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 space-y-2">
-              <Ticket className="w-10 h-10 mx-auto text-slate-600" />
-              <div className="text-sm font-bold text-slate-400">No Coupons Purchased Yet</div>
-              <p className="text-xs text-slate-500">Pick your own 6-digit lucky numbers above to participate!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[260px] overflow-y-auto pr-1">
-              {userTickets.map((tkt) => (
-                <div
-                  key={tkt.id}
-                  className="bg-[#050a14] border border-cyan-500/30 rounded-2xl p-3 text-center space-y-1 shadow-inner relative overflow-hidden group hover:border-amber-400 transition"
-                >
-                  <div className="text-[10px] text-cyan-400 uppercase font-bold tracking-wider">
-                    Coupon No
-                  </div>
-                  <div className="text-lg font-black text-amber-300 font-mono tracking-widest">
-                    #{tkt.ticketNumber}
-                  </div>
-                  <div className="text-[9px] text-slate-500">
-                    {new Date(tkt.purchasedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* 4. PAST WINNERS HALL OF FAME */}
-      <div className="bg-[#0a1120] border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-3 gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm font-bold text-white">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-400" />
-              <span>Lucky Draw Past Champions</span>
-            </div>
-            {luckyDraw?.lastWinningNumber && (
-              <span className="text-xs text-cyan-300 font-mono">
-                (Last Winning #: <strong className="text-amber-400">#{luckyDraw.lastWinningNumber}</strong>)
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={downloadPastResultsCSV}
-              className="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-              title="Export all past winner records to Excel / CSV"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Export Results (CSV)</span>
-            </button>
-
-            {(currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!showClearConfirm) {
-                    setShowClearConfirm(true);
-                    setTimeout(() => setShowClearConfirm(false), 5000);
-                  } else {
-                    setShowClearConfirm(false);
-                    handleClearPastHistory();
-                  }
-                }}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                  showClearConfirm
-                    ? 'bg-rose-600 text-white border-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.5)] animate-pulse'
-                    : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40'
-                }`}
-                title="Clear past demo/test winners history"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>{showClearConfirm ? '⚠️ Click again to Confirm Clear!' : 'Clear History'}</span>
-              </button>
-            )}
-
-            {/* Prize Category Filter Tabs */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setWinnerTierFilter('all')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  winnerTierFilter === 'all'
-                    ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200'
-                    : 'bg-[#050a14] border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                🌟 All ({luckyDraw?.pastWinners?.length || 0})
-              </button>
-              <button
-                type="button"
-                onClick={() => setWinnerTierFilter('1st')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  winnerTierFilter === '1st'
-                    ? 'bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
-                    : 'bg-[#050a14] border-slate-800 text-amber-400/80 hover:text-amber-300'
-                }`}
-              >
-                🥇 1st (${luckyDraw?.prizeAmount ?? 250})
-              </button>
-              <button
-                type="button"
-                onClick={() => setWinnerTierFilter('2nd')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  winnerTierFilter === '2nd'
-                    ? 'bg-purple-500/30 border-purple-400 text-purple-200 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
-                    : 'bg-[#050a14] border-slate-800 text-purple-300/80 hover:text-purple-200'
-                }`}
-              >
-                🥈 2nd (${luckyDraw?.secondPrizeAmount ?? 100})
-              </button>
-              <button
-                type="button"
-                onClick={() => setWinnerTierFilter('3rd')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  winnerTierFilter === '3rd'
-                    ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                    : 'bg-[#050a14] border-slate-800 text-cyan-400/80 hover:text-cyan-300'
-                }`}
-              >
-                🥉 3rd (${luckyDraw?.thirdPrizeAmount ?? 50})
-              </button>
-              <button
-                type="button"
-                onClick={() => setWinnerTierFilter('4th')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  winnerTierFilter === '4th'
-                    ? 'bg-emerald-500/30 border-emerald-400 text-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                    : 'bg-[#050a14] border-slate-800 text-emerald-400/80 hover:text-emerald-300'
-                }`}
-              >
-                ⭐ 4th (${luckyDraw?.fourthPrizeAmount ?? 25})
-              </button>
-              <button
-                type="button"
-                onClick={() => setWinnerTierFilter('5th')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  winnerTierFilter === '5th'
-                    ? 'bg-rose-500/30 border-rose-400 text-rose-200 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
-                    : 'bg-[#050a14] border-slate-800 text-rose-400/80 hover:text-rose-300'
-                }`}
-              >
-                🎖️ 5th (${luckyDraw?.fifthPrizeAmount ?? 15})
-              </button>
-              <button
-                type="button"
-                onClick={() => setWinnerTierFilter('guaranteed')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  winnerTierFilter === 'guaranteed'
-                    ? 'bg-yellow-500/30 border-yellow-400 text-yellow-200 shadow-[0_0_10px_rgba(234,179,8,0.3)]'
-                    : 'bg-[#050a14] border-slate-800 text-yellow-400/80 hover:text-yellow-300'
-                }`}
-              >
-                🎁 Guaranteed (45x)
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {(() => {
-          const past = luckyDraw?.pastWinners || [];
-          const filtered = past.filter((win) => {
-            if (winnerTierFilter === '1st') {
-              return win.prizeTier?.toLowerCase().includes('1st');
-            }
-            if (winnerTierFilter === '2nd') {
-              return win.prizeTier?.toLowerCase().includes('2nd');
-            }
-            if (winnerTierFilter === '3rd') {
-              return win.prizeTier?.toLowerCase().includes('3rd');
-            }
-            if (winnerTierFilter === '4th') {
-              return win.prizeTier?.toLowerCase().includes('4th');
-            }
-            if (winnerTierFilter === '5th') {
-              return win.prizeTier?.toLowerCase().includes('5th');
-            }
-            if (winnerTierFilter === 'guaranteed') {
-              return win.prizeTier?.toLowerCase().includes('guaranteed');
-            }
-            return true;
-          });
-
-          if (filtered.length === 0) {
-            return (
-              <div className="text-center py-8 text-slate-500 text-xs space-y-1">
-                <Trophy className="w-8 h-8 mx-auto text-slate-600" />
-                <div className="font-bold text-slate-400">No winners found for selected prize tier.</div>
-                <p className="text-slate-500 text-[11px]">Winners will appear here automatically when draws complete.</p>
+      {/* 5. TAB CONTENT: LIVE DRAW & BUY TICKETS */}
+      {activeLotteryTab === 'draw' && (
+        <div className="space-y-4">
+          {/* PRIZE POOL OVERVIEW (6 TIERS DISPLAYED IN ₹ INR) */}
+          <div className="rounded-3xl bg-gradient-to-br from-[#0c1b40] via-[#091433] to-[#060c22] border border-blue-900/50 p-4 sm:p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                  Prize Pool Breakdown
+                </span>
               </div>
-            );
-          }
+              <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-full">
+                5 Prizes + 45 Guaranteed
+              </span>
+            </div>
 
-          return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((win) => {
-                const is1st = win.prizeTier?.toLowerCase().includes('1st');
-                const is2nd = win.prizeTier?.toLowerCase().includes('2nd');
-                const isGuaranteed = win.prizeTier?.toLowerCase().includes('guaranteed');
-
-                const cardStyle = is1st
-                  ? 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                  : is2nd
-                  ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
-                  : isGuaranteed
-                  ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]'
-                  : 'border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]';
-
-                const badgeStyle = is1st
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : is2nd
-                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                  : isGuaranteed
-                  ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
-                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40';
-
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+              {prizeCardsConfig.map((p) => {
+                const prizeInr = p.amount;
                 return (
-                  <div key={win.id} className={`bg-[#050a14] border rounded-2xl p-4 flex items-center justify-between gap-3 ${cardStyle}`}>
-                    <div className="space-y-1">
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <Crown className="w-3.5 h-3.5 text-amber-400" />
-                        <span>{win.userName}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        Node ID: <span className="text-cyan-300">#{win.userNodeId}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        Winning Coupon: <span className="text-amber-300 font-bold">#{win.ticketNumber}</span>
-                      </div>
-                      {win.prizeTier && (
-                        <div className={`text-[9px] font-bold px-2 py-0.5 rounded-md border inline-block ${badgeStyle}`}>
-                          {win.prizeTier}
-                        </div>
-                      )}
+                  <div
+                    key={p.rank}
+                    className={`rounded-2xl p-2.5 text-center border bg-[#060e26]/80 transition transform hover:scale-[1.02] ${p.color}`}
+                  >
+                    <div className="text-[10px] font-black uppercase tracking-wider mb-0.5">
+                      {p.badge}
                     </div>
-
-                    <div className="text-right">
-                      <div className="text-sm font-black text-emerald-400">+${win.prizeAmount} USDT</div>
-                      <div className="text-[9px] text-slate-500">{new Date(win.wonAt).toLocaleDateString()}</div>
+                    <div className="text-base sm:text-lg font-black text-white font-sans">
+                      ₹{prizeInr.toLocaleString('en-IN')}
+                    </div>
+                    <div className="text-[9px] text-slate-400 font-mono">
+                      INR Prize
                     </div>
                   </div>
                 );
               })}
             </div>
-          );
-        })()}
-      </div>
+          </div>
 
-      {/* 5. ADMIN CONTROLLER PANEL (5-Step Sequential Draw & Forced Winner Controls) */}
-      {(currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
-        <div className="bg-[#0d0a18] border-2 border-rose-500/60 rounded-3xl p-5 sm:p-6 shadow-[0_0_30px_rgba(244,63,94,0.2)] space-y-5">
+          {/* 6-DIGIT ROLLER SLOT REEL (Jalwa Neon Theme) */}
+          <div
+            className={`rounded-3xl p-4 sm:p-6 text-center relative overflow-hidden transition-all duration-300 border ${
+              isRolling
+                ? 'bg-[#091438] border-cyan-400 shadow-[0_0_50px_rgba(34,211,238,0.4)] ring-2 ring-cyan-500/40'
+                : 'bg-[#08122e] border-blue-900/60 shadow-xl'
+            }`}
+          >
+            {/* Top Stage Header */}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3 relative z-10">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <span>6-Digit Lottery Roller</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40 font-bold">
+                    {isRolling ? `Drawing ${currentRollingPrizeName}` : currentStepNum > 0 ? `Step ${currentStepNum}/5 Drawn` : 'Ready For Draw'}
+                  </span>
+                </span>
+              </div>
+
+              {/* Status Badge */}
+              <div
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-black uppercase ${
+                  isRolling
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
+                    : currentStepNum >= 5
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${isRolling ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
+                <span>{isRolling ? `⚡ ROLLING (${rollSecondsLeft.toFixed(1)}s)` : currentStepNum >= 5 ? 'ROUND COMPLETED' : `STEP ${currentStepNum} OF 5`}</span>
+              </div>
+            </div>
+
+            {/* 10-Second High-Voltage Tension Progress Bar */}
+            <div className={`transition-all duration-300 overflow-hidden ${isRolling ? 'max-h-20 opacity-100 mb-3' : 'max-h-0 opacity-0 mb-0 pointer-events-none'}`}>
+              <div className="bg-[#050c22] border border-cyan-500/40 rounded-2xl p-2.5 space-y-1 shadow-[0_0_20px_rgba(34,211,238,0.25)]">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span className="flex items-center gap-1.5 text-cyan-300">
+                    <Zap className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                    <span>DRAWING {currentRollingPrizeName.toUpperCase()}...</span>
+                  </span>
+                  <span className="font-mono text-amber-300 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full text-[10px]">
+                    {rollSecondsLeft.toFixed(1)}s remaining
+                  </span>
+                </div>
+                <div className="w-full bg-slate-900 rounded-full h-2.5 border border-cyan-500/40 p-0.5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-amber-400 to-emerald-400 transition-all duration-75"
+                    style={{ width: `${Math.min(100, Math.max(0, rollProgress))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 6 Digit Slot Machine Reels */}
+            <div className="my-3 py-3 px-2 sm:px-4 bg-[#050a1d] rounded-2xl border border-blue-900/60 shadow-inner w-full max-w-xl mx-auto">
+              <div className="grid grid-cols-6 gap-1.5 sm:gap-2.5 select-none w-full">
+                {displayDigits.map((digit, idx) => {
+                  const isThisLocked = isRolling ? lockedReelMask[idx] : true;
+                  return (
+                    <div key={idx} className="flex flex-col items-center gap-1 w-full min-w-0">
+                      {/* Reel Status Badge */}
+                      {isRolling ? (
+                        <div
+                          className={`text-[8px] font-black uppercase px-1 py-0.5 rounded-full transition-all flex items-center justify-center gap-0.5 w-full truncate ${
+                            !isThisLocked
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50'
+                              : 'bg-amber-500/30 text-amber-300 border border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                          }`}
+                        >
+                          {isThisLocked ? (
+                            <>
+                              <Lock className="w-2 h-2 text-amber-400 shrink-0" />
+                              <span>L#{idx + 1}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-2 h-2 text-cyan-400 shrink-0" />
+                              <span>ROLL</span>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-[8px] font-bold uppercase px-1 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 w-full text-center">
+                          #{idx + 1}
+                        </div>
+                      )}
+
+                      {/* Digit Box (Jalwa Neon Typography) */}
+                      <div
+                        className={`w-full aspect-[3/4] max-w-[76px] rounded-2xl flex items-center justify-center font-black text-2xl sm:text-3xl md:text-4xl transition-all duration-150 font-sans ${
+                          isRolling && !isThisLocked
+                            ? 'bg-[#0c245c] text-[#00f59b] border-2 border-cyan-400 shadow-[0_0_20px_rgba(0,245,155,0.6)] animate-pulse'
+                            : isRolling && isThisLocked
+                            ? 'bg-gradient-to-b from-[#1c2c5c] to-[#0a183d] text-amber-300 border-2 border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.7)]'
+                            : 'bg-[#0c245c] text-[#00f59b] border border-blue-500/30 shadow-[0_0_15px_rgba(0,245,155,0.25)]'
+                        }`}
+                      >
+                        <span className="drop-shadow-[0_0_12px_rgba(0,245,155,0.6)]">{digit}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 5 SEQUENTIAL DRAWN TICKETS BOARD */}
+            <div className="mt-4 p-3.5 bg-[#050c22] border border-blue-900/60 rounded-2xl space-y-2.5 text-left">
+              <div className="flex items-center justify-between border-b border-blue-950 pb-2">
+                <div className="flex items-center gap-1.5 text-cyan-300 font-bold text-xs">
+                  <Layers className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sequential 5 Drawn Tickets ({currentDrawnPrizes.length}/5 Revealed)</span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Exact 6 Digits Match
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {[1, 2, 3, 4, 5].map((step) => {
+                  const drawn = currentDrawnPrizes.find((p) => p.prizeRank === step);
+                  const prizeConf = prizeCardsConfig[step - 1];
+                  const prizeInr = prizeConf.amount;
+
+                  return (
+                    <div
+                      key={step}
+                      className={`p-2.5 rounded-xl border flex flex-col justify-between text-left min-h-[96px] ${
+                        drawn
+                          ? 'bg-gradient-to-b from-[#0e1d44] to-[#071026] border-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                          : 'bg-[#060c20]/80 border-blue-950/80 opacity-70'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-black uppercase text-amber-300">{prizeConf.badge}</span>
+                        <span className="text-[11px] font-black text-emerald-400 font-sans">₹{prizeInr.toLocaleString('en-IN')}</span>
+                      </div>
+
+                      <div className="my-auto text-center py-1">
+                        {drawn ? (
+                          <div className="space-y-0.5">
+                            <div className="text-base font-black font-mono tracking-widest text-amber-300 leading-tight">
+                              #{drawn.ticketNumber}
+                            </div>
+                            <div className="text-[10px] font-bold text-white truncate max-w-[120px] mx-auto">
+                              {drawn.userName ? `${drawn.userName}` : 'Winner'}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-500 font-bold italic">
+                            {isRolling && currentRollingStep === step ? '⚡ Rolling...' : 'Pending Draw'}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-[8px] text-slate-500 text-center">
+                        {drawn ? `Revealed` : `Step ${step}`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Winner Announcement Banner */}
+            {winnerAnnouncedList && winnerAnnouncedList.length > 0 && (
+              <div className="mt-3.5 p-3.5 bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-amber-400 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.35)] space-y-2 animate-fade-in text-left">
+                <div className="flex items-center justify-center gap-2 text-amber-300 font-black text-sm">
+                  <Trophy className="w-4 h-4 text-amber-400" />
+                  <span>🎉 STEP WINNERS ANNOUNCED ({winnerAnnouncedList.length}):</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  {winnerAnnouncedList.map((w, idx) => (
+                    <div key={idx} className="bg-[#050a1d]/90 border border-amber-500/40 p-2.5 rounded-xl text-left space-y-1">
+                      <div className="font-bold text-amber-300 flex items-center justify-between">
+                        <span>{w.prizeTier || 'Winner'}</span>
+                        <span className="text-emerald-400 font-black font-sans">+₹{w.prizeAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="text-[11px] text-white">
+                        {w.userName} (<span className="text-cyan-300 font-mono">#{w.userNodeId}</span>)
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Coupon: <strong className="text-amber-300 font-mono">#{w.ticketNumber}</strong>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Grand Draw Countdown Bar */}
+            <div className="mt-4 pt-4 border-t border-blue-950 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-300">
+                <Clock className="w-4 h-4 text-cyan-400" />
+                <span>Weekly Mega Grand Draw (Sunday 9:00 PM):</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 font-black font-mono">
+                <div className="bg-[#091535] border border-amber-500/50 rounded-xl px-2.5 py-1 text-center min-w-[44px]">
+                  <div className="text-sm text-amber-300">{String(timeLeft.days).padStart(2, '0')}</div>
+                  <div className="text-[8px] text-amber-400 uppercase font-bold">Days</div>
+                </div>
+                <span className="text-cyan-400 font-bold">:</span>
+                <div className="bg-[#091535] border border-cyan-500/40 rounded-xl px-2.5 py-1 text-center min-w-[44px]">
+                  <div className="text-sm text-cyan-300">{String(timeLeft.hours).padStart(2, '0')}</div>
+                  <div className="text-[8px] text-slate-400 uppercase font-bold">Hours</div>
+                </div>
+                <span className="text-cyan-400 font-bold">:</span>
+                <div className="bg-[#091535] border border-cyan-500/40 rounded-xl px-2.5 py-1 text-center min-w-[44px]">
+                  <div className="text-sm text-cyan-300">{String(timeLeft.minutes).padStart(2, '0')}</div>
+                  <div className="text-[8px] text-slate-400 uppercase font-bold">Mins</div>
+                </div>
+                <span className="text-cyan-400 font-bold">:</span>
+                <div className="bg-[#091535] border border-cyan-500/40 rounded-xl px-2.5 py-1 text-center min-w-[44px]">
+                  <div className="text-sm text-emerald-300">{String(timeLeft.seconds).padStart(2, '0')}</div>
+                  <div className="text-[8px] text-slate-400 uppercase font-bold">Secs</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 7. GET LUCKY COUPONS (BUY TICKETS SECTION) */}
+          <div className="rounded-3xl bg-[#09122c] border border-blue-900/50 p-4 sm:p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-blue-950 pb-3">
+              <div className="flex items-center gap-2 text-sm font-black text-white">
+                <Ticket className="w-4 h-4 text-cyan-400" />
+                <span>Get Lucky Coupons</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-black text-amber-400 font-sans">
+                  ₹{(luckyDraw?.ticketPrice ?? 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono ml-1">
+                  INR / Coupon
+                </span>
+              </div>
+            </div>
+
+            {/* Selection Mode Selector */}
+            <div>
+              <label className="text-xs text-slate-300 font-bold block mb-1.5">Coupon Selection Method:</label>
+              <div className="grid grid-cols-2 gap-2 bg-[#050a1d] p-1.5 rounded-2xl border border-blue-950">
+                <button
+                  type="button"
+                  onClick={() => setSelectionMode('custom')}
+                  className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                    selectionMode === 'custom'
+                      ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-black shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Custom Choice</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectionMode('random')}
+                  className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                    selectionMode === 'random'
+                      ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-black shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Quick Random Auto</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Mode 1: Custom 6-Digit Picker */}
+            {selectionMode === 'custom' ? (
+              <div className="space-y-3 bg-[#050a1d] border border-blue-900/60 rounded-2xl p-3.5">
+                <div className="flex items-center justify-between text-xs text-amber-300 font-bold">
+                  <span>Enter 6-Digit Lucky Number:</span>
+                  <button
+                    type="button"
+                    onClick={handleGenerateRandomCoupon}
+                    className="text-[11px] text-cyan-400 hover:underline flex items-center gap-1 font-bold"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Generate Random</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="e.g. 786910"
+                    value={customCouponInput}
+                    onChange={(e) => setCustomCouponInput(e.target.value.replace(/\D/g, ''))}
+                    className="w-full bg-[#091535] border border-blue-900 rounded-xl px-3 py-2.5 text-center text-amber-300 font-black tracking-widest text-lg font-mono focus:outline-none focus:border-cyan-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomCoupon}
+                    className="px-4 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black font-black text-xs rounded-xl shrink-0 transition active:scale-95 shadow-md"
+                  >
+                    + Add
+                  </button>
+                </div>
+
+                {/* Added Custom Coupons Chips */}
+                {customCouponList.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-blue-950">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Chosen Coupons ({customCouponList.length}):</div>
+                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                      {customCouponList.map((num, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#091b40] border border-cyan-500/40 rounded-lg text-xs font-mono font-bold text-cyan-300"
+                        >
+                          #{num}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomCoupon(idx)}
+                            className="text-slate-400 hover:text-rose-400 text-xs font-bold"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Mode 2: Quick Quantity Chips for Random Mode */
+              <div className="space-y-2">
+                <label className="text-xs text-slate-300 font-bold">Select Quantity of Random Coupons:</label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {[1, 3, 5, 10, 20, 50].map((qty) => (
+                    <button
+                      key={qty}
+                      type="button"
+                      onClick={() => setTicketQty(qty)}
+                      className={`py-2 rounded-xl text-xs font-black transition active:scale-95 border ${
+                        ticketQty === qty
+                          ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-black border-cyan-400 shadow-md font-bold'
+                          : 'bg-[#050a1d] border-blue-900/60 text-slate-300 hover:border-cyan-500/40 hover:text-white'
+                      }`}
+                    >
+                      {qty} {qty === 1 ? 'Coupon' : 'Coupons'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cost Summary Box */}
+            <div className="bg-[#050a1d] border border-blue-900/60 rounded-2xl p-3 space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Total Coupons:</span>
+                <span className="text-white font-bold font-mono">
+                  {selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Unit Price:</span>
+                <span className="text-white font-bold font-sans">
+                  ₹{(luckyDraw?.ticketPrice ?? 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} INR
+                </span>
+              </div>
+              <div className="pt-2 border-t border-blue-950 flex justify-between font-bold text-sm">
+                <span className="text-cyan-300">Total Payable:</span>
+                <div className="text-right">
+                  <span className="text-amber-300 font-black text-base font-sans">
+                    ₹{(
+                      (luckyDraw?.ticketPrice ?? 100) *
+                      (selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty)
+                    ).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[11px] text-emerald-400 font-mono block">
+                    100% Pure INR
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Low Balance Warning & Recharge Link */}
+            {(luckyDraw?.ticketPrice ?? 100) * (selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty) >
+              ((currentUser.depositBalance || 0) + (currentUser.winningBalance || 0) + (currentUser.balance || 0)) && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 text-amber-300 text-[11px]">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    Need ₹{(
+                      (luckyDraw?.ticketPrice ?? 100) * (selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty) -
+                      ((currentUser.depositBalance || 0) + (currentUser.winningBalance || 0) + (currentUser.balance || 0))
+                    ).toFixed(2)} more
+                  </span>
+                </div>
+                {onOpenDeposit && (
+                  <button
+                    onClick={onOpenDeposit}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[11px] shadow-sm transition active:scale-95 shrink-0"
+                  >
+                    Deposit Now
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Purchase Action Button */}
+            <button
+              type="button"
+              onClick={handleBuyTickets}
+              disabled={buying}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-black font-black text-sm shadow-[0_0_25px_rgba(34,211,238,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+            >
+              {buying ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                  <span>Purchasing Coupons...</span>
+                </>
+              ) : (
+                <>
+                  <Ticket className="w-4 h-4 text-black" />
+                  <span>
+                    Buy{' '}
+                    {selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty}{' '}
+                    Coupon(s) • ₹{(
+                      (luckyDraw?.ticketPrice ?? 100) *
+                      (selectionMode === 'custom' && customCouponList.length > 0 ? customCouponList.length : ticketQty)
+                    ).toLocaleString('en-IN', { minimumFractionDigits: 2 })} INR
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 6. TAB CONTENT: MY TICKETS */}
+      {activeLotteryTab === 'tickets' && (
+        <div className="rounded-3xl bg-[#09122c] border border-blue-900/50 p-4 sm:p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between border-b border-blue-950 pb-3">
+            <div className="flex items-center gap-2 text-sm font-black text-white">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>My Active Coupons ({userTickets.length})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">
+                Total Pool: {luckyDraw?.tickets?.length || 0}
+              </span>
+              <button
+                onClick={() => setActiveLotteryTab('draw')}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition"
+              >
+                + Get More
+              </button>
+            </div>
+          </div>
+
+          {userTickets.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 space-y-3">
+              <Ticket className="w-12 h-12 mx-auto text-slate-600 opacity-60" />
+              <div className="text-sm font-bold text-slate-300">No Coupons Purchased in This Round</div>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Select your lucky 6-digit numbers in the Live Draw tab to take part in the 5-Step draw + 45 guaranteed prizes!
+              </p>
+              <button
+                onClick={() => setActiveLotteryTab('draw')}
+                className="mt-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-black text-xs shadow-md transition active:scale-95"
+              >
+                Buy Lucky Coupons Now
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[460px] overflow-y-auto pr-1">
+              {userTickets.map((tkt) => (
+                <div
+                  key={tkt.id}
+                  className="bg-[#050a1d] border border-blue-900/60 rounded-2xl p-3 text-center space-y-1 shadow-md relative overflow-hidden group hover:border-amber-400 transition"
+                >
+                  <div className="text-[10px] text-cyan-400 uppercase font-black tracking-wider">
+                    Coupon No
+                  </div>
+                  <div className="text-lg font-black text-amber-300 font-mono tracking-widest">
+                    #{tkt.ticketNumber}
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-mono">
+                    {new Date(tkt.purchasedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <span className="inline-block mt-1 text-[8px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    Active In Pool
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 7. TAB CONTENT: WINNERS HALL */}
+      {activeLotteryTab === 'winners' && (
+        <div className="rounded-3xl bg-[#09122c] border border-blue-900/50 p-4 sm:p-6 shadow-xl space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-blue-950 pb-3 gap-3">
+            <div className="flex items-center gap-2 text-sm font-black text-white">
+              <Trophy className="w-4 h-4 text-amber-400" />
+              <span>Past Champions Hall of Fame</span>
+              {luckyDraw?.lastWinningNumber && (
+                <span className="text-xs text-cyan-300 font-mono">
+                  (Last: <strong className="text-amber-400">#{luckyDraw.lastWinningNumber}</strong>)
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={downloadPastResultsCSV}
+                className="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                title="Export results to CSV"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Export CSV</span>
+              </button>
+
+              {(currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!showClearConfirm) {
+                      setShowClearConfirm(true);
+                      setTimeout(() => setShowClearConfirm(false), 5000);
+                    } else {
+                      setShowClearConfirm(false);
+                      handleClearPastHistory();
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                    showClearConfirm
+                      ? 'bg-rose-600 text-white border-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.5)] animate-pulse'
+                      : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40'
+                  }`}
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{showClearConfirm ? 'Confirm Clear' : 'Clear History'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Winner Tier Filter Tabs */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setWinnerTierFilter('all')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition border ${
+                winnerTierFilter === 'all'
+                  ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200'
+                  : 'bg-[#050a1d] border-blue-950 text-slate-400 hover:text-white'
+              }`}
+            >
+              All ({luckyDraw?.pastWinners?.length || 0})
+            </button>
+            <button
+              type="button"
+              onClick={() => setWinnerTierFilter('1st')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition border ${
+                winnerTierFilter === '1st'
+                  ? 'bg-amber-500/30 border-amber-400 text-amber-200 shadow-sm'
+                  : 'bg-[#050a1d] border-blue-950 text-amber-400/80 hover:text-amber-300'
+              }`}
+            >
+              🥇 1st (₹{(luckyDraw?.prizeAmount ?? 25000).toLocaleString('en-IN')})
+            </button>
+            <button
+              type="button"
+              onClick={() => setWinnerTierFilter('2nd')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition border ${
+                winnerTierFilter === '2nd'
+                  ? 'bg-purple-500/30 border-purple-400 text-purple-200 shadow-sm'
+                  : 'bg-[#050a1d] border-blue-950 text-purple-300/80 hover:text-purple-200'
+              }`}
+            >
+              🥈 2nd (₹{(luckyDraw?.secondPrizeAmount ?? 10000).toLocaleString('en-IN')})
+            </button>
+            <button
+              type="button"
+              onClick={() => setWinnerTierFilter('3rd')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition border ${
+                winnerTierFilter === '3rd'
+                  ? 'bg-cyan-500/30 border-cyan-400 text-cyan-200 shadow-sm'
+                  : 'bg-[#050a1d] border-blue-950 text-cyan-400/80 hover:text-cyan-300'
+              }`}
+            >
+              🥉 3rd (₹{(luckyDraw?.thirdPrizeAmount ?? 5000).toLocaleString('en-IN')})
+            </button>
+            <button
+              type="button"
+              onClick={() => setWinnerTierFilter('guaranteed')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition border ${
+                winnerTierFilter === 'guaranteed'
+                  ? 'bg-yellow-500/30 border-yellow-400 text-yellow-200 shadow-sm'
+                  : 'bg-[#050a1d] border-blue-950 text-yellow-400/80 hover:text-yellow-300'
+              }`}
+            >
+              🎁 Guaranteed (45x)
+            </button>
+          </div>
+
+          {/* Filtered Winners Grid */}
+          {(() => {
+            const past = luckyDraw?.pastWinners || [];
+            const filtered = past.filter((win) => {
+              if (winnerTierFilter === '1st') return win.prizeTier?.toLowerCase().includes('1st');
+              if (winnerTierFilter === '2nd') return win.prizeTier?.toLowerCase().includes('2nd');
+              if (winnerTierFilter === '3rd') return win.prizeTier?.toLowerCase().includes('3rd');
+              if (winnerTierFilter === '4th') return win.prizeTier?.toLowerCase().includes('4th');
+              if (winnerTierFilter === '5th') return win.prizeTier?.toLowerCase().includes('5th');
+              if (winnerTierFilter === 'guaranteed') return win.prizeTier?.toLowerCase().includes('guaranteed');
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div className="text-center py-10 text-slate-400 text-xs space-y-1">
+                  <Trophy className="w-8 h-8 mx-auto text-slate-600 opacity-60" />
+                  <div className="font-bold text-slate-300">No winners found for selected prize tier.</div>
+                  <p className="text-slate-500 text-[11px]">Winners appear automatically when draws complete.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filtered.map((win) => {
+                  const is1st = win.prizeTier?.toLowerCase().includes('1st');
+                  const is2nd = win.prizeTier?.toLowerCase().includes('2nd');
+                  const isGuaranteed = win.prizeTier?.toLowerCase().includes('guaranteed');
+
+                  const cardStyle = is1st
+                    ? 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                    : is2nd
+                    ? 'border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
+                    : isGuaranteed
+                    ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]'
+                    : 'border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]';
+
+                  const badgeStyle = is1st
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : is2nd
+                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                    : isGuaranteed
+                    ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40';
+
+                  const winInr = win.prizeAmount;
+
+                  return (
+                    <div key={win.id} className={`bg-[#050a1d] border rounded-2xl p-3.5 flex items-center justify-between gap-3 ${cardStyle}`}>
+                      <div className="space-y-1">
+                        <div className="text-xs font-black text-white flex items-center gap-1.5">
+                          <Crown className="w-3.5 h-3.5 text-amber-400" />
+                          <span>{win.userName}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Node: <span className="text-cyan-300 font-mono">#{win.userNodeId}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Coupon: <span className="text-amber-300 font-black font-mono">#{win.ticketNumber}</span>
+                        </div>
+                        {win.prizeTier && (
+                          <div className={`text-[9px] font-bold px-2 py-0.5 rounded-md border inline-block ${badgeStyle}`}>
+                            {win.prizeTier}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-sm font-black text-emerald-400 font-sans">+₹{winInr.toLocaleString('en-IN')}</div>
+                        <div className="text-[9px] text-slate-500 font-mono">INR Cash Prize</div>
+                        <div className="text-[9px] text-slate-500">{new Date(win.wonAt).toLocaleDateString()}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* 8. TAB CONTENT: RULES & TRANSPARENCY */}
+      {activeLotteryTab === 'rules' && (
+        <div className="rounded-3xl bg-[#09122c] border border-blue-900/50 p-4 sm:p-6 shadow-xl space-y-4">
+          <div className="flex items-center gap-2 border-b border-blue-950 pb-3 text-sm font-black text-white">
+            <HelpCircle className="w-4 h-4 text-cyan-400" />
+            <span>Official SportX Mega Lottery Rules & Matching System</span>
+          </div>
+
+          <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+            <div className="p-3.5 rounded-2xl bg-[#050a1d] border border-amber-500/20 space-y-1">
+              <span className="font-bold text-amber-300 block text-sm">🥇 1st to 5th Grand Prizes (Exact 6-Digit Match)</span>
+              <p>
+                Each coupon consists of a unique 6-digit number (e.g. <strong>786910</strong>). In each round, the slot reel rolls 5 times sequentially to reveal 1st, 2nd, 3rd, 4th, and 5th Prize winners. If your coupon matches all 6 digits of that step, you win the top jackpot!
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#050a1d] border border-yellow-500/20 space-y-1">
+              <span className="font-bold text-yellow-300 block text-sm">🎁 45 Guaranteed Cash Winners (Last 5 Digits Match)</span>
+              <p>
+                Across all 5 prize draws, any member whose coupon matches the <strong>last 5 digits</strong> across the 9 other series (e.g. series 0 to 9) wins a guaranteed cash reward automatically! That is 9 winners per step = <strong>45 total guaranteed winners</strong> every single round.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#050a1d] border border-emerald-500/20 space-y-1">
+              <span className="font-bold text-emerald-400 block text-sm">🤝 10% Direct Seller Referral Bonus</span>
+              <p>
+                Whenever someone you sponsor purchases lucky coupons, you instantly receive a <strong>10% Direct Seller Bonus</strong> credited immediately to your wallet. Plus, an additional 10% Royalty is awarded to sponsors whenever their direct members win any grand prize!
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#050a1d] border border-cyan-500/20 space-y-1">
+              <span className="font-bold text-cyan-300 block text-sm">🔒 Provably Fair & Instant Payouts</span>
+              <p>
+                Winnings are deposited straight into your Winning Wallet with zero delay and can be withdrawn or used to play any SportX games.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. TAB CONTENT: ADMIN CONTROLS */}
+      {activeLotteryTab === 'admin' && (currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
+        <div className="rounded-3xl bg-[#0d091a] border-2 border-rose-500/60 p-4 sm:p-6 shadow-2xl space-y-5">
           <div className="flex items-center justify-between border-b border-rose-500/30 pb-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-rose-400" />
-              <span className="text-sm font-bold text-rose-300 uppercase tracking-wider">
-                Admin Sequential Lucky Draw Control Panel
+              <span className="text-sm font-black text-rose-300 uppercase tracking-wider">
+                Admin Sequential Lucky Draw Control
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsAdminPanelOpen(!isAdminPanelOpen)}
-              className="px-3 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold hover:bg-rose-500/30 transition"
-            >
-              {isAdminPanelOpen ? 'Hide Admin Controls' : 'Show Admin Controls'}
-            </button>
+            <span className="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2.5 py-1 rounded-full font-bold">
+              Root Master Access
+            </span>
           </div>
 
           {adminMsg && (
@@ -1543,498 +1747,601 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
             </div>
           )}
 
-          {isAdminPanelOpen && (
-            <div className="space-y-5 pt-2">
-              {/* Sequential Draw Trigger Action Bar */}
-              <div className="bg-[#050814] border-2 border-amber-500/50 rounded-2xl p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-                  <div>
-                    <div className="text-xs font-black text-amber-300 flex items-center gap-2">
-                      <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      <span>ELECTRIC 5-STEP GAME PLAY CONTROLLER</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Press "Game Play" 5 times sequentially. Each press rolls the 10-second electric roller and reveals one prize on the board!
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleResetDrawRound}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Reset Round (Start Step 1)</span>
-                    </button>
-                  </div>
+          {/* Sequential 5-Step Game Play Trigger Bar */}
+          <div className="bg-[#050814] border-2 border-amber-500/50 rounded-2xl p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <div className="text-xs font-black text-amber-300 flex items-center gap-2">
+                  <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span>ELECTRIC 5-STEP GAME PLAY CONTROLLER</span>
                 </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Press "Game Play" 5 times sequentially. Each press rolls the 10-second electric roller and reveals one prize on the board!
+                </p>
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5].map((step) => {
-                    const prizeName = prizeCardsConfig[step - 1].name;
-                    const prizeAmt = prizeCardsConfig[step - 1].amount;
-                    const isDrawn = currentDrawnPrizes.some((p) => p.prizeRank === step);
-                    const isNextToDraw = (luckyDraw?.currentDrawStep || 0) + 1 === step;
+              <button
+                type="button"
+                onClick={handleResetDrawRound}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Reset Round (Step 1)</span>
+              </button>
+            </div>
 
-                    return (
-                      <button
-                        key={step}
-                        type="button"
-                        onClick={() => handleAdminTriggerDraw(step)}
-                        disabled={isRolling}
-                        className={`p-3 rounded-xl border font-bold text-xs transition flex flex-col items-center justify-center gap-1 cursor-pointer disabled:opacity-50 ${
-                          isNextToDraw
-                            ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-black border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-pulse'
-                            : isDrawn
-                            ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50'
-                            : 'bg-slate-900/80 text-slate-300 border-slate-700 hover:bg-slate-800'
-                        }`}
-                      >
-                        <span className="text-[10px] uppercase font-black">{isDrawn ? '✓ Drawn' : `Press #${step}`}</span>
-                        <span className="font-black text-sm">{prizeName}</span>
-                        <span className="text-[10px] opacity-80">${prizeAmt} USDT</span>
-                      </button>
-                    );
-                  })}
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[1, 2, 3, 4, 5].map((step) => {
+                const prizeName = prizeCardsConfig[step - 1].name;
+                const prizeAmt = prizeCardsConfig[step - 1].amount;
+                const isDrawn = currentDrawnPrizes.some((p) => p.prizeRank === step);
+                const isNextToDraw = (luckyDraw?.currentDrawStep || 0) + 1 === step;
 
-                <div className="pt-2 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">
-                    Next Action:{' '}
-                    <strong className="text-amber-300">
-                      {(luckyDraw?.currentDrawStep || 0) >= 5
-                        ? 'All 5 Prizes Drawn! Guaranteed 45 Prizes Distributed.'
-                        : `Step ${(luckyDraw?.currentDrawStep || 0) + 1} of 5 (${prizeCardsConfig[luckyDraw?.currentDrawStep || 0]?.name})`}
-                    </strong>
-                  </span>
-
+                return (
                   <button
+                    key={step}
                     type="button"
-                    onClick={() => handleAdminTriggerDraw()}
+                    onClick={() => handleAdminTriggerDraw(step)}
                     disabled={isRolling}
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-400 text-black font-black text-xs shadow-[0_0_20px_rgba(245,158,11,0.4)] transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-black" />
-                    <span>
-                      {(luckyDraw?.currentDrawStep || 0) >= 5 ? '⚡ START NEW ROUND (STEP 1)' : `⚡ GAME PLAY (TRIGGER STEP ${(luckyDraw?.currentDrawStep || 0) + 1})`}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Active Coupons Tracking & CSV Export Card */}
-              <div className="bg-[#050814] border border-cyan-500/30 rounded-2xl p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-                  <div className="flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-cyan-200">Active Pool Sold Coupons ({luckyDraw?.tickets?.length || 0})</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setShowActiveCouponsList(!showActiveCouponsList)}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <ListFilter className="w-3.5 h-3.5 text-cyan-300" />
-                      <span>{showActiveCouponsList ? 'Hide Coupons Table' : 'View Sold Coupons'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={downloadActiveCouponsCSV}
-                      className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.2)]"
-                    >
-                      <Download className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Download Active Coupons (CSV)</span>
-                    </button>
-                  </div>
-                </div>
-
-                {showActiveCouponsList && (
-                  <div className="space-y-3 pt-1">
-                    <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
-                      <input
-                        type="text"
-                        placeholder="Filter active coupons by Ticket #, Name or Node ID..."
-                        value={adminCouponSearch}
-                        onChange={(e) => setAdminCouponSearch(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 bg-[#0a0f1d] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-
-                    <div className="max-h-60 overflow-y-auto border border-slate-800 rounded-xl bg-[#030610]">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-slate-900/90 text-slate-400 font-bold sticky top-0 border-b border-slate-800">
-                          <tr>
-                            <th className="p-2 pl-3">Ticket #</th>
-                            <th className="p-2">User / Node ID</th>
-                            <th className="p-2">Price</th>
-                            <th className="p-2 text-center">Set Forced Step</th>
-                            <th className="p-2 pr-3 text-right">Date</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {(() => {
-                            const tkts = luckyDraw?.tickets || [];
-                            const filteredTkts = tkts.filter(
-                              (t) =>
-                                t.ticketNumber.includes(adminCouponSearch) ||
-                                (t.userName || '').toLowerCase().includes(adminCouponSearch.toLowerCase()) ||
-                                (t.userNodeId || '').toLowerCase().includes(adminCouponSearch.toLowerCase())
-                            );
-                            if (filteredTkts.length === 0) {
-                              return (
-                                <tr>
-                                  <td colSpan={5} className="p-4 text-center text-slate-500 text-xs">
-                                    No matching active coupons found in current pool.
-                                  </td>
-                                </tr>
-                              );
-                            }
-                            return filteredTkts.map((tkt, idx) => {
-                              return (
-                                <tr key={tkt.id || idx} className="hover:bg-slate-800/40 transition">
-                                  <td className="p-2 pl-3 font-mono font-bold text-amber-300">
-                                    #{tkt.ticketNumber}
-                                  </td>
-                                  <td className="p-2">
-                                    <div className="font-bold text-white">{tkt.userName || 'User'}</div>
-                                    <div className="text-[10px] text-slate-400">#{tkt.userNodeId || tkt.userId}</div>
-                                  </td>
-                                  <td className="p-2 text-cyan-300 font-bold">${tkt.price ?? 5} USDT</td>
-                                  <td className="p-2 text-center">
-                                    <div className="flex items-center justify-center gap-1">
-                                      {([1, 2, 3, 4, 5] as const).map((st) => (
-                                        <button
-                                          key={st}
-                                          type="button"
-                                          onClick={() => {
-                                            setForcedPrizesState((prev) => ({
-                                              ...prev,
-                                              [String(st)]: { userId: tkt.userId, ticketNumber: tkt.ticketNumber },
-                                            }));
-                                          }}
-                                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition cursor-pointer border ${
-                                            forcedPrizesState[String(st) as '1' | '2' | '3' | '4' | '5']?.ticketNumber === tkt.ticketNumber
-                                              ? 'bg-amber-500 text-black border-amber-300'
-                                              : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-                                          }`}
-                                        >
-                                          #{st}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </td>
-                                  <td className="p-2 pr-3 text-right text-[10px] text-slate-400">
-                                    {tkt.purchasedAt ? new Date(tkt.purchasedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                  </td>
-                                </tr>
-                              );
-                            });
-                          })()}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 🎯 Forced Winner Selection for all 5 Steps (1st to 5th Prizes) */}
-              <div className="bg-[#05050f] border border-amber-500/40 rounded-2xl p-4 space-y-4 shadow-[0_0_20px_rgba(245,158,11,0.15)]">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                  <div>
-                    <div className="text-xs font-black text-amber-300 flex items-center gap-2">
-                      <UserCheck className="w-4 h-4 text-amber-400" />
-                      <span>ADMIN WINNER CONTROLLER (1st to 5th PRIZES)</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Select any registered member or enter custom 6-digit coupon for each prize slot (1st, 2nd, 3rd, 4th, 5th). Changes automatically save.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleAdminSaveConfig()}
-                      className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black rounded-xl transition flex items-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.3)] cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Save Selections</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const cleared = {
-                          '1': { userId: '', ticketNumber: '' },
-                          '2': { userId: '', ticketNumber: '' },
-                          '3': { userId: '', ticketNumber: '' },
-                          '4': { userId: '', ticketNumber: '' },
-                          '5': { userId: '', ticketNumber: '' },
-                        };
-                        setForcedPrizesState(cleared);
-                        handleAdminSaveConfig({ forcedPrizes: cleared });
-                      }}
-                      className="px-3 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Clear All</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                  {([1, 2, 3, 4, 5] as const).map((step) => {
-                    const stKey = String(step) as '1' | '2' | '3' | '4' | '5';
-                    const prizeName = prizeCardsConfig[step - 1].name;
-                    const prizeAmt = prizeCardsConfig[step - 1].amount;
-                    const currentForced = forcedPrizesState[stKey];
-                    const chosenUser = users.find((u) => u.id === currentForced.userId);
-                    const userCoupons = luckyDraw?.tickets?.filter((t) => t.userId === currentForced.userId) || [];
-
-                    return (
-                      <div
-                        key={step}
-                        className={`rounded-2xl p-3 space-y-2 border transition-all ${
-                          currentForced.userId || currentForced.ticketNumber
-                            ? 'bg-gradient-to-b from-[#0f172a] to-[#080d1a] border-amber-400/80 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
-                            : 'bg-[#060a15] border-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-amber-300">{prizeName}</span>
-                          <span className="text-[10px] font-bold text-emerald-400">${prizeAmt} USDT</span>
-                        </div>
-
-                        <div>
-                          <label className="text-[9px] text-slate-400 font-bold block mb-1">
-                            Select Winning Member:
-                          </label>
-                          <select
-                            value={currentForced.userId}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              const updated = {
-                                ...forcedPrizesState,
-                                [stKey]: { ...forcedPrizesState[stKey], userId: val },
-                              };
-                              setForcedPrizesState(updated);
-                              handleAdminSaveConfig({ forcedPrizes: updated });
-                            }}
-                            className="w-full p-2 bg-[#02050e] border border-slate-700 rounded-xl text-[11px] text-amber-300 font-bold focus:outline-none focus:border-amber-500 cursor-pointer"
-                          >
-                            <option value="">-- Random Member (System Pick) --</option>
-                            {users.map((u) => {
-                              const count = luckyDraw?.tickets?.filter((t) => t.userId === u.id).length || 0;
-                              return (
-                                <option key={u.id} value={u.id}>
-                                  #{u.nodeId} - {u.name} ({count} tickets)
-                                </option>
-                              );
-                            })}
-                          </select>
-                        </div>
-
-                        {chosenUser && (
-                          <div className="bg-[#020612] p-1.5 rounded-lg border border-cyan-500/30 text-[10px] space-y-0.5">
-                            <div className="text-cyan-300 font-bold truncate">✓ {chosenUser.name}</div>
-                            <div className="text-slate-400 text-[9px]">
-                              Active Tickets: <strong className="text-amber-400">{userCoupons.length}</strong>
-                              {userCoupons.length === 0 && ' (Auto-gift on draw)'}
-                            </div>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="text-[9px] text-slate-400 font-bold block mb-1">
-                            Or Specific 6-Digit Ticket:
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={6}
-                            placeholder="e.g. 786910"
-                            value={currentForced.ticketNumber}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/\D/g, '');
-                              const updated = {
-                                ...forcedPrizesState,
-                                [stKey]: { ...forcedPrizesState[stKey], ticketNumber: val },
-                              };
-                              setForcedPrizesState(updated);
-                            }}
-                            onBlur={() => {
-                              handleAdminSaveConfig();
-                            }}
-                            className="w-full p-1.5 bg-[#02050e] border border-slate-800 rounded-xl text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono tracking-widest font-bold text-center"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Configure Prize Amounts */}
-              <div className="bg-[#050814] border border-cyan-500/30 rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-cyan-200">Configure Prize Pool Amounts ($ USDT)</span>
-                    {isAdminDirty && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-bold">
-                        Unsaved Changes
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleAdminSaveConfig()}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      isAdminDirty
-                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black shadow-[0_0_12px_rgba(245,158,11,0.5)] border border-amber-300'
-                        : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
+                    className={`p-3 rounded-xl border font-bold text-xs transition flex flex-col items-center justify-center gap-1 cursor-pointer disabled:opacity-50 ${
+                      isNextToDraw
+                        ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-black border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-pulse'
+                        : isDrawn
+                        ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50'
+                        : 'bg-slate-900/80 text-slate-300 border-slate-700 hover:bg-slate-800'
                     }`}
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{isAdminDirty ? 'Save Amounts Now' : 'Save Amounts'}</span>
+                    <span className="text-[10px] uppercase font-black">{isDrawn ? '✓ Drawn' : `Press #${step}`}</span>
+                    <span className="font-black text-sm">{prizeName}</span>
+                    <span className="text-[10px] opacity-80">₹{prizeAmt.toLocaleString('en-IN')} INR</span>
                   </button>
-                </div>
+                );
+              })}
+            </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-                  <div>
-                    <label className="text-[10px] text-slate-400 font-bold block">Ticket Price ($):</label>
-                    <input
-                      type="number"
-                      min="0.1"
-                      step="any"
-                      value={adminTicketPrice}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? '' : Number(e.target.value);
-                        setAdminTicketPrice(val);
-                        isAdminDirtyRef.current = true;
-                        setIsAdminDirty(true);
-                      }}
-                      className="w-full mt-1 p-2 bg-[#02050e] border border-slate-700 rounded-xl text-xs text-white font-bold focus:border-amber-400 focus:outline-none"
-                    />
-                  </div>
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <span className="text-slate-400">
+                Next Action:{' '}
+                <strong className="text-amber-300">
+                  {(luckyDraw?.currentDrawStep || 0) >= 5
+                    ? 'All 5 Prizes Drawn! Guaranteed 45 Prizes Distributed.'
+                    : `Step ${(luckyDraw?.currentDrawStep || 0) + 1} of 5 (${prizeCardsConfig[luckyDraw?.currentDrawStep || 0]?.name})`}
+                </strong>
+              </span>
 
-                  <div>
-                    <label className="text-[10px] text-amber-400 font-bold block">🥇 1st Prize ($):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={adminPrizeAmount}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? '' : Number(e.target.value);
-                        setAdminPrizeAmount(val);
-                        isAdminDirtyRef.current = true;
-                        setIsAdminDirty(true);
-                      }}
-                      className="w-full mt-1 p-2 bg-[#02050e] border border-amber-500/50 rounded-xl text-xs text-amber-400 font-bold focus:border-amber-400 focus:outline-none"
-                    />
-                  </div>
+              <button
+                type="button"
+                onClick={() => handleAdminTriggerDraw()}
+                disabled={isRolling}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-400 text-black font-black text-xs shadow-[0_0_20px_rgba(245,158,11,0.4)] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+              >
+                <Play className="w-3.5 h-3.5 fill-black" />
+                <span>
+                  {(luckyDraw?.currentDrawStep || 0) >= 5 ? '⚡ START NEW ROUND (STEP 1)' : `⚡ GAME PLAY (TRIGGER STEP ${(luckyDraw?.currentDrawStep || 0) + 1})`}
+                </span>
+              </button>
+            </div>
+          </div>
 
-                  <div>
-                    <label className="text-[10px] text-purple-400 font-bold block">🥈 2nd Prize ($):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={adminSecondPrize}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? '' : Number(e.target.value);
-                        setAdminSecondPrize(val);
-                        isAdminDirtyRef.current = true;
-                        setIsAdminDirty(true);
-                      }}
-                      className="w-full mt-1 p-2 bg-[#02050e] border border-purple-500/50 rounded-xl text-xs text-purple-300 font-bold focus:border-purple-400 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-cyan-400 font-bold block">🥉 3rd Prize ($):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={adminThirdPrize}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? '' : Number(e.target.value);
-                        setAdminThirdPrize(val);
-                        isAdminDirtyRef.current = true;
-                        setIsAdminDirty(true);
-                      }}
-                      className="w-full mt-1 p-2 bg-[#02050e] border border-cyan-500/50 rounded-xl text-xs text-cyan-300 font-bold focus:border-cyan-400 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-emerald-400 font-bold block">⭐ 4th Prize ($):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={adminFourthPrize}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? '' : Number(e.target.value);
-                        setAdminFourthPrize(val);
-                        isAdminDirtyRef.current = true;
-                        setIsAdminDirty(true);
-                      }}
-                      className="w-full mt-1 p-2 bg-[#02050e] border border-emerald-500/50 rounded-xl text-xs text-emerald-300 font-bold focus:border-emerald-400 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-rose-400 font-bold block">🎖️ 5th Prize ($):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={adminFifthPrize}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? '' : Number(e.target.value);
-                        setAdminFifthPrize(val);
-                        isAdminDirtyRef.current = true;
-                        setIsAdminDirty(true);
-                      }}
-                      className="w-full mt-1 p-2 bg-[#02050e] border border-rose-500/50 rounded-xl text-xs text-rose-300 font-bold focus:border-rose-400 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-yellow-400 font-bold block">🎁 Guaranteed 45x ($):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={adminGuaranteedPrize}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? '' : Number(e.target.value);
-                        setAdminGuaranteedPrize(val);
-                        isAdminDirtyRef.current = true;
-                        setIsAdminDirty(true);
-                      }}
-                      className="w-full mt-1 p-2 bg-[#02050e] border border-yellow-500/50 rounded-xl text-xs text-yellow-300 font-bold focus:border-yellow-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
+          {/* Active Sold Coupons Table & CSV Export */}
+          <div className="bg-[#050814] border border-blue-900/60 rounded-2xl p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-950 pb-3">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-bold text-cyan-200">Active Pool Sold Coupons ({luckyDraw?.tickets?.length || 0})</span>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => handleAdminSaveConfig()}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs border border-amber-300 transition shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => setShowActiveCouponsList(!showActiveCouponsList)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Save All Prize Amounts & Winner Settings</span>
+                  <ListFilter className="w-3.5 h-3.5 text-cyan-300" />
+                  <span>{showActiveCouponsList ? 'Hide Coupons Table' : 'View Sold Coupons'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={downloadActiveCouponsCSV}
+                  className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Download Active Coupons (CSV)</span>
                 </button>
               </div>
             </div>
-          )}
+
+            {showActiveCouponsList && (
+              <div className="space-y-3 pt-1">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Filter active coupons by Ticket #, Name or Node ID..."
+                    value={adminCouponSearch}
+                    onChange={(e) => setAdminCouponSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 bg-[#0a0f1d] border border-blue-950 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+
+                <div className="max-h-60 overflow-y-auto border border-blue-950 rounded-xl bg-[#030610]">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-900/90 text-slate-400 font-bold sticky top-0 border-b border-blue-950">
+                      <tr>
+                        <th className="p-2 pl-3">Ticket #</th>
+                        <th className="p-2">User / Node ID</th>
+                        <th className="p-2">Price</th>
+                        <th className="p-2 text-center">Set Forced Step</th>
+                        <th className="p-2 pr-3 text-right">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-blue-950/60 font-mono">
+                      {(() => {
+                        const tkts = luckyDraw?.tickets || [];
+                        const filteredTkts = tkts.filter(
+                          (t) =>
+                            t.ticketNumber.includes(adminCouponSearch) ||
+                            (t.userName || '').toLowerCase().includes(adminCouponSearch.toLowerCase()) ||
+                            (t.userNodeId || '').toLowerCase().includes(adminCouponSearch.toLowerCase())
+                        );
+                        if (filteredTkts.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={5} className="p-4 text-center text-slate-500 text-xs">
+                                No matching active coupons found in current pool.
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return filteredTkts.map((tkt, idx) => (
+                          <tr key={tkt.id || idx} className="hover:bg-slate-800/40 transition">
+                            <td className="p-2 pl-3 font-bold text-amber-300">#{tkt.ticketNumber}</td>
+                            <td className="p-2">
+                              <div className="font-bold text-white font-sans">{tkt.userName || 'User'}</div>
+                              <div className="text-[10px] text-slate-400">#{tkt.userNodeId || tkt.userId}</div>
+                            </td>
+                            <td className="p-2 text-cyan-300 font-bold">₹{(tkt.price ?? 100).toLocaleString('en-IN')} INR</td>
+                            <td className="p-2 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {([1, 2, 3, 4, 5] as const).map((st) => (
+                                  <button
+                                    key={st}
+                                    type="button"
+                                    onClick={() => {
+                                      setForcedPrizesState((prev) => ({
+                                        ...prev,
+                                        [String(st)]: { userId: tkt.userId, ticketNumber: tkt.ticketNumber },
+                                      }));
+                                    }}
+                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition cursor-pointer border ${
+                                      forcedPrizesState[String(st) as '1' | '2' | '3' | '4' | '5']?.ticketNumber === tkt.ticketNumber
+                                        ? 'bg-amber-500 text-black border-amber-300'
+                                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                                    }`}
+                                  >
+                                    #{st}
+                                  </button>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-2 pr-3 text-right text-[10px] text-slate-400">
+                              {tkt.purchasedAt ? new Date(tkt.purchasedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Forced Winner Selection for 1st to 5th Prizes */}
+          <div className="bg-[#05050f] border border-amber-500/40 rounded-2xl p-4 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-950 pb-3">
+              <div>
+                <div className="text-xs font-black text-amber-300 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-amber-400" />
+                  <span>ADMIN WINNER CONTROLLER (1st to 5th PRIZES)</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Select any registered member or enter custom 6-digit coupon for each prize slot (1st, 2nd, 3rd, 4th, 5th).
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleAdminSaveConfig()}
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black rounded-xl transition flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Save Selections</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleared = {
+                      '1': { userId: '', ticketNumber: '' },
+                      '2': { userId: '', ticketNumber: '' },
+                      '3': { userId: '', ticketNumber: '' },
+                      '4': { userId: '', ticketNumber: '' },
+                      '5': { userId: '', ticketNumber: '' },
+                    };
+                    setForcedPrizesState(cleared);
+                    handleAdminSaveConfig({ forcedPrizes: cleared });
+                  }}
+                  className="px-3 py-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Clear All</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {([1, 2, 3, 4, 5] as const).map((step) => {
+                const stKey = String(step) as '1' | '2' | '3' | '4' | '5';
+                const prizeName = prizeCardsConfig[step - 1].name;
+                const prizeAmt = prizeCardsConfig[step - 1].amount;
+                const currentForced = forcedPrizesState[stKey];
+                const chosenUser = users.find((u) => u.id === currentForced.userId);
+                const userCoupons = luckyDraw?.tickets?.filter((t) => t.userId === currentForced.userId) || [];
+
+                return (
+                  <div
+                    key={step}
+                    className={`rounded-2xl p-3 space-y-2 border transition-all ${
+                      currentForced.userId || currentForced.ticketNumber
+                        ? 'bg-gradient-to-b from-[#0f172a] to-[#080d1a] border-amber-400/80 shadow-md'
+                        : 'bg-[#060a15] border-blue-950'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-300">{prizeName}</span>
+                      <span className="text-[10px] font-bold text-emerald-400 font-mono">₹{prizeAmt.toLocaleString('en-IN')} INR</span>
+                    </div>
+
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold block mb-1">
+                        Select Winning Member:
+                      </label>
+                      <select
+                        value={currentForced.userId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const updated = {
+                            ...forcedPrizesState,
+                            [stKey]: { ...forcedPrizesState[stKey], userId: val },
+                          };
+                          setForcedPrizesState(updated);
+                          handleAdminSaveConfig({ forcedPrizes: updated });
+                        }}
+                        className="w-full p-2 bg-[#02050e] border border-blue-950 rounded-xl text-[11px] text-amber-300 font-bold focus:outline-none focus:border-amber-500 cursor-pointer"
+                      >
+                        <option value="">-- Random Member (System Pick) --</option>
+                        {users.map((u) => {
+                          const count = luckyDraw?.tickets?.filter((t) => t.userId === u.id).length || 0;
+                          return (
+                            <option key={u.id} value={u.id}>
+                              #{u.nodeId} - {u.name} ({count} tickets)
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    {chosenUser && (
+                      <div className="bg-[#020612] p-1.5 rounded-lg border border-cyan-500/30 text-[10px] space-y-0.5">
+                        <div className="text-cyan-300 font-bold truncate">✓ {chosenUser.name}</div>
+                        <div className="text-slate-400 text-[9px]">
+                          Active Tickets: <strong className="text-amber-400">{userCoupons.length}</strong>
+                          {userCoupons.length === 0 && ' (Auto-gift on draw)'}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold block mb-1">
+                        Or Specific 6-Digit Ticket:
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="e.g. 786910"
+                        value={currentForced.ticketNumber}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          const updated = {
+                            ...forcedPrizesState,
+                            [stKey]: { ...forcedPrizesState[stKey], ticketNumber: val },
+                          };
+                          setForcedPrizesState(updated);
+                        }}
+                        onBlur={() => {
+                          handleAdminSaveConfig();
+                        }}
+                        className="w-full p-1.5 bg-[#02050e] border border-blue-950 rounded-xl text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono tracking-widest font-bold text-center"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Configure Prize Amounts (₹ INR) */}
+          <div className="bg-[#050814] border border-blue-900/60 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-blue-950 pb-2">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-bold text-cyan-200">Configure Prize Pool Amounts (₹ INR)</span>
+                {isAdminDirty && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-bold">
+                    Unsaved
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAdminSaveConfig()}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  isAdminDirty
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black shadow-md border border-amber-300'
+                    : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{isAdminDirty ? 'Save Amounts Now' : 'Save Amounts'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block">Ticket Price (₹):</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  value={adminTicketPrice}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setAdminTicketPrice(val);
+                    isAdminDirtyRef.current = true;
+                    setIsAdminDirty(true);
+                  }}
+                  className="w-full mt-1 p-2 bg-[#02050e] border border-slate-700 rounded-xl text-xs text-white font-bold focus:border-amber-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-amber-400 font-bold block">🥇 1st Prize (₹):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={adminPrizeAmount}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setAdminPrizeAmount(val);
+                    isAdminDirtyRef.current = true;
+                    setIsAdminDirty(true);
+                  }}
+                  className="w-full mt-1 p-2 bg-[#02050e] border border-amber-500/50 rounded-xl text-xs text-amber-400 font-bold focus:border-amber-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-purple-400 font-bold block">🥈 2nd Prize (₹):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={adminSecondPrize}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setAdminSecondPrize(val);
+                    isAdminDirtyRef.current = true;
+                    setIsAdminDirty(true);
+                  }}
+                  className="w-full mt-1 p-2 bg-[#02050e] border border-purple-500/50 rounded-xl text-xs text-purple-300 font-bold focus:border-purple-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-cyan-400 font-bold block">🥉 3rd Prize (₹):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={adminThirdPrize}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setAdminThirdPrize(val);
+                    isAdminDirtyRef.current = true;
+                    setIsAdminDirty(true);
+                  }}
+                  className="w-full mt-1 p-2 bg-[#02050e] border border-cyan-500/50 rounded-xl text-xs text-cyan-300 font-bold focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-emerald-400 font-bold block">⭐ 4th Prize (₹):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={adminFourthPrize}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setAdminFourthPrize(val);
+                    isAdminDirtyRef.current = true;
+                    setIsAdminDirty(true);
+                  }}
+                  className="w-full mt-1 p-2 bg-[#02050e] border border-emerald-500/50 rounded-xl text-xs text-emerald-300 font-bold focus:border-emerald-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-rose-400 font-bold block">🎖️ 5th Prize (₹):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={adminFifthPrize}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setAdminFifthPrize(val);
+                    isAdminDirtyRef.current = true;
+                    setIsAdminDirty(true);
+                  }}
+                  className="w-full mt-1 p-2 bg-[#02050e] border border-rose-500/50 rounded-xl text-xs text-rose-300 font-bold focus:border-rose-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-yellow-400 font-bold block">🎁 Guaranteed (₹):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={adminGuaranteedPrize}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setAdminGuaranteedPrize(val);
+                    isAdminDirtyRef.current = true;
+                    setIsAdminDirty(true);
+                  }}
+                  className="w-full mt-1 p-2 bg-[#02050e] border border-yellow-500/50 rounded-xl text-xs text-yellow-300 font-bold focus:border-yellow-400 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 10. FLOATING JALWA BADGES (Green Dragon & Cyan Jalwa Support) */}
+      <div className="fixed right-3 bottom-24 z-30 flex flex-col gap-2 pointer-events-auto">
+        {/* Green Dragon Token */}
+        <div
+          onClick={() => setShowRulesModal(true)}
+          className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-[0_4px_15px_rgba(16,185,129,0.5)] cursor-pointer hover:scale-110 active:scale-95 transition"
+          title="Lottery Draw Rules"
+        >
+          <div className="w-full h-full rounded-full bg-[#062c23] flex items-center justify-center">
+            <span className="text-xl">🐉</span>
+          </div>
+        </div>
+
+        {/* Cyan Jalwa Support Bot Bubble */}
+        <div
+          onClick={() => setShowSupportModal(true)}
+          className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 p-0.5 shadow-[0_4px_15px_rgba(34,211,238,0.5)] cursor-pointer hover:scale-110 active:scale-95 transition"
+          title="24/7 SportX Assistant"
+        >
+          <div className="w-full h-full rounded-full bg-[#081e3a] flex items-center justify-center">
+            <span className="text-xl">💬</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 11. 24/7 SUPPORT MODAL */}
+      {showSupportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#0b1430] border border-cyan-500/40 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative text-center">
+            <button
+              onClick={() => setShowSupportModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/20 border border-cyan-400 flex items-center justify-center text-cyan-300 mb-3">
+              <Headphones className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-lg font-black text-white mb-1">SportX 24/7 Lottery Support</h3>
+            <p className="text-xs text-slate-300 mb-4">
+              Need assistance with coupon numbers, prize claims, or draw schedules? We are here 24/7.
+            </p>
+
+            <div className="space-y-2 text-xs font-mono">
+              <div className="p-3 rounded-xl bg-[#080d20] border border-blue-900/50 text-cyan-300">
+                Telegram: @SportXOfficialSupport
+              </div>
+              <div className="p-3 rounded-xl bg-[#080d20] border border-blue-900/50 text-emerald-300">
+                Live Support: 24/7 Response Time &lt; 2 mins
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSupportModal(false)}
+              className="w-full mt-5 py-2.5 rounded-xl bg-cyan-400 text-black font-black text-xs shadow-lg"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 12. RULES MODAL */}
+      {showRulesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#0b1430] border border-cyan-500/40 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setShowRulesModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 mb-3">
+              <HelpCircle className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-lg font-black text-white mb-2">Mega Lottery Rules</h3>
+            <div className="space-y-2 text-xs text-slate-300 max-h-72 overflow-y-auto pr-1">
+              <div className="p-2.5 rounded-xl bg-[#080d20] border border-blue-900/50">
+                <span className="font-bold text-amber-300 block mb-0.5">🥇 Exact 6 Digits Match</span>
+                Matches all 6 digits of that step's roller to win the 1st to 5th Grand Prize.
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#080d20] border border-blue-900/50">
+                <span className="font-bold text-yellow-300 block mb-0.5">🎁 45 Guaranteed Winners</span>
+                Matches last 5 digits across all 9 series for all 5 steps to win guaranteed cash rewards!
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#080d20] border border-blue-900/50">
+                <span className="font-bold text-emerald-400 block mb-0.5">🤝 10% Direct Bonus</span>
+                10% direct sponsor bonus on every coupon purchase + 10% winner royalty.
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowRulesModal(false)}
+              className="w-full mt-4 py-2.5 rounded-xl bg-cyan-400 text-black font-black text-xs shadow-lg"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 13. INLINE TOAST NOTIFICATION */}
+      {localToast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-fade-in">
+          <div
+            className={`px-4 py-2 rounded-2xl shadow-2xl border text-xs font-black flex items-center gap-2 ${
+              localToast.type === 'success'
+                ? 'bg-emerald-950/95 text-emerald-200 border-emerald-400'
+                : 'bg-rose-950/95 text-rose-200 border-rose-400'
+            }`}
+          >
+            {localToast.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{localToast.message}</span>
+          </div>
         </div>
       )}
     </div>

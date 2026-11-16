@@ -45,7 +45,7 @@ export const RankRewardsView: React.FC<RankRewardsViewProps> = ({
               Rank Leadership Qualification & Cash Bonuses
             </h2>
             <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-              Build your team network volume and sponsor direct active nodes to qualify for prestigious leadership ranks and claim instant USDT rewards!
+              Build your team network volume and sponsor direct active nodes to qualify for prestigious leadership ranks and claim instant INR rewards!
             </p>
           </div>
 
@@ -110,7 +110,7 @@ export const RankRewardsView: React.FC<RankRewardsViewProps> = ({
                     <div className="text-[10px] text-slate-400 font-bold uppercase">Rank Prize / Reward</div>
                     <div className="text-sm font-extrabold text-white flex items-center justify-between">
                       <span className="text-emerald-300 truncate">{rank.rewardTitle || 'Cash Bonus'}</span>
-                      <span className="text-emerald-400 font-extrabold shrink-0">${rank.bonusUsdt} USDT</span>
+                      <span className="text-emerald-400 font-extrabold shrink-0">₹{rank.bonusUsdt.toLocaleString('en-IN')} INR</span>
                     </div>
                   </div>
 
@@ -123,7 +123,7 @@ export const RankRewardsView: React.FC<RankRewardsViewProps> = ({
                     <div className="grid grid-cols-2 gap-1.5 text-[10px]">
                       <div className="bg-[#070e1b] border border-slate-800 p-2 rounded-lg">
                         <span className="text-slate-400 block text-[9px] uppercase">Self Active Pkg</span>
-                        <span className="font-bold text-cyan-300">${rank.minSelfPackagePrice || 0}+</span>
+                        <span className="font-bold text-cyan-300">₹{(rank.minSelfPackagePrice || 0).toLocaleString('en-IN')}+</span>
                       </div>
 
                       <div className="bg-[#070e1b] border border-slate-800 p-2 rounded-lg">
@@ -149,7 +149,7 @@ export const RankRewardsView: React.FC<RankRewardsViewProps> = ({
                     {rank.requiredVolume && rank.requiredVolume > 0 ? (
                       <div className="flex justify-between text-[11px] bg-[#070e1b] p-2 rounded-lg border border-slate-800 mt-1">
                         <span className="text-slate-400">Req. Team Volume:</span>
-                        <span className="font-bold text-amber-300">${rank.requiredVolume.toLocaleString()}</span>
+                        <span className="font-bold text-amber-300">₹{rank.requiredVolume.toLocaleString('en-IN')} INR</span>
                       </div>
                     ) : null}
                   </div>

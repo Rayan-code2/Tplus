@@ -205,7 +205,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
 
     const totalAvail = (user?.balance || 0) + (user?.winningBalance || 0) + (user?.depositBalance || 0);
     if (totalAvail < chipAmount) {
-      showToast(`Insufficient balance! Required: $${chipAmount.toFixed(2)} USDT (Available: $${totalAvail.toFixed(2)})`, 'error');
+      showToast(`Insufficient balance! Required: ₹${chipAmount.toFixed(2)} INR (Available: ₹${totalAvail.toFixed(2)} INR)`, 'error');
       return;
     }
 
@@ -247,9 +247,9 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
             cashbackAwarded: data.cashbackAwarded,
           });
           if (data.isWin) {
-            showToast(`🎉 WINNER! You won $${data.payout.toFixed(2)} USDT on ${choice.toUpperCase()}!`, 'success');
+            showToast(`🎉 WINNER! You won ₹${data.payout.toFixed(2)} INR on ${choice.toUpperCase()}!`, 'success');
           } else if (data.cashbackAwarded > 0) {
-            showToast(`🛡️ 50% First 3 Bets Loss Shield Activated! +$${data.cashbackAwarded.toFixed(2)} USDT refunded!`, 'success');
+            showToast(`🛡️ 50% First 3 Bets Loss Shield Activated! +₹${data.cashbackAwarded.toFixed(2)} INR refunded!`, 'success');
           } else {
             showToast(`Round finished! Result: ${data.winner.toUpperCase()} won.`, 'error');
           }
@@ -351,7 +351,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
       });
 
       if (isWin) {
-        showToast(`🎉 WINNER! You won $${payout.toFixed(2)} USDT on ${choice.toUpperCase()}!`, 'success');
+        showToast(`🎉 WINNER! You won ₹${payout.toFixed(2)} INR on ${choice.toUpperCase()}!`, 'success');
       } else {
         showToast(`Round finished! Result: ${win.toUpperCase()} won.`, 'error');
       }
@@ -461,7 +461,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                   <span>💳 Deposit Wallet</span>
                 </div>
                 <div className="text-lg font-black text-cyan-300">
-                  ${(user?.depositBalance || 0).toFixed(2)} <span className="text-xs text-slate-500 font-normal">USDT</span>
+                  ₹{(user?.depositBalance || 0).toFixed(2)} <span className="text-xs text-slate-500 font-normal">INR</span>
                 </div>
               </div>
               <div className="h-10 w-[1px] bg-amber-500/20" />
@@ -470,7 +470,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                   <span>🎮 Winning Wallet</span>
                 </div>
                 <div className="text-lg font-black text-amber-300">
-                  ${(user?.winningBalance || 0).toFixed(2)} <span className="text-xs text-slate-500 font-normal">USDT</span>
+                  ₹{(user?.winningBalance || 0).toFixed(2)} <span className="text-xs text-slate-500 font-normal">INR</span>
                 </div>
               </div>
             </div>
@@ -654,19 +654,19 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
           </div>
         </div>
 
-        {/* REAL 3D CASINO GOLD CHIPS SELECTOR ($1, $5, $10, $50, $100, $500) */}
+        {/* REAL 3D CASINO GOLD CHIPS SELECTOR (₹10, ₹50, ₹100, ₹500, ₹1000, ₹5000) */}
         <div className="space-y-2.5 bg-[#020d08]/80 border border-amber-500/30 rounded-2xl p-3.5">
           <div className="text-xs uppercase text-slate-300 font-bold tracking-wider flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-amber-400">
               <Sparkles className="w-3.5 h-3.5" /> SELECT YOUR CHIP STAKE
             </span>
             <span className="text-cyan-300 font-extrabold bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-lg">
-              Selected: ${chipAmount} USDT
+              Selected: ₹{chipAmount} INR
             </span>
           </div>
 
           <div className="grid grid-cols-6 gap-2 sm:gap-3">
-            {[1, 5, 10, 50, 100, 500].map((amt) => {
+            {[10, 50, 100, 500, 1000, 5000].map((amt) => {
               const isSelected = chipAmount === amt;
               return (
                 <button
@@ -679,10 +679,10 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                   }`}
                 >
                   {/* Inner Metallic Coin Ring */}
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center shadow-inner ${
+                  <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 flex items-center justify-center shadow-inner ${
                     isSelected ? 'border-amber-900 bg-amber-400 text-black' : 'border-slate-600 bg-slate-800 text-amber-300'
                   }`}>
-                    <span className="font-extrabold">${amt}</span>
+                    <span className="font-extrabold text-[11px] sm:text-xs">₹{amt >= 1000 ? `${amt / 1000}K` : amt}</span>
                   </div>
                 </button>
               );
@@ -881,7 +881,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                               <div className="flex items-center gap-1.5">
                                 <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-2.5 py-1 rounded-full text-xs font-black inline-flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                                  YOU WON +${userBet.payout.toFixed(2)}
+                                  YOU WON +₹{userBet.payout.toFixed(2)}
                                 </span>
                                 <span className="text-[10px] text-slate-400 uppercase font-bold">
                                   (Bet: {userBet.choice})
@@ -892,7 +892,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                                 <div className="flex items-center gap-1.5">
                                   <span className="bg-rose-500/20 text-rose-400 border border-rose-500/40 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
                                     <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                                    LOST -${userBet.amount.toFixed(2)}
+                                    LOST -₹{userBet.amount.toFixed(2)}
                                   </span>
                                   <span className="text-[10px] text-slate-400 uppercase font-bold">
                                     (Bet: {userBet.choice})
@@ -900,7 +900,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                                 </div>
                                 {userBet.cashbackAwarded && userBet.cashbackAwarded > 0 ? (
                                   <span className="text-[10px] text-purple-300 font-bold flex items-center gap-1 pl-1">
-                                    🛡️ 50% Shield Refunded: +${userBet.cashbackAwarded.toFixed(2)}
+                                    🛡️ 50% Shield Refunded: +₹{userBet.cashbackAwarded.toFixed(2)}
                                   </span>
                                 ) : null}
                               </div>
@@ -943,7 +943,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                   </div>
                   <div className="mt-2">
                     <div className="text-xl sm:text-2xl font-black text-white font-mono">{totalBets}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">Wagered: ${totalWagered.toFixed(2)}</div>
+                    <div className="text-[11px] text-slate-400 font-mono">Wagered: ₹{totalWagered.toFixed(2)}</div>
                   </div>
                 </div>
 
@@ -972,10 +972,10 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                   </div>
                   <div className="mt-2">
                     <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
-                      +${totalPaid.toFixed(2)}
+                      +₹{totalPaid.toFixed(2)}
                     </div>
                     <div className="text-[11px] text-purple-300 font-mono flex items-center gap-1">
-                      <Shield className="w-3 h-3 text-purple-400 inline" /> Shield: +${totalShieldRefunded.toFixed(2)}
+                      <Shield className="w-3 h-3 text-purple-400 inline" /> Shield: +₹{totalShieldRefunded.toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -998,7 +998,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                     <div className={`text-xl sm:text-2xl font-black font-mono ${
                       netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
                     }`}>
-                      {netProfit >= 0 ? `+$${netProfit.toFixed(2)}` : `-$${Math.abs(netProfit).toFixed(2)}`}
+                      {netProfit >= 0 ? `+₹${netProfit.toFixed(2)}` : `-₹${Math.abs(netProfit).toFixed(2)}`}
                     </div>
                     <div className="text-[11px] text-slate-400 font-mono">
                       {netProfit >= 0 ? 'In Profit 🚀' : 'Net Deficit'}
@@ -1081,7 +1081,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
 
                           {/* Stake */}
                           <td className="p-3 font-bold text-white font-mono">
-                            ${bet.amount.toFixed(2)}
+                            ₹{bet.amount.toFixed(2)}
                           </td>
 
                           {/* Win / Loss Status */}
@@ -1099,7 +1099,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                                 </span>
                                 {bet.cashbackAwarded && bet.cashbackAwarded > 0 ? (
                                   <span className="text-[10px] bg-purple-950/60 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
-                                    🛡️ 50% Shield Refunded: +${bet.cashbackAwarded.toFixed(2)}
+                                    🛡️ 50% Shield Refunded: +₹{bet.cashbackAwarded.toFixed(2)}
                                   </span>
                                 ) : null}
                               </div>
@@ -1111,24 +1111,24 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                             {bet.status === 'won' ? (
                               <div>
                                 <div className="text-emerald-400 font-black text-sm">
-                                  +${bet.payout.toFixed(2)}
+                                  +₹{bet.payout.toFixed(2)}
                                 </div>
                                 <div className="text-[10px] text-emerald-300/80 font-bold">
-                                  Profit: +${(bet.payout - bet.amount).toFixed(2)}
+                                  Profit: +₹{(bet.payout - bet.amount).toFixed(2)}
                                 </div>
                               </div>
                             ) : bet.cashbackAwarded && bet.cashbackAwarded > 0 ? (
                               <div>
                                 <div className="text-rose-400 font-bold text-xs line-through">
-                                  -${bet.amount.toFixed(2)}
+                                  -₹{bet.amount.toFixed(2)}
                                 </div>
                                 <div className="text-purple-300 font-black text-xs">
-                                  +${bet.cashbackAwarded.toFixed(2)} Refund
+                                  +₹{bet.cashbackAwarded.toFixed(2)} Refund
                                 </div>
                               </div>
                             ) : (
                               <div className="text-rose-400 font-bold text-xs">
-                                -${bet.amount.toFixed(2)}
+                                -₹{bet.amount.toFixed(2)}
                               </div>
                             )}
                           </td>
@@ -1245,7 +1245,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                     <span>🏆 BLOCKBUSTER WINNER! 🏆</span>
                   </div>
                   <div className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-emerald-300 drop-shadow-[0_5px_15px_rgba(245,158,11,0.7)]">
-                    +${resultModal.winAmount.toFixed(2)} USDT
+                    +₹{resultModal.winAmount.toFixed(2)} INR
                   </div>
                   <p className="text-xs md:text-sm text-emerald-200 font-extrabold tracking-wide">
                     🎉 Credited instantly to your 🎮 Winning Wallet!
@@ -1262,7 +1262,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                   {resultModal.cashbackAwarded && resultModal.cashbackAwarded > 0 ? (
                     <div className="bg-purple-950/60 border border-purple-500/50 rounded-2xl p-3.5 flex items-center justify-center gap-2.5 text-purple-300 text-xs md:text-sm font-bold">
                       <Shield className="w-5 h-5 text-purple-400 shrink-0" />
-                      <span>🛡️ First 3 Bets 50% Loss Shield: +${resultModal.cashbackAwarded.toFixed(2)} USDT Refunded!</span>
+                      <span>🛡️ First 3 Bets 50% Loss Shield: +₹{resultModal.cashbackAwarded.toFixed(2)} INR Refunded!</span>
                     </div>
                   ) : null}
                 </div>
@@ -1276,7 +1276,7 @@ export const DragonTigerView: React.FC<DragonTigerViewProps> = ({
                 </div>
                 <div className="flex justify-between items-center text-xs md:text-sm">
                   <span className="text-slate-400 font-bold uppercase tracking-wider">Stake Placed:</span>
-                  <span className="text-white font-black">${resultModal.betAmount.toFixed(2)} USDT</span>
+                  <span className="text-white font-black">₹{resultModal.betAmount.toFixed(2)} INR</span>
                 </div>
               </div>
 

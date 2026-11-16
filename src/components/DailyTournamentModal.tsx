@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Flame, Users, Coins, Sparkles, Clock, Crown, Medal, Award, TrendingUp, Shield, ChevronRight } from 'lucide-react';
-import { DailyTournamentState, TournamentLeaderboardItem } from '../types';
+import { DailyTournamentState, TournamentLeaderboardItem, SystemSettings } from '../types';
+import { isGameEnabled } from '../utils/subdomainRouter';
 
 interface DailyTournamentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentUser?: any;
+  settings?: SystemSettings | null;
   onNavigateToGames?: () => void;
+  onSelectGame?: (gameTab: string) => void;
 }
 
 export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
   isOpen,
   onClose,
+  settings,
   onNavigateToGames,
+  onSelectGame,
 }) => {
   const [data, setData] = useState<DailyTournamentState | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -96,7 +102,7 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
                 {data?.title || 'Daily Top Bettor Tournament'}
               </h2>
               <p className="text-xs text-amber-950 font-sans font-medium max-w-xl">
-                Wager on Color Prediction, Dragon vs Tiger, or Aviator to climb the daily leaderboard and win massive USDT prize pool shares!
+                Wager on Color Prediction, Dragon vs Tiger, or Aviator to climb the daily leaderboard and win massive INR prize pool shares!
               </p>
             </div>
 
@@ -124,10 +130,10 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
               Total Dynamic Pot
             </div>
             <div className="text-xl sm:text-2xl font-black text-white mt-1">
-              ${(data?.totalPot ?? 250).toFixed(2)} <span className="text-xs text-amber-400 font-normal">USDT</span>
+              ₹{(data?.totalPot ?? 25000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs text-amber-400 font-normal">INR</span>
             </div>
             <div className="text-[9px] text-amber-300/80 font-sans mt-0.5">
-              Guaranteed ${(data?.basePot ?? 250).toFixed(2)} + {data?.turnoverContributionPercent ?? 5}% of daily wagers!
+              Guaranteed ₹{(data?.basePot ?? 25000).toLocaleString('en-IN')} + {data?.turnoverContributionPercent ?? 5}% of daily wagers!
             </div>
           </div>
 
@@ -152,7 +158,7 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
               Today's Wager Volume
             </div>
             <div className="text-xl sm:text-2xl font-black text-white mt-1">
-              ${(data?.totalWagerVolume || 0).toFixed(2)} <span className="text-xs text-purple-400 font-normal">USDT</span>
+              ₹{(data?.totalWagerVolume || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs text-purple-400 font-normal">INR</span>
             </div>
             <div className="text-[9px] text-slate-400 font-sans mt-0.5">
               {data?.totalBetsPlaced || 0} Total Bets Placed
@@ -169,7 +175,7 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
               {data?.userStats?.rank ? `#${data.userStats.rank}` : 'Unranked'}
             </div>
             <div className="text-[9px] text-emerald-400/80 font-sans mt-0.5">
-              ${(data?.userStats?.totalWagered || 0).toFixed(2)} Wagered ({data?.userStats?.betsCount || 0} bets)
+              ₹{(data?.userStats?.totalWagered || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Wagered ({data?.userStats?.betsCount || 0} bets)
             </div>
           </div>
         </div>
@@ -189,11 +195,11 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
                     {data.leaderboard[1]?.userName || 'Player 2'}
                   </div>
                   <div className="text-[10px] text-slate-400 font-mono">
-                    ${data.leaderboard[1]?.totalWagered.toFixed(2)} Wager
+                    ₹{data.leaderboard[1]?.totalWagered.toLocaleString('en-IN')} Wager
                   </div>
                 </div>
                 <div className="w-full bg-amber-500/20 border border-amber-500/40 rounded-xl py-1 text-amber-300 font-black text-xs mt-2">
-                  +${data.leaderboard[1]?.projectedPrize.toFixed(2)} USDT
+                  +₹{data.leaderboard[1]?.projectedPrize.toLocaleString('en-IN')} INR
                 </div>
               </div>
 
@@ -207,11 +213,11 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
                     {data.leaderboard[0]?.userName || 'Player 1'}
                   </div>
                   <div className="text-[10px] text-amber-200/80 font-mono">
-                    ${data.leaderboard[0]?.totalWagered.toFixed(2)} Wager
+                    ₹{data.leaderboard[0]?.totalWagered.toLocaleString('en-IN')} Wager
                   </div>
                 </div>
                 <div className="w-full bg-yellow-500 text-black font-black text-xs py-1.5 rounded-xl shadow-md mt-2">
-                  🏆 +${data.leaderboard[0]?.projectedPrize.toFixed(2)} USDT
+                  🏆 +₹{data.leaderboard[0]?.projectedPrize.toLocaleString('en-IN')} INR
                 </div>
               </div>
 
@@ -225,11 +231,11 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
                     {data.leaderboard[2]?.userName || 'Player 3'}
                   </div>
                   <div className="text-[10px] text-slate-400 font-mono">
-                    ${data.leaderboard[2]?.totalWagered.toFixed(2)} Wager
+                    ₹{data.leaderboard[2]?.totalWagered.toLocaleString('en-IN')} Wager
                   </div>
                 </div>
                 <div className="w-full bg-amber-500/20 border border-amber-500/40 rounded-xl py-1 text-amber-300 font-black text-xs mt-2">
-                  +${data.leaderboard[2]?.projectedPrize.toFixed(2)} USDT
+                  +₹{data.leaderboard[2]?.projectedPrize.toLocaleString('en-IN')} INR
                 </div>
               </div>
             </div>
@@ -293,13 +299,13 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
                             <span className="text-[10px] text-cyan-400">{item.badge}</span>
                           </td>
                           <td className="py-3 px-3 text-right font-mono font-bold text-white">
-                            ${item.totalWagered.toFixed(2)}
+                            ₹{item.totalWagered.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="py-3 px-3 text-center font-mono text-slate-400">
                             {item.betsCount}
                           </td>
                           <td className="py-3 px-3 text-right font-mono font-extrabold text-emerald-400">
-                            {item.projectedPrize > 0 ? `+$${item.projectedPrize.toFixed(2)}` : '—'}
+                            {item.projectedPrize > 0 ? `+₹${item.projectedPrize.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                           </td>
                         </tr>
                       ))
@@ -336,7 +342,7 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
                 )}
               </p>
               <p>
-                3. <strong>Min Wager Rule:</strong> Minimum <strong>${(data?.minWagerToQualify ?? 10).toFixed(2)} USDT</strong> total wager required to qualify for prize payout.
+                3. <strong>Min Wager Rule:</strong> Minimum <strong>₹{(data?.minWagerToQualify ?? 500).toLocaleString('en-IN')} INR</strong> total wager required to qualify for prize payout.
               </p>
               <p>
                 4. Prizes are calculated daily at 00:00 UTC and automatically credited to your <strong>Winning Wallet</strong> with 100% instant withdrawal!
@@ -346,31 +352,51 @@ export const DailyTournamentModal: React.FC<DailyTournamentModalProps> = ({
         </div>
 
         {/* Footer CTA */}
-        <div className="p-4 bg-[#060b14] border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="text-xs text-slate-400 text-center sm:text-left">
-            Increase your rank by playing <strong className="text-amber-400">Win Go, Dragon Tiger & Aviator</strong>.
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button
-              onClick={onClose}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition"
-            >
-              Close
-            </button>
-            {onNavigateToGames && (
-              <button
-                onClick={() => {
-                  onClose();
-                  onNavigateToGames();
-                }}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs transition shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center justify-center gap-1.5"
-              >
-                <Flame className="w-4 h-4" />
-                Play & Climb Now →
-              </button>
-            )}
-          </div>
-        </div>
+        {(() => {
+          const enabledTournamentGames = [
+            { key: 'aviator', name: 'Aviator' },
+            { key: 'colorprediction', name: 'Win Go' },
+            { key: 'dragontiger', name: 'Dragon Tiger' },
+          ].filter((g) => isGameEnabled(g.key, settings));
+          const firstEnabledGame = enabledTournamentGames[0]?.key;
+          return (
+            <div className="p-4 bg-[#060b14] border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              <div className="text-xs text-slate-400 text-center sm:text-left">
+                {enabledTournamentGames.length > 0 ? (
+                  <>
+                    Increase your rank by playing{' '}
+                    <strong className="text-amber-400">
+                      {enabledTournamentGames.map((g) => g.name).join(', ')}
+                    </strong>.
+                  </>
+                ) : (
+                  'Check back soon for live tournament arenas.'
+                )}
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  onClick={onClose}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition"
+                >
+                  Close
+                </button>
+                {(onNavigateToGames || onSelectGame) && firstEnabledGame && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onSelectGame) onSelectGame(firstEnabledGame);
+                      else if (onNavigateToGames) onNavigateToGames();
+                    }}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs transition shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center justify-center gap-1.5"
+                  >
+                    <Flame className="w-4 h-4" />
+                    Play & Climb Now →
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

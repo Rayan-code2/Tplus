@@ -418,6 +418,15 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0ef] tracking-tight mb-1 text-center">
                   Sign Up
                 </h2>
+                {settings?.signupBonus?.enabled &&
+                  ((settings.signupBonus.amountInr || 0) > 0 || (settings.signupBonus.freeSpins || 0) > 0) && (
+                    <div className="mb-2 mx-auto text-center px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 text-[11px] font-bold">
+                      🎁 Signup Bonus:{' '}
+                      {(settings.signupBonus.amountInr || 0) > 0 ? `₹${settings.signupBonus.amountInr} Instant` : ''}
+                      {(settings.signupBonus.amountInr || 0) > 0 && (settings.signupBonus.freeSpins || 0) > 0 ? ' + ' : ''}
+                      {(settings.signupBonus.freeSpins || 0) > 0 ? `${settings.signupBonus.freeSpins} Free Spin` : ''}
+                    </div>
+                  )}
 
                 <div className="gaurav-input-box">
                   <input
@@ -502,7 +511,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
       {/* Footer */}
       <footer className="w-full bg-[#151d2a]/80 border-t border-[#2c4766] py-3.5 px-4 text-center font-mono text-xs text-slate-400 z-20">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>© 2026 TetherPlus Cyber Web3 Protocol</span>
+          <span>© 2026 SportX Gaming Protocol</span>
           <div className="flex items-center gap-3 text-[11px]">
             <span className="text-emerald-400 font-semibold flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> SSL Encrypted Node

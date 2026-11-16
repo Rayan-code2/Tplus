@@ -28,7 +28,7 @@ export function getWithdrawalCapacityDetails(
 
   const isUpgraded20 = !!(
     user.isUpgraded ||
-    (activePkg && (activePkg.price >= 20 || activePkg.isUpgradePackage)) ||
+    (activePkg && (activePkg.price >= 2000 || activePkg.isUpgradePackage)) ||
     user.activePackageId === 'pkg-20' ||
     hasBoosterTx
   );
@@ -36,8 +36,8 @@ export function getWithdrawalCapacityDetails(
   const rankLower = (user.rank || '').toLowerCase();
   const directsCount = user.directReferralsCount || 0;
 
-  let capacityLimit = 10;
-  let tierTitle = '$10 Starter Package';
+  let capacityLimit = 1000;
+  let tierTitle = '₹1,000 Starter Package';
   let badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
   let isUnlimited = false;
   let nextGoalText = '';
@@ -56,58 +56,58 @@ export function getWithdrawalCapacityDetails(
     nextGoalText = 'Diamond Leadership Rank Active! You enjoy NO LIMIT (Unlimited) lifetime withdrawal capacity.';
     nextLimitText = 'UNLIMITED';
   } else if (rankLower.includes('gold')) {
-    capacityLimit = 4000;
-    tierTitle = 'Gold Rank ($4,000 Limit)';
+    capacityLimit = 400000;
+    tierTitle = 'Gold Rank (₹4,00,000 Limit)';
     badgeColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
     nextGoalText = 'Promote to Diamond Rank to unlock NO LIMIT (Unlimited) lifetime withdrawal capacity!';
     nextLimitText = 'UNLIMITED';
   } else if (rankLower.includes('silver')) {
-    capacityLimit = 2000;
-    tierTitle = 'Silver Rank ($2,000 Limit)';
+    capacityLimit = 200000;
+    tierTitle = 'Silver Rank (₹2,00,000 Limit)';
     badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-    nextGoalText = 'Promote to Gold Rank to increase lifetime capacity to $4,000 USDT!';
-    nextLimitText = '$4,000 USDT';
+    nextGoalText = 'Promote to Gold Rank to increase lifetime capacity to ₹4,00,000 INR!';
+    nextLimitText = '₹4,00,000 INR';
   } else if (rankLower.includes('bronze')) {
-    capacityLimit = 1000;
-    tierTitle = 'Bronze Rank ($1,000 Limit)';
+    capacityLimit = 100000;
+    tierTitle = 'Bronze Rank (₹1,00,000 Limit)';
     badgeColor = 'bg-orange-500/20 text-orange-300 border-orange-500/30';
-    nextGoalText = 'Promote to Silver Rank to increase lifetime capacity to $2,000 USDT!';
-    nextLimitText = '$2,000 USDT';
+    nextGoalText = 'Promote to Silver Rank to increase lifetime capacity to ₹2,00,000 INR!';
+    nextLimitText = '₹2,00,000 INR';
   } else if (isUpgraded20 && directsCount >= 6) {
-    capacityLimit = 600;
-    tierTitle = '$20 Package + 6 Directs ($600 Limit)';
+    capacityLimit = 60000;
+    tierTitle = '₹2,000 Package + 6 Directs (₹60,000 Limit)';
     badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-    nextGoalText = 'Achieve Bronze Rank to increase lifetime withdrawal capacity to $1,000 USDT!';
-    nextLimitText = '$1,000 USDT';
+    nextGoalText = 'Achieve Bronze Rank to increase lifetime withdrawal capacity to ₹1,00,000 INR!';
+    nextLimitText = '₹1,00,000 INR';
   } else if (isUpgraded20 && directsCount >= 4) {
-    capacityLimit = 400;
-    tierTitle = '$20 Package + 4 Directs ($400 Limit)';
+    capacityLimit = 40000;
+    tierTitle = '₹2,000 Package + 4 Directs (₹40,000 Limit)';
     badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
     const rem = Math.max(1, 6 - directsCount);
-    nextGoalText = `Sponsor ${rem} more direct referral(s) (total 6 direct) to increase capacity to $600 USDT!`;
-    nextLimitText = '$600 USDT';
+    nextGoalText = `Sponsor ${rem} more direct referral(s) (total 6 direct) to increase capacity to ₹60,000 INR!`;
+    nextLimitText = '₹60,000 INR';
   } else if (isUpgraded20 && directsCount >= 2) {
-    capacityLimit = 200;
-    tierTitle = '$20 Package + 2 Directs ($200 Limit)';
+    capacityLimit = 20000;
+    tierTitle = '₹2,000 Package + 2 Directs (₹20,000 Limit)';
     badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
     const rem = Math.max(1, 4 - directsCount);
-    nextGoalText = `Sponsor ${rem} more direct referral(s) (total 4 direct) to increase capacity to $400 USDT!`;
-    nextLimitText = '$400 USDT';
+    nextGoalText = `Sponsor ${rem} more direct referral(s) (total 4 direct) to increase capacity to ₹40,000 INR!`;
+    nextLimitText = '₹40,000 INR';
   } else if (directsCount >= 2) {
-    capacityLimit = 100;
-    tierTitle = '$10 Package + 2 Directs ($100 Limit)';
+    capacityLimit = 10000;
+    tierTitle = '₹1,000 Package + 2 Directs (₹10,000 Limit)';
     badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-    nextGoalText = 'Activate $20 Booster Package to unlock $200+ withdrawal capacity!';
-    nextLimitText = '$200 USDT';
+    nextGoalText = 'Activate ₹2,000 Booster Package to unlock ₹20,000+ withdrawal capacity!';
+    nextLimitText = '₹20,000 INR';
   } else {
-    capacityLimit = 10;
-    tierTitle = isUpgraded20 ? '$20 Package (<2 Directs) ($10 Limit)' : '$10 Starter Package ($10 Limit)';
+    capacityLimit = 1000;
+    tierTitle = isUpgraded20 ? '₹2,000 Package (<2 Directs) (₹1,000 Limit)' : '₹1,000 Starter Package (₹1,000 Limit)';
     badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
     const rem = Math.max(1, 2 - directsCount);
     nextGoalText = isUpgraded20
-      ? `Sponsor ${rem} more direct referral(s) (total 2 direct) to unlock $200 USDT capacity!`
-      : `Sponsor ${rem} more direct referral(s) (total 2 direct) to unlock $100 capacity (or $200 with $20 Package)!`;
-    nextLimitText = isUpgraded20 ? '$200 USDT' : '$100 USDT';
+      ? `Sponsor ${rem} more direct referral(s) (total 2 direct) to unlock ₹20,000 INR capacity!`
+      : `Sponsor ${rem} more direct referral(s) (total 2 direct) to unlock ₹10,000 capacity (or ₹20,000 with ₹2,000 Package)!`;
+    nextLimitText = isUpgraded20 ? '₹20,000 INR' : '₹10,000 INR';
   }
 
   // Calculate total withdrawn so far (non-rejected)
@@ -172,11 +172,11 @@ export const WithdrawalCapacityTracker: React.FC<WithdrawalCapacityTrackerProps>
       <div className="space-y-1.5">
         <div className="flex justify-between items-center text-xs text-slate-300 font-medium">
           <span>
-            Withdrawn: <strong className="text-white">${totalWithdrawnSoFar.toFixed(2)}</strong> /{' '}
-            <strong className="text-cyan-400">{isUnlimited ? '∞ UNLIMITED' : `$${capacityLimit} USDT`}</strong>
+            Withdrawn: <strong className="text-white">₹{totalWithdrawnSoFar.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> /{' '}
+            <strong className="text-cyan-400">{isUnlimited ? '∞ UNLIMITED' : `₹${capacityLimit.toLocaleString('en-IN')} INR`}</strong>
           </span>
           <span className="font-bold text-emerald-400">
-            {isUnlimited ? 'Unlimited Left' : `$${remainingCapacity.toFixed(2)} Remaining`}
+            {isUnlimited ? 'Unlimited Left' : `₹${remainingCapacity.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Remaining`}
           </span>
         </div>
 
@@ -212,7 +212,7 @@ export const WithdrawalCapacityTracker: React.FC<WithdrawalCapacityTrackerProps>
               onClick={onNavigateToPackages}
               className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-[11px] hover:from-cyan-400 hover:to-blue-500 transition shadow-md"
             >
-              <span>Activate $20 Booster Package</span>
+              <span>Activate ₹2,000 Booster Package</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           )}

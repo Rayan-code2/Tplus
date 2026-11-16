@@ -248,11 +248,11 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
           </div>
           <div className="mt-3 space-y-1">
             <h3 className="text-2xl font-extrabold text-white">
-              ${(stats?.totalCommissionEarned || user?.referralCommissionEarned || 0).toFixed(2)}{' '}
-              <span className="text-xs text-cyan-400 font-normal">USDT</span>
+              ₹{(stats?.totalCommissionEarned || user?.referralCommissionEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+              <span className="text-xs text-cyan-400 font-normal">INR</span>
             </h3>
             <p className="text-[11px] text-slate-400">
-              ≈ ₹{((stats?.totalCommissionEarned || user?.referralCommissionEarned || 0) * 100).toLocaleString('en-IN')} INR (Rate: $1 = ₹100)
+              100% Instant INR Commission Wallet
             </p>
           </div>
         </div>
@@ -267,11 +267,11 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
           </div>
           <div className="mt-3 space-y-1">
             <h3 className="text-2xl font-extrabold text-white">
-              ${(stats?.totalTeamTurnover || 0).toFixed(2)}{' '}
-              <span className="text-xs text-indigo-400 font-normal">USDT</span>
+              ₹{(stats?.totalTeamTurnover || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+              <span className="text-xs text-indigo-400 font-normal">INR</span>
             </h3>
             <p className="text-[11px] text-slate-400">
-              ≈ ₹{((stats?.totalTeamTurnover || 0) * 100).toLocaleString('en-IN')} Total Bets
+              5-Level Active Team Total Game Bets
             </p>
           </div>
         </div>
@@ -352,11 +352,11 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
                   <div className="flex items-center gap-6 text-right">
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-semibold">Total Bet Turnover</p>
-                      <p className="text-sm font-extrabold text-white">${lvlData.turnover.toFixed(2)} USDT</p>
+                      <p className="text-sm font-extrabold text-white">₹{lvlData.turnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-semibold">Commission Earned</p>
-                      <p className="text-sm font-extrabold text-emerald-400">${lvlData.commission.toFixed(4)} USDT</p>
+                      <p className="text-sm font-extrabold text-emerald-400">₹{lvlData.commission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR</p>
                     </div>
                     <button className="text-slate-400 hover:text-white p-1">
                       {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -389,7 +389,7 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
                                 </td>
                                 <td className="py-2.5 px-3 font-medium text-cyan-400">{m.rank || 'Member'}</td>
                                 <td className="py-2.5 px-3 text-right font-extrabold text-emerald-400">
-                                  ${m.totalBetTurnover.toFixed(2)} USDT
+                                  ₹{m.totalBetTurnover.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR
                                 </td>
                               </tr>
                             ))}
@@ -433,13 +433,13 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
 
             <div className="space-y-2">
               {(stats?.vipAgentStatus?.tiers || [
-                { level: 'VIP 1 Agent', minPlayers: 5, dailyBonusUsdt: 2.0, dailyBonusInr: 200 },
-                { level: 'VIP 2 Agent', minPlayers: 15, dailyBonusUsdt: 6.0, dailyBonusInr: 600 },
-                { level: 'VIP 3 Agent', minPlayers: 50, dailyBonusUsdt: 25.0, dailyBonusInr: 2500 },
-                { level: 'VIP 4 Agent', minPlayers: 200, dailyBonusUsdt: 120.0, dailyBonusInr: 12000 },
+                { level: 'VIP 1 Agent', minPlayers: 5, dailyBonusUsdt: 200, dailyBonusInr: 200 },
+                { level: 'VIP 2 Agent', minPlayers: 15, dailyBonusUsdt: 600, dailyBonusInr: 600 },
+                { level: 'VIP 3 Agent', minPlayers: 50, dailyBonusUsdt: 2500, dailyBonusInr: 2500 },
+                { level: 'VIP 4 Agent', minPlayers: 200, dailyBonusUsdt: 12000, dailyBonusInr: 12000 },
               ]).map((tier, idx) => {
                 const isActive = (stats?.vipAgentStatus?.activePlayersToday || 0) >= tier.minPlayers;
-                const calculatedInr = tier.dailyBonusUsdt * 100;
+                const dailyBonusInr = tier.dailyBonusInr || tier.dailyBonusUsdt;
                 return (
                   <div
                     key={idx}
@@ -454,8 +454,8 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
                       <span className="text-[11px] block text-slate-400">Req: {tier.minPlayers} Active Players/Day</span>
                     </div>
                     <div className="text-right">
-                      <span className="font-extrabold text-cyan-400">${tier.dailyBonusUsdt} USDT / Day</span>
-                      <span className="text-[10px] block text-slate-400">(₹{calculatedInr.toLocaleString('en-IN')} INR)</span>
+                      <span className="font-extrabold text-cyan-400">₹{dailyBonusInr.toLocaleString('en-IN')} INR / Day</span>
+                      <span className="text-[10px] block text-slate-400">Daily Fixed Agent Salary</span>
                     </div>
                   </div>
                 );
@@ -495,7 +495,7 @@ export const ReferralAgencyView: React.FC<ReferralAgencyViewProps> = ({ user }) 
                     </td>
                     <td className="py-2.5 px-3 font-medium text-slate-200">{log.notes}</td>
                     <td className="py-2.5 px-3 text-right font-extrabold text-emerald-400 whitespace-nowrap">
-                      +${log.amount.toFixed(4)} USDT
+                      +₹{log.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR
                     </td>
                   </tr>
                 ))}

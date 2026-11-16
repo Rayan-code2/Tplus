@@ -50,7 +50,17 @@ import {
   CheckCircle2,
   Percent,
   Ticket,
+  UserCheck,
+  UserX,
+  UserPlus,
+  KeyRound,
+  CheckSquare,
+  Square,
+  Globe,
+  Power,
+  Gamepad2,
 } from 'lucide-react';
+import { GAME_SUBDOMAIN_LIST, isGameEnabled, GameRouteKey } from '../utils/subdomainRouter';
 import {
   User,
   SystemSettings,
@@ -62,9 +72,16 @@ import {
   ProductOrder,
   RankConfig,
   SpinReward,
+  UpiPoolItem,
+  PaymentGatewayConfig,
+  AdminPermissions,
+  DepositBonusTier,
+  SignupBonusConfig,
+  DepositBonusConfig,
 } from '../types';
 
 interface AdminPanelProps {
+  currentUser?: User | null;
   settings: SystemSettings;
   users: User[];
   depositRequests: DepositRequest[];
@@ -87,9 +104,12 @@ interface AdminPanelProps {
   onUpdateOrderStatus?: (orderId: string, status: string) => Promise<void>;
   onToggleAdmin?: (userId: string, isAdmin: boolean) => Promise<void>;
   onDeleteUser?: (userId: string) => Promise<void>;
+  onSwitchUser?: (userId: string) => Promise<void>;
+  onRefreshState?: () => Promise<void>;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
+  currentUser,
   settings,
   users,
   depositRequests,
@@ -112,23 +132,309 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateOrderStatus,
   onToggleAdmin,
   onDeleteUser,
+  onSwitchUser,
+  onRefreshState,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'settings' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'dragon_tiger' | 'aviator_game' | 'tournament' | 'lottery_draw'
+    'settings' | 'game_controls' | 'bonuses' | 'users' | 'deposits' | 'withdrawals' | 'boosting' | 'audit' | 'sqlite' | 'products' | 'ranks' | 'reports' | 'color_prediction' | 'dragon_tiger' | 'aviator_game' | 'tournament' | 'lottery_draw' | 'upi_gateway' | 'subadmins'
   >('settings');
+
+  // Sub-Admins RBAC & Permissions State
+  const isSuperAdmin = currentUser?.isSuperAdmin || currentUser?.id === 'usr-root' || currentUser?.nodeId === 'NX-ROOT01';
+  const perms = currentUser?.adminPermissions || {};
+
+  const canAccess = (tab: string): boolean => {
+    if (isSuperAdmin) return true;
+    switch (tab) {
+      case 'settings': return Boolean(perms.canManageSettings);
+      case 'game_controls': return Boolean(perms.canManageSettings);
+      case 'bonuses': return Boolean(perms.canManageSettings);
+      case 'users': return Boolean(perms.canManageUsers);
+      case 'deposits': return Boolean(perms.canManageDeposits);
+      case 'withdrawals': return Boolean(perms.canManageWithdrawals);
+      case 'boosting': return Boolean(perms.canManageBoosting);
+      case 'audit': return Boolean(perms.canViewAudit);
+      case 'sqlite': return Boolean(perms.canManageSqlite);
+      case 'products': return Boolean(perms.canManageProducts);
+      case 'ranks': return Boolean(perms.canManageRanks);
+      case 'reports': return Boolean(perms.canViewReports);
+      case 'color_prediction': return Boolean(perms.canManageColorPrediction);
+      case 'dragon_tiger': return Boolean(perms.canManageDragonTiger);
+      case 'aviator_game': return Boolean(perms.canManageAviator);
+      case 'tournament': return Boolean(perms.canManageTournament);
+      case 'lottery_draw': return Boolean(perms.canManageLottery);
+      case 'upi_gateway': return Boolean(perms.canManageUpiGateway);
+      case 'subadmins': return isSuperAdmin || Boolean(perms.canManageSubAdmins);
+      default: return false;
+    }
+  };
+
+  // Auto-switch to authorized tab if current activeTab is unauthorized
+  useEffect(() => {
+    if (!canAccess(activeTab)) {
+      const order = [
+        'deposits', 'withdrawals', 'color_prediction', 'dragon_tiger', 'aviator_game',
+        'tournament', 'lottery_draw', 'upi_gateway', 'users', 'reports', 'settings',
+        'game_controls', 'bonuses', 'audit', 'sqlite', 'boosting', 'products', 'ranks', 'subadmins'
+      ];
+      const firstAllowed = order.find((t) => canAccess(t));
+      if (firstAllowed) {
+        setActiveTab(firstAllowed as any);
+      }
+    }
+  }, [currentUser]);
+
+  // Sub-Admin State
+  const [subadminsList, setSubadminsList] = useState<User[]>([]);
+  const [loadingSubadmins, setLoadingSubadmins] = useState(false);
+  const [subadminMsg, setSubadminMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // New Sub-Admin Form State
+  const [subFormName, setSubFormName] = useState('');
+  const [subFormNodeId, setSubFormNodeId] = useState('');
+  const [subFormEmail, setSubFormEmail] = useState('');
+  const [subFormPassword, setSubFormPassword] = useState('');
+  const [subFormRoleName, setSubFormRoleName] = useState('Deposit Approval Desk');
+  const [subFormPreset, setSubFormPreset] = useState<'custom' | 'deposit_only' | 'withdraw_only' | 'game_master' | 'gateway_manager' | 'support_staff' | 'auditor'>('deposit_only');
+  const [subFormPermissions, setSubFormPermissions] = useState<AdminPermissions>({
+    canManageDeposits: true,
+    canManageWithdrawals: false,
+    canManageUsers: false,
+    canManageColorPrediction: false,
+    canManageDragonTiger: false,
+    canManageAviator: false,
+    canManageTournament: false,
+    canManageLottery: false,
+    canManageUpiGateway: false,
+    canManageSettings: false,
+    canViewReports: false,
+    canViewAudit: false,
+    canManageProducts: false,
+    canManageBoosting: false,
+    canManageSqlite: false,
+    canManageRanks: false,
+  });
+
+  // Edit Sub-Admin State
+  const [editingSubadmin, setEditingSubadmin] = useState<User | null>(null);
+  const [editPermissions, setEditPermissions] = useState<AdminPermissions>({});
+  const [editRoleName, setEditRoleName] = useState('');
+  const [editPasswordReset, setEditPasswordReset] = useState('');
+  const [isSavingSubadmin, setIsSavingSubadmin] = useState(false);
+
+  const applyPreset = (preset: 'custom' | 'deposit_only' | 'withdraw_only' | 'game_master' | 'gateway_manager' | 'support_staff' | 'auditor') => {
+    setSubFormPreset(preset);
+    if (preset === 'deposit_only') {
+      setSubFormRoleName('Deposit Approval Desk');
+      setSubFormPermissions({ canManageDeposits: true });
+    } else if (preset === 'withdraw_only') {
+      setSubFormRoleName('Withdrawal Officer');
+      setSubFormPermissions({ canManageWithdrawals: true });
+    } else if (preset === 'game_master') {
+      setSubFormRoleName('Game Master (Win/Loss Controller)');
+      setSubFormPermissions({
+        canManageColorPrediction: true,
+        canManageDragonTiger: true,
+        canManageAviator: true,
+        canManageLottery: true,
+      });
+    } else if (preset === 'gateway_manager') {
+      setSubFormRoleName('Payment Gateway & UPI Desk');
+      setSubFormPermissions({
+        canManageUpiGateway: true,
+        canManageDeposits: true,
+      });
+    } else if (preset === 'support_staff') {
+      setSubFormRoleName('User Support Executive');
+      setSubFormPermissions({
+        canManageUsers: true,
+        canViewAudit: true,
+      });
+    } else if (preset === 'auditor') {
+      setSubFormRoleName('Finance & Compliance Auditor');
+      setSubFormPermissions({
+        canViewReports: true,
+        canViewAudit: true,
+      });
+    }
+  };
+
+  const fetchSubadmins = async () => {
+    setLoadingSubadmins(true);
+    try {
+      const res = await fetch('/api/admin/subadmins', {
+        headers: { 'x-user-id': currentUser?.id || 'usr-root' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubadminsList(data.subadmins || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch subadmins:', err);
+    } finally {
+      setLoadingSubadmins(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'subadmins' && (isSuperAdmin || perms.canManageSubAdmins)) {
+      fetchSubadmins();
+    }
+  }, [activeTab]);
+
+  const handleCreateSubadmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subFormName.trim() || !subFormNodeId.trim() || !subFormPassword.trim()) {
+      setSubadminMsg({ text: 'Please fill Name, Node/User ID and Password', type: 'error' });
+      return;
+    }
+    setIsSavingSubadmin(true);
+    setSubadminMsg(null);
+    try {
+      const res = await fetch('/api/admin/subadmins/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || 'usr-root',
+        },
+        body: JSON.stringify({
+          name: subFormName,
+          nodeId: subFormNodeId,
+          email: subFormEmail || `${subFormNodeId.toLowerCase()}@sportx.game`,
+          password: subFormPassword,
+          adminRoleName: subFormRoleName,
+          adminPermissions: subFormPermissions,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSubadminMsg({ text: data.message, type: 'success' });
+        setSubFormName('');
+        setSubFormNodeId('');
+        setSubFormEmail('');
+        setSubFormPassword('');
+        await fetchSubadmins();
+      } else {
+        setSubadminMsg({ text: data.error || 'Failed to create Sub-Admin', type: 'error' });
+      }
+    } catch (err: any) {
+      setSubadminMsg({ text: err?.message || 'Network error', type: 'error' });
+    } finally {
+      setIsSavingSubadmin(false);
+    }
+  };
+
+  const handleToggleSubadminStatus = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/subadmins/${id}/toggle`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || 'usr-root',
+        },
+      });
+      if (res.ok) {
+        await fetchSubadmins();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteSubadmin = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete Sub-Admin "${name}"?`)) return;
+    try {
+      const res = await fetch(`/api/admin/subadmins/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': currentUser?.id || 'usr-root' },
+      });
+      if (res.ok) {
+        await fetchSubadmins();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateSubadminPermissions = async () => {
+    if (!editingSubadmin) return;
+    setIsSavingSubadmin(true);
+    try {
+      const res = await fetch(`/api/admin/subadmins/${editingSubadmin.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || 'usr-root',
+        },
+        body: JSON.stringify({
+          adminRoleName: editRoleName,
+          adminPermissions: editPermissions,
+        }),
+      });
+      if (editPasswordReset.trim()) {
+        await fetch(`/api/admin/subadmins/${editingSubadmin.id}/reset-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': currentUser?.id || 'usr-root',
+          },
+          body: JSON.stringify({ password: editPasswordReset.trim() }),
+        });
+      }
+      if (res.ok) {
+        setEditingSubadmin(null);
+        setEditPasswordReset('');
+        await fetchSubadmins();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingSubadmin(false);
+    }
+  };
+
+  // UPI Gateway & Rotation Pool Admin State
+  const [upiBulkText, setUpiBulkText] = useState('');
+  const [upiDefaultName, setUpiDefaultName] = useState('SportX Gaming Official');
+  const [upiDailyLimit, setUpiDailyLimit] = useState<number>(100000);
+  const [upiReplaceAll, setUpiReplaceAll] = useState(false);
+  const [upiBulkLoading, setUpiBulkLoading] = useState(false);
+  const [upiBulkMsg, setUpiBulkMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [upiSearchQuery, setUpiSearchQuery] = useState('');
+  const [testRotatingUpiResult, setTestRotatingUpiResult] = useState<any>(null);
+  const [testingUpi, setTestingUpi] = useState(false);
+  const [gatewaySubdomain, setGatewaySubdomain] = useState(settings?.paymentGateway?.subdomainUrl || '');
+  const [gatewayRotationStrategy, setGatewayRotationStrategy] = useState<'roundRobin' | 'random' | 'leastUsed'>(
+    settings?.paymentGateway?.rotationStrategy || 'roundRobin'
+  );
+  const [gatewayTimerSeconds, setGatewayTimerSeconds] = useState<number>(
+    settings?.paymentGateway?.qrTimerSeconds || 600
+  );
+  const [singleUpiId, setSingleUpiId] = useState('');
+  const [singleUpiName, setSingleUpiName] = useState('');
+  const [isAddingSingle, setIsAddingSingle] = useState(false);
+
+  // Sync settings when props update
+  useEffect(() => {
+    if (settings?.paymentGateway) {
+      setGatewayRotationStrategy(settings.paymentGateway.rotationStrategy || 'roundRobin');
+      setGatewaySubdomain(settings.paymentGateway.subdomainUrl || '');
+      setGatewayTimerSeconds(settings.paymentGateway.qrTimerSeconds || 600);
+    }
+  }, [settings?.paymentGateway]);
 
   // Lucky Draw / Lottery Admin State
   const [luckyDrawData, setLuckyDrawData] = useState<any>(null);
   const [loadingLuckyDraw, setLoadingLuckyDraw] = useState(false);
   const [savingLuckyDraw, setSavingLuckyDraw] = useState(false);
   const [luckyDrawMsg, setLuckyDrawMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [ldTicketPrice, setLdTicketPrice] = useState<number | ''>(5);
-  const [ldPrize1, setLdPrize1] = useState<number | ''>(250);
-  const [ldPrize2, setLdPrize2] = useState<number | ''>(100);
-  const [ldPrize3, setLdPrize3] = useState<number | ''>(50);
-  const [ldPrize4, setLdPrize4] = useState<number | ''>(25);
-  const [ldPrize5, setLdPrize5] = useState<number | ''>(15);
-  const [ldPrizeGuaranteed, setLdPrizeGuaranteed] = useState<number | ''>(5);
+  const [ldTicketPrice, setLdTicketPrice] = useState<number | ''>(100);
+  const [ldPrize1, setLdPrize1] = useState<number | ''>(25000);
+  const [ldPrize2, setLdPrize2] = useState<number | ''>(10000);
+  const [ldPrize3, setLdPrize3] = useState<number | ''>(5000);
+  const [ldPrize4, setLdPrize4] = useState<number | ''>(2500);
+  const [ldPrize5, setLdPrize5] = useState<number | ''>(1500);
+  const [ldPrizeGuaranteed, setLdPrizeGuaranteed] = useState<number | ''>(500);
   const [ldForcedPrizes, setLdForcedPrizes] = useState<{ [key: string]: { userId: string; ticketNumber: string } }>({
     '1': { userId: '', ticketNumber: '' },
     '2': { userId: '', ticketNumber: '' },
@@ -146,13 +452,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         const ld = data.luckyDraw;
         setLuckyDrawData(ld);
         if (ld) {
-          setLdTicketPrice(ld.ticketPrice !== undefined ? ld.ticketPrice : 5);
-          setLdPrize1(ld.prizeAmount !== undefined ? ld.prizeAmount : 250);
-          setLdPrize2(ld.secondPrizeAmount !== undefined ? ld.secondPrizeAmount : 100);
-          setLdPrize3(ld.thirdPrizeAmount !== undefined ? ld.thirdPrizeAmount : 50);
-          setLdPrize4(ld.fourthPrizeAmount !== undefined ? ld.fourthPrizeAmount : 25);
-          setLdPrize5(ld.fifthPrizeAmount !== undefined ? ld.fifthPrizeAmount : 15);
-          setLdPrizeGuaranteed(ld.guaranteedPrizeAmount !== undefined ? ld.guaranteedPrizeAmount : 5);
+          setLdTicketPrice(ld.ticketPrice !== undefined ? ld.ticketPrice : 100);
+          setLdPrize1(ld.prizeAmount !== undefined ? ld.prizeAmount : 25000);
+          setLdPrize2(ld.secondPrizeAmount !== undefined ? ld.secondPrizeAmount : 10000);
+          setLdPrize3(ld.thirdPrizeAmount !== undefined ? ld.thirdPrizeAmount : 5000);
+          setLdPrize4(ld.fourthPrizeAmount !== undefined ? ld.fourthPrizeAmount : 2500);
+          setLdPrize5(ld.fifthPrizeAmount !== undefined ? ld.fifthPrizeAmount : 1500);
+          setLdPrizeGuaranteed(ld.guaranteedPrizeAmount !== undefined ? ld.guaranteedPrizeAmount : 500);
           if (ld.forcedPrizes) {
             setLdForcedPrizes({
               '1': { userId: ld.forcedPrizes['1']?.userId || '', ticketNumber: ld.forcedPrizes['1']?.ticketNumber || '' },
@@ -180,13 +486,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setLuckyDrawMsg(null);
     try {
       const payload = {
-        ticketPrice: override?.ticketPrice !== undefined ? override.ticketPrice : (ldTicketPrice === '' ? 5 : Number(ldTicketPrice)),
-        prizeAmount: override?.prizeAmount !== undefined ? override.prizeAmount : (ldPrize1 === '' ? 250 : Number(ldPrize1)),
-        secondPrizeAmount: override?.secondPrizeAmount !== undefined ? override.secondPrizeAmount : (ldPrize2 === '' ? 100 : Number(ldPrize2)),
-        thirdPrizeAmount: override?.thirdPrizeAmount !== undefined ? override.thirdPrizeAmount : (ldPrize3 === '' ? 50 : Number(ldPrize3)),
-        fourthPrizeAmount: override?.fourthPrizeAmount !== undefined ? override.fourthPrizeAmount : (ldPrize4 === '' ? 25 : Number(ldPrize4)),
-        fifthPrizeAmount: override?.fifthPrizeAmount !== undefined ? override.fifthPrizeAmount : (ldPrize5 === '' ? 15 : Number(ldPrize5)),
-        guaranteedPrizeAmount: override?.guaranteedPrizeAmount !== undefined ? override.guaranteedPrizeAmount : (ldPrizeGuaranteed === '' ? 5 : Number(ldPrizeGuaranteed)),
+        ticketPrice: override?.ticketPrice !== undefined ? override.ticketPrice : (ldTicketPrice === '' ? 100 : Number(ldTicketPrice)),
+        prizeAmount: override?.prizeAmount !== undefined ? override.prizeAmount : (ldPrize1 === '' ? 25000 : Number(ldPrize1)),
+        secondPrizeAmount: override?.secondPrizeAmount !== undefined ? override.secondPrizeAmount : (ldPrize2 === '' ? 10000 : Number(ldPrize2)),
+        thirdPrizeAmount: override?.thirdPrizeAmount !== undefined ? override.thirdPrizeAmount : (ldPrize3 === '' ? 5000 : Number(ldPrize3)),
+        fourthPrizeAmount: override?.fourthPrizeAmount !== undefined ? override.fourthPrizeAmount : (ldPrize4 === '' ? 2500 : Number(ldPrize4)),
+        fifthPrizeAmount: override?.fifthPrizeAmount !== undefined ? override.fifthPrizeAmount : (ldPrize5 === '' ? 1500 : Number(ldPrize5)),
+        guaranteedPrizeAmount: override?.guaranteedPrizeAmount !== undefined ? override.guaranteedPrizeAmount : (ldPrizeGuaranteed === '' ? 500 : Number(ldPrizeGuaranteed)),
         forcedPrizes: override?.forcedPrizes !== undefined ? override.forcedPrizes : ldForcedPrizes,
         ...override,
       };
@@ -202,13 +508,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         const ld = data.luckyDraw;
         setLuckyDrawData(ld);
         if (ld) {
-          setLdTicketPrice(ld.ticketPrice !== undefined ? ld.ticketPrice : 5);
-          setLdPrize1(ld.prizeAmount !== undefined ? ld.prizeAmount : 250);
-          setLdPrize2(ld.secondPrizeAmount !== undefined ? ld.secondPrizeAmount : 100);
-          setLdPrize3(ld.thirdPrizeAmount !== undefined ? ld.thirdPrizeAmount : 50);
-          setLdPrize4(ld.fourthPrizeAmount !== undefined ? ld.fourthPrizeAmount : 25);
-          setLdPrize5(ld.fifthPrizeAmount !== undefined ? ld.fifthPrizeAmount : 15);
-          setLdPrizeGuaranteed(ld.guaranteedPrizeAmount !== undefined ? ld.guaranteedPrizeAmount : 5);
+          setLdTicketPrice(ld.ticketPrice !== undefined ? ld.ticketPrice : 100);
+          setLdPrize1(ld.prizeAmount !== undefined ? ld.prizeAmount : 25000);
+          setLdPrize2(ld.secondPrizeAmount !== undefined ? ld.secondPrizeAmount : 10000);
+          setLdPrize3(ld.thirdPrizeAmount !== undefined ? ld.thirdPrizeAmount : 5000);
+          setLdPrize4(ld.fourthPrizeAmount !== undefined ? ld.fourthPrizeAmount : 2500);
+          setLdPrize5(ld.fifthPrizeAmount !== undefined ? ld.fifthPrizeAmount : 1500);
+          setLdPrizeGuaranteed(ld.guaranteedPrizeAmount !== undefined ? ld.guaranteedPrizeAmount : 500);
           if (ld.forcedPrizes) {
             setLdForcedPrizes({
               '1': { userId: ld.forcedPrizes['1']?.userId || '', ticketNumber: ld.forcedPrizes['1']?.ticketNumber || '' },
@@ -270,7 +576,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleAutoDispatchWithdrawal = async (requestId: string) => {
-    if (!confirm('Execute instant automated blockchain payout from SafePal Hot Wallet now?')) return;
+    if (!confirm('Execute instant automated payout dispatch now?')) return;
     setDispatchingWdId(requestId);
     try {
       const res = await fetch('/api/admin/withdraw/auto-dispatch', {
@@ -302,7 +608,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const data = await res.json();
       if (res.ok && data.valid) {
-        alert(`🎉 Deposit Auto-Verified on BSC Blockchain!\nAmount: ${data.blockchainData?.amount || ''} USDT\nSender: ${data.blockchainData?.from || ''}`);
+        alert(`🎉 Deposit Auto-Verified!\nAmount: Rs. ${data.blockchainData?.amount || ''} INR\nSender: ${data.blockchainData?.from || ''}`);
         window.location.reload();
       } else {
         alert(`⚠️ Verification note: ${data.error || 'Not confirmed yet on blockchain'}`);
@@ -502,6 +808,189 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // UPI Gateway & Rotation Pool Handlers
+  const handleBulkImportUpi = async (customText?: string) => {
+    const textToImport = customText !== undefined ? customText : upiBulkText;
+    if (!textToImport.trim()) {
+      setUpiBulkMsg({ text: 'Please enter at least one UPI ID in the box.', type: 'error' });
+      return;
+    }
+    setUpiBulkLoading(true);
+    setUpiBulkMsg(null);
+    try {
+      const res = await fetch('/api/admin/upi-pool/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bulkText: textToImport,
+          defaultName: upiDefaultName,
+          dailyLimit: upiDailyLimit,
+          replaceAll: upiReplaceAll,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUpiBulkMsg({
+          text: `🎉 ${data.message} Total in pool: ${data.totalCount}`,
+          type: 'success',
+        });
+        if (!customText) setUpiBulkText('');
+        // Trigger settings refresh from parent
+        await onUpdateSettings({
+          ...settings,
+          paymentGateway: {
+            ...(settings.paymentGateway || ({} as any)),
+            enabled: true,
+            rotationStrategy: gatewayRotationStrategy,
+            defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+            defaultPayeeName: upiDefaultName,
+            subdomainUrl: gatewaySubdomain,
+            qrTimerSeconds: gatewayTimerSeconds,
+            autoRotateOnRefresh: true,
+            upiPool: data.pool,
+          },
+        });
+      } else {
+        setUpiBulkMsg({ text: data.error || 'Failed to bulk import UPI IDs', type: 'error' });
+      }
+    } catch (err: any) {
+      setUpiBulkMsg({ text: err?.message || 'Network error importing UPIs', type: 'error' });
+    } finally {
+      setUpiBulkLoading(false);
+    }
+  };
+
+  const handleToggleUpi = async (id: string) => {
+    try {
+      const res = await fetch('/api/admin/upi-pool/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await onUpdateSettings({
+          ...settings,
+          paymentGateway: {
+            ...(settings.paymentGateway || ({} as any)),
+            enabled: true,
+            rotationStrategy: gatewayRotationStrategy,
+            defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+            defaultPayeeName: settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
+            subdomainUrl: gatewaySubdomain,
+            qrTimerSeconds: gatewayTimerSeconds,
+            autoRotateOnRefresh: true,
+            upiPool: data.pool,
+          },
+        });
+      }
+    } catch (err) {
+      alert('Error toggling UPI status');
+    }
+  };
+
+  const handleDeleteUpi = async (id: string, upiId: string) => {
+    if (!confirm(`Are you sure you want to delete ${upiId} from the active rotation pool?`)) return;
+    try {
+      const res = await fetch(`/api/admin/upi-pool/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await onUpdateSettings({
+          ...settings,
+          paymentGateway: {
+            ...(settings.paymentGateway || ({} as any)),
+            enabled: true,
+            rotationStrategy: gatewayRotationStrategy,
+            defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+            defaultPayeeName: settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
+            subdomainUrl: gatewaySubdomain,
+            qrTimerSeconds: gatewayTimerSeconds,
+            autoRotateOnRefresh: true,
+            upiPool: data.pool,
+          },
+        });
+      }
+    } catch (err) {
+      alert('Error deleting UPI ID');
+    }
+  };
+
+  const handleResetUpiCounts = async () => {
+    if (!confirm('Are you sure you want to reset all usage counters and collected amounts back to 0?')) return;
+    try {
+      const res = await fetch('/api/admin/upi-pool/reset-counts', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(data.message);
+        await onUpdateSettings({
+          ...settings,
+          paymentGateway: {
+            ...(settings.paymentGateway || ({} as any)),
+            enabled: true,
+            rotationStrategy: gatewayRotationStrategy,
+            defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+            defaultPayeeName: settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
+            subdomainUrl: gatewaySubdomain,
+            qrTimerSeconds: gatewayTimerSeconds,
+            autoRotateOnRefresh: true,
+            upiPool: data.pool,
+          },
+        });
+      }
+    } catch (err) {
+      alert('Error resetting counts');
+    }
+  };
+
+  const handleSaveGatewayConfig = async () => {
+    try {
+      await onUpdateSettings({
+        ...settings,
+        paymentGateway: {
+          ...(settings.paymentGateway || ({} as any)),
+          enabled: true,
+          rotationStrategy: gatewayRotationStrategy,
+          subdomainUrl: gatewaySubdomain.trim(),
+          qrTimerSeconds: Number(gatewayTimerSeconds) || 600,
+          defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+          defaultPayeeName: upiDefaultName,
+          autoRotateOnRefresh: true,
+          upiPool: settings.paymentGateway?.upiPool || [],
+        },
+      });
+      alert('✅ Payment Gateway & Rotation Config saved successfully!');
+    } catch (err) {
+      alert('Error saving gateway configuration');
+    }
+  };
+
+  const handleTestRotatingUpi = async () => {
+    setTestingUpi(true);
+    try {
+      const res = await fetch('/api/payment/active-upi');
+      if (res.ok) {
+        const data = await res.json();
+        setTestRotatingUpiResult(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTestingUpi(false);
+    }
+  };
+
+  const handleAddSingleUpi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!singleUpiId.trim() || !singleUpiId.includes('@')) {
+      alert('Please enter a valid UPI ID (e.g. name@bank)');
+      return;
+    }
+    await handleBulkImportUpi(`${singleUpiId.trim()}, ${singleUpiName.trim() || upiDefaultName}`);
+    setSingleUpiId('');
+    setSingleUpiName('');
+    setIsAddingSingle(false);
+  };
+
   // Date-Wise Report State & Helpers
   const getTodayString = () => {
     const d = new Date();
@@ -665,15 +1154,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       autoTable(doc, {
         startY: currentY,
-        head: [['Metric Category', 'Count / Total', 'Amount / Value ($)']],
+        head: [['Metric Category', 'Count / Total', 'Amount / Value (INR)']],
         body: [
           ['New User Registrations (Joinings)', `${filteredJoinings.length} Users`, '-'],
-          ['Package Activations & Upgrades', `${packageUpgrades.length} Packages`, `$${totalPackageRevenue.toFixed(2)}`],
-          ['Approved Deposits', `${approvedDeposits.length} Approved`, `$${totalApprovedDepositsAmount.toFixed(2)}`],
-          ['Withdrawal Requests (Total)', `${filteredWithdrawals.length} Requests`, `$${totalWithdrawalRequested.toFixed(2)}`],
-          ['Approved Net Withdrawals Paid', `${approvedWithdrawals.length} Approved`, `$${totalNetApprovedWithdrawals.toFixed(2)}`],
+          ['Package Activations & Upgrades', `${packageUpgrades.length} Packages`, `INR ${totalPackageRevenue.toFixed(2)}`],
+          ['Approved Deposits', `${approvedDeposits.length} Approved`, `INR ${totalApprovedDepositsAmount.toFixed(2)}`],
+          ['Withdrawal Requests (Total)', `${filteredWithdrawals.length} Requests`, `INR ${totalWithdrawalRequested.toFixed(2)}`],
+          ['Approved Net Withdrawals Paid', `${approvedWithdrawals.length} Approved`, `INR ${totalNetApprovedWithdrawals.toFixed(2)}`],
           ['Pending Withdrawals', `${pendingWithdrawals.length} Pending`, '-'],
-          ['Commissions Distributed (ROI/Sponsor/Level)', `${filteredTransactions.length} Payouts`, `$${(totalRoiPaid + totalSponsorPaid + totalLevelPaid).toFixed(2)}`],
+          ['Commissions Distributed (ROI/Sponsor/Level)', `${filteredTransactions.length} Payouts`, `INR ${(totalRoiPaid + totalSponsorPaid + totalLevelPaid).toFixed(2)}`],
         ],
         theme: 'grid',
         headStyles: { fillColor: [15, 23, 42], textColor: [245, 158, 11], fontStyle: 'bold' },
@@ -726,7 +1215,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         item.user.nodeId,
         item.user.name,
         item.packageName,
-        `$${item.packagePrice}`,
+        `INR ${item.packagePrice}`,
         formatYYYYMMDD(item.activatedAt),
       ]);
 
@@ -736,7 +1225,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       autoTable(doc, {
         startY: currentY,
-        head: [['#', 'Node ID', 'User Name', 'Package Activated', 'Price ($)', 'Date']],
+        head: [['#', 'Node ID', 'User Name', 'Package Activated', 'Price (INR)', 'Date']],
         body: pkgRows,
         theme: 'striped',
         headStyles: { fillColor: [180, 83, 9], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -759,9 +1248,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         index + 1,
         w.userNodeId,
         w.userName,
-        `$${w.requestedAmount}`,
-        `$${w.upgradeDeduction || 0}`,
-        `$${w.netAmount || w.requestedAmount}`,
+        `INR ${w.requestedAmount}`,
+        `INR ${w.upgradeDeduction || 0}`,
+        `INR ${w.netAmount || w.requestedAmount}`,
         w.status.toUpperCase(),
         formatYYYYMMDD(w.createdAt),
       ]);
@@ -1326,6 +1815,651 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditableSettings(settings);
   };
 
+  // Instant Per-Game ON/OFF Toggle State & Handlers
+  const [togglingGameKey, setTogglingGameKey] = useState<string | null>(null);
+  const [gameToggleMsg, setGameToggleMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const handleToggleGameVisibility = async (gameKey: GameRouteKey, nextEnabled: boolean) => {
+    setTogglingGameKey(gameKey);
+    setGameToggleMsg(null);
+    try {
+      const res = await fetch('/api/admin/games/toggle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || 'usr-root',
+        },
+        body: JSON.stringify({ gameKey, enabled: nextEnabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update game status');
+      }
+      setEditableSettings((prev) => ({
+        ...prev,
+        enabledGames: data.enabledGames || {
+          ...(prev.enabledGames || {}),
+          [gameKey]: nextEnabled,
+        },
+      }));
+      if (onRefreshState) {
+        await onRefreshState();
+      }
+      const meta = GAME_SUBDOMAIN_LIST.find((g) => g.tab === gameKey);
+      setGameToggleMsg({
+        text: `${meta?.label || gameKey} turned ${nextEnabled ? 'ON (Visible on Front Page)' : 'OFF (Hidden & Remaining Cards Auto-Sequenced)'}`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      setGameToggleMsg({ text: err.message || 'Toggle failed', type: 'error' });
+    } finally {
+      setTogglingGameKey(null);
+    }
+  };
+
+  const handleToggleAllGames = async (allEnabled: boolean) => {
+    setTogglingGameKey('__ALL__');
+    setGameToggleMsg(null);
+    try {
+      const res = await fetch('/api/admin/games/toggle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser?.id || 'usr-root',
+        },
+        body: JSON.stringify({ allEnabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to toggle all games');
+      }
+      setEditableSettings((prev) => ({
+        ...prev,
+        enabledGames: data.enabledGames,
+      }));
+      if (onRefreshState) {
+        await onRefreshState();
+      }
+      setGameToggleMsg({
+        text: allEnabled
+          ? 'All 9 games turned ON and visible on Front Page!'
+          : 'All 9 games turned OFF (Front Page games hidden)!',
+        type: 'success',
+      });
+    } catch (err: any) {
+      setGameToggleMsg({ text: err.message || 'Bulk toggle failed', type: 'error' });
+    } finally {
+      setTogglingGameKey(null);
+    }
+  };
+
+  const renderGameVisibilityPanel = () => {
+    const activeMap = editableSettings.enabledGames || settings.enabledGames;
+    const frontPageOrder: Array<{ key: GameRouteKey; cardName: string; affects: string }> = [
+      { key: 'colorprediction', cardName: 'WIN GO (Color Guess)', affects: 'Front Card + Sidebar + Daily Tournament' },
+      { key: 'aviator', cardName: 'AVIATOR (100X Jet)', affects: 'Category Button + Front Card + Sidebar + Tournament' },
+      { key: 'luckydraw', cardName: 'LOTTERY (Lucky Draw)', affects: 'Lottery Category Button + Front Card + Sidebar' },
+      { key: 'dragontiger', cardName: 'DRAGON vs TIGER', affects: 'Casino Category Button + Front Card + Sidebar' },
+      { key: 'cricket', cardName: 'CRICKET Fantasy 11', affects: 'Hero Cricket Banner + Sports Button + Card + Sidebar' },
+      { key: 'spinwheel', cardName: 'WHEEL of Fortune', affects: 'Top Wheel Banner + Card + Sidebar' },
+      { key: 'slot777', cardName: '777 VEGAS SLOTS', affects: 'Hot Slots & 777 Category Buttons + Card + Sidebar' },
+      { key: 'rummy', cardName: 'INDIAN RUMMY', affects: 'Rummy Category Button + Front Card + Sidebar' },
+      { key: 'chickenroad', cardName: 'CHICKEN ROAD', affects: 'Chicken Road Button + Front Card + Sidebar' },
+    ];
+
+    const enabledList = frontPageOrder.filter((item) =>
+      activeMap ? activeMap[item.key] !== false : isGameEnabled(item.key, settings)
+    );
+
+    return (
+      <div className="bg-[#0b1424] border border-emerald-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_25px_rgba(16,185,129,0.12)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+              <Gamepad2 className="w-4 h-4 text-emerald-400" />
+              Game ON / OFF Manager (Front Page Visibility & Auto-Sequence)
+            </h4>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Kisi bhi game ko OFF karne par uska Card, Banner, Category Button aur Sidebar link Front Page se gayab ho jayega aur baaki saare cards bina blank space ke sequence mein set ho jayenge.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={togglingGameKey === '__ALL__'}
+              onClick={() => handleToggleAllGames(true)}
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold transition disabled:opacity-50"
+            >
+              Turn All 9 ON
+            </button>
+            <button
+              type="button"
+              disabled={togglingGameKey === '__ALL__'}
+              onClick={() => handleToggleAllGames(false)}
+              className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 text-[11px] font-bold transition disabled:opacity-50"
+            >
+              Turn All OFF
+            </button>
+          </div>
+        </div>
+
+        {gameToggleMsg && (
+          <div
+            className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              gameToggleMsg.type === 'success'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+            }`}
+          >
+            {gameToggleMsg.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{gameToggleMsg.text}</span>
+          </div>
+        )}
+
+        {/* Live Front Page Sequence Preview */}
+        <div className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-bold text-cyan-300 uppercase">
+              Active Front Page Sequence ({enabledList.length}/9 Visible)
+            </span>
+            <span className="text-[10px] text-slate-400">Zero blank card spaces guaranteed</span>
+          </div>
+          {enabledList.length === 0 ? (
+            <div className="text-xs text-rose-300 font-bold">
+              All games are OFF — Maintenance notice displayed on Front Page.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {enabledList.map((item, idx) => {
+                const meta = GAME_SUBDOMAIN_LIST.find((g) => g.tab === item.key);
+                return (
+                  <span
+                    key={item.key}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-200 text-[11px] font-bold"
+                  >
+                    <span className="text-amber-300">#{idx + 1}</span>
+                    <span>{meta?.icon}</span>
+                    <span>{item.cardName.split(' ')[0]}</span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {frontPageOrder.map((item) => {
+            const meta = GAME_SUBDOMAIN_LIST.find((g) => g.tab === item.key);
+            const isOn = activeMap ? activeMap[item.key] !== false : isGameEnabled(item.key, settings);
+            const busy = togglingGameKey === item.key || togglingGameKey === '__ALL__';
+
+            return (
+              <div
+                key={item.key}
+                className={`rounded-xl p-3.5 border transition flex flex-col justify-between gap-3 ${
+                  isOn
+                    ? 'bg-[#071411] border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.08)]'
+                    : 'bg-[#12090d] border-rose-500/30 opacity-90'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-extrabold text-white">
+                      <span className="text-base">{meta?.icon || '🎮'}</span>
+                      <span>{item.cardName}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">{item.affects}</div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase shrink-0 border ${
+                      isOn
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                    }`}
+                  >
+                    {isOn ? '● LIVE ON' : '○ OFF'}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => handleToggleGameVisibility(item.key, !isOn)}
+                  className={`w-full py-2 px-3 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-2 disabled:opacity-50 ${
+                    isOn
+                      ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40'
+                      : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-black'
+                  }`}
+                >
+                  <Power className="w-3.5 h-3.5" />
+                  <span>
+                    {busy
+                      ? 'Updating...'
+                      : isOn
+                      ? 'Turn OFF (Hide from Front Page)'
+                      : 'Turn ON (Show on Front Page)'}
+                  </span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderBonusSettingsPanel = () => {
+    const signupCfg: SignupBonusConfig = editableSettings.signupBonus || {
+      enabled: true,
+      amountInr: 50,
+      creditWallet: 'depositBalance',
+      freeSpins: 1,
+    };
+    const depositCfg: DepositBonusConfig = editableSettings.depositBonus || {
+      enabled: true,
+      applyTo: 'all_deposits',
+      creditWallet: 'depositBalance',
+      tiers: [
+        { id: 'db-1000', label: 'Greater than ₹1,000', minAmount: 1000, bonusType: 'percent', bonusValue: 5, enabled: true },
+        { id: 'db-2000', label: 'Greater than ₹2,000', minAmount: 2000, bonusType: 'percent', bonusValue: 10, enabled: true },
+        { id: 'db-5000', label: 'Greater than ₹5,000', minAmount: 5000, bonusType: 'percent', bonusValue: 15, enabled: true },
+        { id: 'db-10000', label: 'Greater than ₹10,000', minAmount: 10000, bonusType: 'percent', bonusValue: 20, enabled: true },
+      ],
+    };
+
+    const updateSignup = (patch: Partial<SignupBonusConfig>) => {
+      updateEditableSettings({
+        ...editableSettings,
+        signupBonus: { ...signupCfg, ...patch },
+      });
+    };
+
+    const updateDeposit = (patch: Partial<DepositBonusConfig>) => {
+      updateEditableSettings({
+        ...editableSettings,
+        depositBonus: { ...depositCfg, ...patch },
+      });
+    };
+
+    const addDepositTier = (presetMin?: number, presetVal?: number) => {
+      const nextMin = presetMin ?? (depositCfg.tiers.length > 0 ? Math.max(...depositCfg.tiers.map((t) => Number(t.minAmount) || 0)) + 1000 : 1000);
+      const newTier: DepositBonusTier = {
+        id: `db-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        label: `Greater than ₹${nextMin.toLocaleString('en-IN')}`,
+        minAmount: nextMin,
+        bonusType: 'percent',
+        bonusValue: presetVal ?? 10,
+        enabled: true,
+      };
+      updateDeposit({ tiers: [...(depositCfg.tiers || []), newTier].sort((a, b) => a.minAmount - b.minAmount) });
+    };
+
+    const updateTierField = (id: string, patch: Partial<DepositBonusTier>) => {
+      const next = (depositCfg.tiers || []).map((t) => {
+        if (t.id !== id) return t;
+        const merged = { ...t, ...patch };
+        if (patch.minAmount !== undefined && (!t.label || t.label.startsWith('Greater than'))) {
+          merged.label = `Greater than ₹${(Number(patch.minAmount) || 0).toLocaleString('en-IN')}`;
+        }
+        return merged;
+      });
+      updateDeposit({ tiers: next });
+    };
+
+    const removeTier = (id: string) => {
+      updateDeposit({ tiers: (depositCfg.tiers || []).filter((t) => t.id !== id) });
+    };
+
+    const simulateDepositBonus = (amtInr: number) => {
+      if (!depositCfg.enabled) return { bonusInr: 0, label: 'Bonus OFF' };
+      const sorted = [...(depositCfg.tiers || [])]
+        .filter((t) => t.enabled !== false && Number(t.bonusValue) > 0)
+        .sort((a, b) => Number(b.minAmount) - Number(a.minAmount));
+      const matched = sorted.find((t) => amtInr >= Number(t.minAmount));
+      if (!matched) return { bonusInr: 0, label: 'No Slab Match' };
+      const bonusInr =
+        matched.bonusType === 'fixed'
+          ? Number(matched.bonusValue) || 0
+          : (amtInr * (Number(matched.bonusValue) || 0)) / 100;
+      return {
+        bonusInr,
+        label: matched.bonusType === 'fixed' ? `Flat ₹${matched.bonusValue}` : `${matched.bonusValue}%`,
+      };
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Top Action & Save Header */}
+        <div className="bg-[#0b1424] border border-amber-500/40 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_0_25px_rgba(245,158,11,0.12)]">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+              <Gift className="w-4 h-4 text-amber-400" />
+              Signup Bonus &amp; Range-Wise Deposit Bonus Engine
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Naye users ke liye Signup Bonus aur Deposit amount slabs (Greater than ₹1,000, ₹2,000, ₹5,000...) yahan se set karein.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {isSettingsDirty && (
+              <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold flex items-center gap-1.5 animate-pulse">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                Unsaved Changes
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-2 shadow-lg transition disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              <span>{savingSettings ? 'Saving...' : 'Save Bonus Settings'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* CARD 1: SIGNUP BONUS SETTINGS */}
+        <div className="bg-[#0b1424] border border-cyan-500/35 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div>
+              <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-cyan-400" />
+                1. Welcome Signup Bonus (On New User Registration)
+              </h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Jab koi naya user Sign Up karega to uske wallet me turant ye bonus credit ho jayega.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => updateSignup({ enabled: !signupCfg.enabled })}
+              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-2 shrink-0 ${
+                signupCfg.enabled
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              }`}
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>{signupCfg.enabled ? '● SIGNUP BONUS ON' : '○ SIGNUP BONUS OFF'}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div className="bg-[#050911] border border-slate-800 rounded-xl p-4 space-y-2">
+              <label className="text-[11px] font-bold text-cyan-400 uppercase block">
+                Signup Bonus Amount (₹ INR)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={signupCfg.amountInr ?? 50}
+                onChange={(e) => updateSignup({ amountInr: Math.max(0, parseFloat(e.target.value) || 0) })}
+                className="w-full bg-[#0d1726] border border-cyan-500/30 rounded-lg px-3 py-2 text-emerald-300 font-extrabold text-sm focus:outline-none focus:border-cyan-400"
+              />
+              <div className="text-[10px] text-slate-400">
+                Ledger Credit: <strong className="text-cyan-300">₹{(signupCfg.amountInr || 0).toLocaleString('en-IN')} INR</strong> (Direct Balance Credit)
+              </div>
+            </div>
+
+            <div className="bg-[#050911] border border-slate-800 rounded-xl p-4 space-y-2">
+              <label className="text-[11px] font-bold text-purple-400 uppercase block">
+                Free Welcome Spins on Signup
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={signupCfg.freeSpins ?? 1}
+                onChange={(e) => updateSignup({ freeSpins: Math.max(0, parseInt(e.target.value) || 0) })}
+                className="w-full bg-[#0d1726] border border-purple-500/30 rounded-lg px-3 py-2 text-purple-300 font-extrabold text-sm focus:outline-none focus:border-purple-400"
+              />
+              <div className="text-[10px] text-slate-400">
+                Spin credits given immediately at registration (0 = No free spin)
+              </div>
+            </div>
+
+            <div className="bg-[#050911] border border-slate-800 rounded-xl p-4 space-y-2">
+              <label className="text-[11px] font-bold text-amber-400 uppercase block">
+                Credit To Wallet
+              </label>
+              <select
+                value={signupCfg.creditWallet || 'depositBalance'}
+                onChange={(e) => updateSignup({ creditWallet: e.target.value as any })}
+                className="w-full bg-[#0d1726] border border-amber-500/30 rounded-lg px-3 py-2 text-amber-200 font-bold text-xs focus:outline-none focus:border-amber-400"
+              >
+                <option value="depositBalance">Deposit / Gaming Wallet (Recommended - Play Only)</option>
+                <option value="winningBalance">Winning Wallet (Withdrawable)</option>
+                <option value="balance">Main Agency Wallet</option>
+              </select>
+              <div className="text-[10px] text-slate-400">
+                Deposit Wallet keeps house safe: users must play &amp; win before withdrawing.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 2: RANGE-WISE DEPOSIT BONUS SETTINGS */}
+        <div className="bg-[#0b1424] border border-emerald-500/35 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div>
+              <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+                <Percent className="w-4 h-4 text-emerald-400" />
+                2. Deposit Bonus Range Rules (Greater Than ₹1000, ₹2000, etc.)
+              </h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Har deposit range ke liye alag bonus (% ya Fixed ₹) set karein. Sabse bada matching slab automatically apply hoga jab deposit approve hoga.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => updateDeposit({ enabled: !depositCfg.enabled })}
+              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-2 shrink-0 ${
+                depositCfg.enabled
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              }`}
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>{depositCfg.enabled ? '● DEPOSIT BONUS ON' : '○ DEPOSIT BONUS OFF'}</span>
+            </button>
+          </div>
+
+          {/* Global Deposit Bonus Options */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="bg-[#050911] border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase block">Apply Bonus Rule On</label>
+              <select
+                value={depositCfg.applyTo || 'all_deposits'}
+                onChange={(e) => updateDeposit({ applyTo: e.target.value as any })}
+                className="w-full bg-[#0d1726] border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 font-bold text-xs focus:outline-none"
+              >
+                <option value="all_deposits">Every Qualifying Deposit (Har Deposit Par)</option>
+                <option value="first_deposit_only">First Approved Deposit Only (Sirf Pehli Baar)</option>
+              </select>
+            </div>
+
+            <div className="bg-[#050911] border border-slate-800 rounded-xl p-3.5 space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase block">Bonus Credit Wallet</label>
+              <select
+                value={depositCfg.creditWallet || 'depositBalance'}
+                onChange={(e) => updateDeposit({ creditWallet: e.target.value as any })}
+                className="w-full bg-[#0d1726] border border-amber-500/30 rounded-lg px-3 py-2 text-amber-200 font-bold text-xs focus:outline-none"
+              >
+                <option value="depositBalance">Deposit / Gaming Wallet (Recommended)</option>
+                <option value="winningBalance">Winning Wallet (Withdrawable)</option>
+                <option value="balance">Main Agency Wallet</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Add Range Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="text-xs font-bold text-slate-300">
+              Configured Range Slabs ({depositCfg.tiers?.length || 0})
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => addDepositTier()}
+                className="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-extrabold flex items-center gap-1.5 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Range Slab</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Range Slabs Table */}
+          <div className="space-y-2.5">
+            {(depositCfg.tiers || []).length === 0 ? (
+              <div className="bg-[#050911] border border-slate-800 rounded-xl p-6 text-center text-xs text-slate-400">
+                Abhi koi deposit range slab nahi hai. &quot;Add New Range Slab&quot; par click karke ₹1,000, ₹2,000 jaise range add karein.
+              </div>
+            ) : (
+              [...(depositCfg.tiers || [])]
+                .sort((a, b) => Number(a.minAmount) - Number(b.minAmount))
+                .map((tier) => {
+                  const previewDeposit = Math.max(Number(tier.minAmount) || 1000, 1000);
+                  const previewBonus =
+                    tier.bonusType === 'fixed'
+                      ? Number(tier.bonusValue) || 0
+                      : (previewDeposit * (Number(tier.bonusValue) || 0)) / 100;
+
+                  return (
+                    <div
+                      key={tier.id}
+                      className={`p-4 rounded-xl border transition grid grid-cols-1 md:grid-cols-12 gap-3 items-center ${
+                        tier.enabled !== false
+                          ? 'bg-[#071411] border-emerald-500/35'
+                          : 'bg-[#120b10] border-slate-800 opacity-70'
+                      }`}
+                    >
+                      <div className="md:col-span-3 space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-emerald-400 block">
+                          Greater Than / ≥ Deposit (₹ INR)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={tier.minAmount}
+                          onChange={(e) =>
+                            updateTierField(tier.id, { minAmount: Math.max(0, parseFloat(e.target.value) || 0) })
+                          }
+                          className="w-full bg-[#050911] border border-emerald-500/30 rounded-lg px-3 py-1.5 text-white font-extrabold text-xs focus:outline-none focus:border-emerald-400"
+                        />
+                      </div>
+
+                      <div className="md:col-span-3 space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-400 block">
+                          Display Title
+                        </label>
+                        <input
+                          type="text"
+                          value={tier.label || ''}
+                          placeholder={`Greater than ₹${tier.minAmount}`}
+                          onChange={(e) => updateTierField(tier.id, { label: e.target.value })}
+                          className="w-full bg-[#050911] border border-slate-700 rounded-lg px-3 py-1.5 text-cyan-200 font-bold text-xs focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2 space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-400 block">
+                          Bonus Type
+                        </label>
+                        <select
+                          value={tier.bonusType || 'percent'}
+                          onChange={(e) => updateTierField(tier.id, { bonusType: e.target.value as 'percent' | 'fixed' })}
+                          className="w-full bg-[#050911] border border-slate-700 rounded-lg px-2.5 py-1.5 text-amber-300 font-bold text-xs focus:outline-none"
+                        >
+                          <option value="percent">% Percentage</option>
+                          <option value="fixed">Flat ₹ Amount</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-2 space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-amber-400 block">
+                          {tier.bonusType === 'fixed' ? 'Bonus (₹ INR)' : 'Bonus (%)'}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={tier.bonusValue}
+                          onChange={(e) =>
+                            updateTierField(tier.id, { bonusValue: Math.max(0, parseFloat(e.target.value) || 0) })
+                          }
+                          className="w-full bg-[#050911] border border-amber-500/30 rounded-lg px-3 py-1.5 text-amber-300 font-extrabold text-xs focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2 flex items-center justify-end gap-2 pt-3 md:pt-4">
+                        <button
+                          type="button"
+                          onClick={() => updateTierField(tier.id, { enabled: tier.enabled === false })}
+                          className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold border transition ${
+                            tier.enabled !== false
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          }`}
+                        >
+                          {tier.enabled !== false ? 'ON' : 'OFF'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeTier(tier.id)}
+                          className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 transition"
+                          title="Delete Slab"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="md:col-span-12 text-[10px] text-slate-400 flex flex-wrap items-center justify-between border-t border-slate-800/70 pt-2">
+                        <span>
+                          Rule: Deposit <strong className="text-white">≥ ₹{Number(tier.minAmount).toLocaleString('en-IN')}</strong>
+                        </span>
+                        <span className="text-emerald-300 font-bold">
+                          Example: ₹{previewDeposit.toLocaleString('en-IN')} deposit par +₹{previewBonus.toFixed(0)} bonus milega
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+
+          {/* Live Bonus Simulator */}
+          <div className="bg-[#050911] border border-cyan-500/25 rounded-xl p-4 space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+              Live Deposit Bonus Calculator Preview
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+              {[500, 1000, 2000, 5000, 10000].map((amt) => {
+                const sim = simulateDepositBonus(amt);
+                return (
+                  <div key={amt} className="bg-[#0b1424] border border-slate-800 rounded-lg p-2.5 space-y-0.5">
+                    <div className="text-[10px] text-slate-400">Deposit ₹{amt.toLocaleString('en-IN')}</div>
+                    <div className={`font-extrabold ${sim.bonusInr > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      +₹{sim.bonusInr.toFixed(0)} Bonus
+                    </div>
+                    <div className="text-[9px] text-cyan-300">{sim.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const filteredUsers = users.filter(
     (u) =>
       u.nodeId.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -1337,211 +2471,392 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     <div className="space-y-8 font-mono pb-12">
       {/* Admin Header Banner */}
       <div className="bg-gradient-to-r from-[#1a1309] via-[#120e06] to-[#0c1320] border border-amber-500/50 rounded-2xl p-6 relative overflow-hidden shadow-[0_0_25px_rgba(245,158,11,0.15)]">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-amber-400" />
-              <span className="text-xs uppercase tracking-widest text-amber-400 font-bold">
-                Super Admin Master Operations
+              <Shield className={`w-5 h-5 ${isSuperAdmin ? 'text-amber-400' : 'text-purple-400'}`} />
+              <span className={`text-xs uppercase tracking-widest font-bold ${isSuperAdmin ? 'text-amber-400' : 'text-purple-400'}`}>
+                {isSuperAdmin ? '👑 Super Admin Master Authority' : `🛡️ Sub-Admin Console: ${currentUser?.adminRoleName || 'Limited Operator'}`}
               </span>
             </div>
             <h2 className="text-2xl font-extrabold text-white">
-              Platform Governance & Real-Time Engine Controls
+              {isSuperAdmin
+                ? 'Platform Sovereign Governance & Sub-Admin Control'
+                : `Active Operator: ${currentUser?.name} (${currentUser?.nodeId})`}
             </h2>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {isSuperAdmin ? (
+                <span className="text-[11px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md font-mono">
+                  Full Sovereign Access to All Games, Finances, Users & Roles
+                </span>
+              ) : (
+                <>
+                  <span className="text-[11px] text-slate-400 font-mono">Granted Powers:</span>
+                  {perms.canManageDeposits && (
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ Deposits Only
+                    </span>
+                  )}
+                  {perms.canManageWithdrawals && (
+                    <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ Withdrawals Only
+                    </span>
+                  )}
+                  {perms.canManageColorPrediction && (
+                    <span className="text-[10px] bg-green-500/20 text-green-300 border border-green-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ Win Go (Color) Control
+                    </span>
+                  )}
+                  {perms.canManageDragonTiger && (
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ Dragon vs Tiger Control
+                    </span>
+                  )}
+                  {perms.canManageAviator && (
+                    <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ Aviator Crash Control
+                    </span>
+                  )}
+                  {perms.canManageLottery && (
+                    <span className="text-[10px] bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ Lottery & Lucky Draw
+                    </span>
+                  )}
+                  {perms.canManageUpiGateway && (
+                    <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ UPI Gateway Pool
+                    </span>
+                  )}
+                  {perms.canManageUsers && (
+                    <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ User Balances
+                    </span>
+                  )}
+                  {perms.canViewReports && (
+                    <span className="text-[10px] bg-slate-500/20 text-slate-300 border border-slate-500/40 px-2 py-0.5 rounded-full font-bold">
+                      ✓ Financial Reports
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
-          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-3 py-1 rounded-full text-xs font-bold">
-            Root Authority
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+              isSuperAdmin
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                : 'bg-purple-500/20 text-purple-300 border-purple-500/50'
+            }`}>
+              {isSuperAdmin ? 'Root Master: NX-ROOT01' : `Sub-Admin Node: ${currentUser?.nodeId}`}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Admin Tabs */}
       <div className="flex flex-wrap items-center gap-2 bg-[#0b1424] border border-slate-800 p-2 rounded-2xl text-xs font-bold">
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'settings'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Sliders className="w-4 h-4 text-amber-400" />
-          System Config
-        </button>
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'users'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Users className="w-4 h-4 text-amber-400" />
-          User Manager ({users.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('deposits')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'deposits'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
-          Deposits ({depositRequests.filter((d) => d.status === 'pending').length} Pending)
-        </button>
-        <button
-          onClick={() => setActiveTab('withdrawals')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'withdrawals'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <ArrowUpRight className="w-4 h-4 text-cyan-400" />
-          Withdrawals ({withdrawalRequests.filter((w) => w.status === 'pending').length} Pending)
-        </button>
-        <button
-          onClick={() => setActiveTab('boosting')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'boosting'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Zap className="w-4 h-4 text-amber-400" />
-          Boosting Queue ({boostingQueue.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('audit')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'audit'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <FileText className="w-4 h-4 text-amber-400" />
-          Audit & Logs
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('sqlite');
-            fetchSqliteStatus();
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'sqlite'
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Database className="w-4 h-4 text-emerald-400" />
-          SQLite DB Manager {sqliteInfo?.fileSizeKb ? `(${sqliteInfo.fileSizeKb} KB)` : ''}
-        </button>
-        <button
-          onClick={() => setActiveTab('products')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'products'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4 text-amber-400" />
-          TetherMart Products ({products.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('ranks')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'ranks'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Trophy className="w-4 h-4 text-amber-400" />
-          Rank & Rewards ({settings.ranks?.length || 0})
-        </button>
-        <button
-          onClick={() => setActiveTab('reports')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'reports'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-          Date-Wise Report (PDF)
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('color_prediction');
-            fetchColorStats();
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'color_prediction'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Dices className="w-4 h-4 text-cyan-400" />
-          Color Prediction Control
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('dragon_tiger');
-            fetchDragonTigerStats();
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'dragon_tiger'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Zap className="w-4 h-4 text-amber-400" />
-          Dragon vs Tiger Control
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('aviator_game');
-            fetchAviatorStats();
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'aviator_game'
-              ? 'bg-red-500/20 text-red-300 border border-red-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Zap className="w-4 h-4 text-red-400" />
-          Aviator Game Control
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('tournament');
-            fetchAdminTournament();
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'tournament'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Trophy className="w-4 h-4 text-yellow-400" />
-          Top Bettor Tournament
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('lottery_draw');
-            fetchAdminLuckyDraw();
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
-            activeTab === 'lottery_draw'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Ticket className="w-4 h-4 text-amber-400" />
-          Lottery & Lucky Draw
-        </button>
+        {canAccess('subadmins') && (
+          <button
+            onClick={() => {
+              setActiveTab('subadmins');
+              fetchSubadmins();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'subadmins'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-purple-400" />
+            <span>👥 Sub-Admins & Roles ({subadminsList.length})</span>
+          </button>
+        )}
+
+        {canAccess('deposits') && (
+          <button
+            onClick={() => setActiveTab('deposits')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'deposits'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
+            Deposits ({depositRequests.filter((d) => d.status === 'pending').length} Pending)
+          </button>
+        )}
+
+        {canAccess('withdrawals') && (
+          <button
+            onClick={() => setActiveTab('withdrawals')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'withdrawals'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ArrowUpRight className="w-4 h-4 text-cyan-400" />
+            Withdrawals ({withdrawalRequests.filter((w) => w.status === 'pending').length} Pending)
+          </button>
+        )}
+
+        {canAccess('color_prediction') && (
+          <button
+            onClick={() => {
+              setActiveTab('color_prediction');
+              fetchColorStats();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'color_prediction'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Dices className="w-4 h-4 text-cyan-400" />
+            Color Prediction Control
+          </button>
+        )}
+
+        {canAccess('dragon_tiger') && (
+          <button
+            onClick={() => {
+              setActiveTab('dragon_tiger');
+              fetchDragonTigerStats();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'dragon_tiger'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-amber-400" />
+            Dragon vs Tiger Control
+          </button>
+        )}
+
+        {canAccess('aviator_game') && (
+          <button
+            onClick={() => {
+              setActiveTab('aviator_game');
+              fetchAviatorStats();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'aviator_game'
+                ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-red-400" />
+            Aviator Game Control
+          </button>
+        )}
+
+        {canAccess('tournament') && (
+          <button
+            onClick={() => {
+              setActiveTab('tournament');
+              fetchAdminTournament();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'tournament'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Trophy className="w-4 h-4 text-yellow-400" />
+            Top Bettor Tournament
+          </button>
+        )}
+
+        {canAccess('lottery_draw') && (
+          <button
+            onClick={() => {
+              setActiveTab('lottery_draw');
+              fetchAdminLuckyDraw();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'lottery_draw'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Ticket className="w-4 h-4 text-amber-400" />
+            Lottery & Lucky Draw
+          </button>
+        )}
+
+        {canAccess('upi_gateway') && (
+          <button
+            onClick={() => setActiveTab('upi_gateway')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'upi_gateway'
+                ? 'bg-gradient-to-r from-cyan-500/30 to-emerald-500/30 text-cyan-300 border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-cyan-400" />
+            <span>⚡ UPI Gateway (100+ Pool)</span>
+          </button>
+        )}
+
+        {canAccess('users') && (
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'users'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4 text-amber-400" />
+            User Manager ({users.length})
+          </button>
+        )}
+
+        {canAccess('game_controls') && (
+          <button
+            onClick={() => setActiveTab('game_controls')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'game_controls'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Power className="w-4 h-4 text-emerald-400" />
+            <span>🎮 Game ON/OFF</span>
+          </button>
+        )}
+
+        {canAccess('bonuses') && (
+          <button
+            onClick={() => setActiveTab('bonuses')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'bonuses'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Gift className="w-4 h-4 text-amber-400" />
+            <span>🎁 Signup &amp; Deposit Bonus</span>
+          </button>
+        )}
+
+        {canAccess('settings') && (
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'settings'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sliders className="w-4 h-4 text-amber-400" />
+            System Config
+          </button>
+        )}
+
+        {canAccess('reports') && (
+          <button
+            onClick={() => setActiveTab('reports')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'reports'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            Date-Wise Report (PDF)
+          </button>
+        )}
+
+        {canAccess('audit') && (
+          <button
+            onClick={() => setActiveTab('audit')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'audit'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <FileText className="w-4 h-4 text-amber-400" />
+            Audit & Logs
+          </button>
+        )}
+
+        {canAccess('sqlite') && (
+          <button
+            onClick={() => {
+              setActiveTab('sqlite');
+              fetchSqliteStatus();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'sqlite'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Database className="w-4 h-4 text-emerald-400" />
+            SQLite DB Manager {sqliteInfo?.fileSizeKb ? `(${sqliteInfo.fileSizeKb} KB)` : ''}
+          </button>
+        )}
+
+        {canAccess('boosting') && (
+          <button
+            onClick={() => setActiveTab('boosting')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'boosting'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-amber-400" />
+            Boosting Queue ({boostingQueue.length})
+          </button>
+        )}
+
+        {canAccess('products') && (
+          <button
+            onClick={() => setActiveTab('products')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'products'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ShoppingBag className="w-4 h-4 text-amber-400" />
+            SportX Mart Products ({products.length})
+          </button>
+        )}
+
+        {canAccess('ranks') && (
+          <button
+            onClick={() => setActiveTab('ranks')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition ${
+              activeTab === 'ranks'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Trophy className="w-4 h-4 text-amber-400" />
+            Rank & Rewards ({settings.ranks?.length || 0})
+          </button>
+        )}
       </div>
+
+      {/* TAB 0: GAME VISIBILITY ON / OFF MANAGER */}
+      {activeTab === 'game_controls' && (
+        <div className="space-y-6">
+          {renderGameVisibilityPanel()}
+        </div>
+      )}
+
+      {/* TAB 0B: SIGNUP & DEPOSIT BONUS ENGINE */}
+      {activeTab === 'bonuses' && (
+        <div className="space-y-6">
+          {renderBonusSettingsPanel()}
+        </div>
+      )}
 
       {/* TAB 1: SYSTEM SETTINGS CONFIG */}
       {activeTab === 'settings' && (
@@ -1643,6 +2958,222 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </form>
           </div>
 
+          {/* SECTION 0.25: GAME VISIBILITY (ON/OFF) & AUTO-SEQUENCE */}
+          {renderGameVisibilityPanel()}
+
+          {/* SECTION 0.5: PER-GAME SUBDOMAIN ROUTING & SHARED MAIN WALLET CONFIG */}
+          <div className="bg-[#0b1424] border border-cyan-500/40 rounded-2xl p-6 space-y-4 shadow-[0_0_25px_rgba(6,182,212,0.15)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-cyan-400" />
+                  Per-Game Subdomain Routing & Shared Main Wallet SSO
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Har game ko alag subdomain par chalayein (jaise aviator.yourdomain.com, wingo.yourdomain.com). Sabhi subdomains par Front Page, Login Session aur Main Wallet Deduction 100% shared rahega.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-bold text-cyan-300 cursor-pointer shrink-0 bg-[#050911] border border-cyan-500/30 px-3 py-1.5 rounded-xl">
+                <input
+                  type="checkbox"
+                  checked={editableSettings.gameSubdomains?.enabled !== false}
+                  onChange={(e) => {
+                    updateEditableSettings({
+                      ...editableSettings,
+                      gameSubdomains: {
+                        enabled: e.target.checked,
+                        rootDomain: editableSettings.gameSubdomains?.rootDomain || '',
+                        mainAppUrl: editableSettings.gameSubdomains?.mainAppUrl || '',
+                        apiBaseUrl: editableSettings.gameSubdomains?.apiBaseUrl || '',
+                        autoSubdomainOnCustomDomain: editableSettings.gameSubdomains?.autoSubdomainOnCustomDomain !== false,
+                        urls: editableSettings.gameSubdomains?.urls || {},
+                      },
+                    });
+                  }}
+                  className="accent-cyan-400 w-4 h-4"
+                />
+                <span>Subdomains Active</span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
+                  Root Domain (e.g. sportx.game)
+                </label>
+                <input
+                  type="text"
+                  value={editableSettings.gameSubdomains?.rootDomain || ''}
+                  onChange={(e) =>
+                    updateEditableSettings({
+                      ...editableSettings,
+                      gameSubdomains: {
+                        enabled: editableSettings.gameSubdomains?.enabled !== false,
+                        rootDomain: e.target.value,
+                        mainAppUrl: editableSettings.gameSubdomains?.mainAppUrl || '',
+                        apiBaseUrl: editableSettings.gameSubdomains?.apiBaseUrl || '',
+                        autoSubdomainOnCustomDomain: editableSettings.gameSubdomains?.autoSubdomainOnCustomDomain !== false,
+                        urls: editableSettings.gameSubdomains?.urls || {},
+                      },
+                    })
+                  }
+                  placeholder="yourdomain.com"
+                  className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
+                  Shared Front Page URL
+                </label>
+                <input
+                  type="text"
+                  value={editableSettings.gameSubdomains?.mainAppUrl || ''}
+                  onChange={(e) =>
+                    updateEditableSettings({
+                      ...editableSettings,
+                      gameSubdomains: {
+                        enabled: editableSettings.gameSubdomains?.enabled !== false,
+                        rootDomain: editableSettings.gameSubdomains?.rootDomain || '',
+                        mainAppUrl: e.target.value,
+                        apiBaseUrl: editableSettings.gameSubdomains?.apiBaseUrl || '',
+                        autoSubdomainOnCustomDomain: editableSettings.gameSubdomains?.autoSubdomainOnCustomDomain !== false,
+                        urls: editableSettings.gameSubdomains?.urls || {},
+                      },
+                    })
+                  }
+                  placeholder="https://yourdomain.com"
+                  className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-emerald-300 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
+                  Shared Wallet API URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={editableSettings.gameSubdomains?.apiBaseUrl || ''}
+                  onChange={(e) =>
+                    updateEditableSettings({
+                      ...editableSettings,
+                      gameSubdomains: {
+                        enabled: editableSettings.gameSubdomains?.enabled !== false,
+                        rootDomain: editableSettings.gameSubdomains?.rootDomain || '',
+                        mainAppUrl: editableSettings.gameSubdomains?.mainAppUrl || '',
+                        apiBaseUrl: e.target.value,
+                        autoSubdomainOnCustomDomain: editableSettings.gameSubdomains?.autoSubdomainOnCustomDomain !== false,
+                        urls: editableSettings.gameSubdomains?.urls || {},
+                      },
+                    })
+                  }
+                  placeholder="https://yourdomain.com (leave blank if same backend)"
+                  className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-amber-300 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editableSettings.gameSubdomains?.autoSubdomainOnCustomDomain !== false}
+                  onChange={(e) =>
+                    updateEditableSettings({
+                      ...editableSettings,
+                      gameSubdomains: {
+                        enabled: editableSettings.gameSubdomains?.enabled !== false,
+                        rootDomain: editableSettings.gameSubdomains?.rootDomain || '',
+                        mainAppUrl: editableSettings.gameSubdomains?.mainAppUrl || '',
+                        apiBaseUrl: editableSettings.gameSubdomains?.apiBaseUrl || '',
+                        autoSubdomainOnCustomDomain: e.target.checked,
+                        urls: editableSettings.gameSubdomains?.urls || {},
+                      },
+                    })
+                  }
+                  className="accent-cyan-400"
+                />
+                <span>Auto-detect custom domain subdomains automatically</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const cleanRoot = (
+                    (editableSettings.gameSubdomains?.rootDomain || '').trim() ||
+                    (typeof window !== 'undefined' ? window.location.hostname : '')
+                  )
+                    .replace(/^https?:\/\//i, '')
+                    .replace(/\/.*$/, '');
+                  if (!cleanRoot) return;
+                  const autoUrls: Record<string, string> = {};
+                  GAME_SUBDOMAIN_LIST.forEach((g) => {
+                    autoUrls[g.tab] = `https://${g.prefix}.${cleanRoot}`;
+                  });
+                  const payUrl = `https://pay.${cleanRoot}`;
+                  setGatewaySubdomain(payUrl);
+                  updateEditableSettings({
+                    ...editableSettings,
+                    paymentGateway: editableSettings.paymentGateway
+                      ? { ...editableSettings.paymentGateway, subdomainUrl: payUrl }
+                      : undefined,
+                    gameSubdomains: {
+                      enabled: true,
+                      rootDomain: cleanRoot,
+                      mainAppUrl: editableSettings.gameSubdomains?.mainAppUrl?.trim() || `https://${cleanRoot}`,
+                      apiBaseUrl: editableSettings.gameSubdomains?.apiBaseUrl?.trim() || `https://${cleanRoot}`,
+                      autoSubdomainOnCustomDomain: true,
+                      urls: autoUrls as any,
+                    },
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-xs shadow-md transition flex items-center gap-1.5"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                1-Click Auto-Fill All 9 Game Subdomains + Pay
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
+              {GAME_SUBDOMAIN_LIST.map((game) => (
+                <div key={game.tab} className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold">
+                    <span className="text-white flex items-center gap-1.5">
+                      <span>{game.icon}</span>
+                      <span>{game.label}</span>
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      {game.prefix}.*
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={editableSettings.gameSubdomains?.urls?.[game.tab] || ''}
+                    onChange={(e) => {
+                      const prev = editableSettings.gameSubdomains || {
+                        enabled: true,
+                        rootDomain: '',
+                        urls: {},
+                      };
+                      updateEditableSettings({
+                        ...editableSettings,
+                        gameSubdomains: {
+                          ...prev,
+                          urls: {
+                            ...(prev.urls || {}),
+                            [game.tab]: e.target.value,
+                          },
+                        },
+                      });
+                    }}
+                    placeholder={`https://${game.prefix}.${editableSettings.gameSubdomains?.rootDomain || 'yourdomain.com'}`}
+                    className="w-full bg-[#09111e] border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] text-cyan-300 font-mono focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* SECTION 1: DAILY ROI & PACKAGE CAPPING MANAGER */}
           <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -1661,7 +3192,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   const newPkg = {
                     id: `pkg-${Date.now()}`,
                     name: 'Custom Node',
-                    price: 250,
+                    price: 1000,
                     dailyRoiPercent: 2.0,
                     durationDays: 100,
                     maxMatrixLevels: 5,
@@ -1687,12 +3218,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="p-3 bg-cyan-950/40 border border-cyan-500/30 rounded-xl text-xs text-cyan-200 space-y-1">
               <span className="font-extrabold text-amber-300 flex items-center gap-1.5 uppercase text-[11px]">
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                2-Package Plan Setup Guide ($10 Joining + $20 Upgrade):
+                2-Package Plan Setup Guide (₹1,000 Joining + ₹2,000 Upgrade):
               </span>
               <p className="text-[11px] text-slate-300">
-                1. <strong>$10 Starter Package (Joining)</strong>: Price = <strong>$10</strong>, Daily ROI = <strong>1%</strong> (or 1.5%), Capping = <strong>200%</strong>. This package generates daily ROI yield, sponsor bonus, and level income.
+                1. <strong>₹1,000 Starter Package (Joining)</strong>: Price = <strong>₹1,000</strong>, Daily ROI = <strong>1%</strong> (or 1.5%), Capping = <strong>200%</strong>. This package generates daily ROI yield, sponsor bonus, and level income.
                 <br />
-                2. <strong>$20 Upgrade Package (Booster/Qualifier)</strong>: Price = <strong>$20</strong>, Daily ROI = <strong>0%</strong>, Sponsor Bonus = <strong>0%</strong>, Capping = <strong>0%</strong>. Mark this package as <em>Upgrade Package</em>. It qualifies the account and unlocks payouts without generating direct sponsor bonus.
+                2. <strong>₹2,000 Upgrade Package (Booster/Qualifier)</strong>: Price = <strong>₹2,000</strong>, Daily ROI = <strong>0%</strong>, Sponsor Bonus = <strong>0%</strong>, Capping = <strong>0%</strong>. Mark this package as <em>Upgrade Package</em>. It qualifies the account and unlocks payouts without generating direct sponsor bonus.
               </p>
             </div>
 
@@ -1742,7 +3273,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 uppercase font-bold">Price ($ USDT)</label>
+                      <label className="text-[10px] text-slate-400 uppercase font-bold">Price (₹ INR)</label>
                       <input
                         type="number"
                         step="any"
@@ -2079,7 +3610,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div className="bg-[#050911] border border-slate-800 rounded-xl p-3 space-y-1">
                 <label className="text-[10px] text-cyan-400 font-extrabold uppercase">
-                  Required Self Package ($)
+                  Required Self Package (₹ INR)
                 </label>
                 <p className="text-[10px] text-slate-500">
                   Minimum package price Sponsor must hold to qualify
@@ -2088,13 +3619,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input
                     type="number"
                     min="0"
-                    value={editableSettings.specialSponsorBonus?.requiredSelfPackagePrice ?? 10}
+                    value={editableSettings.specialSponsorBonus?.requiredSelfPackagePrice ?? 1000}
                     onChange={(e) => {
                       const current = editableSettings.specialSponsorBonus || {
                         enabled: true,
                         targetLevel: 7,
                         matchingPercent: 100,
-                        requiredSelfPackagePrice: 10,
+                        requiredSelfPackagePrice: 1000,
                         requiredDirectsCount: 2,
                       };
                       updateEditableSettings({
@@ -2107,7 +3638,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     }}
                     className="w-full bg-[#0d1726] border border-cyan-500/40 rounded-lg p-2 text-cyan-300 font-extrabold"
                   />
-                  <span className="absolute right-3 top-2 text-[11px] text-slate-400 font-bold">$ USDT</span>
+                  <span className="absolute right-3 top-2 text-[11px] text-slate-400 font-bold">₹ INR</span>
                 </div>
               </div>
 
@@ -2156,7 +3687,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   Daily Lucky Spin Wheel Rewards & Probability Controller
                 </h4>
                 <p className="text-xs text-slate-300 mt-1">
-                  Customize wheel reward slices, dollar payouts, winning probability weights (%), and slice colors for members spinning the wheel.
+                  Customize wheel reward slices, INR payouts, winning probability weights (%), and slice colors for members spinning the wheel.
                 </p>
               </div>
 
@@ -2166,18 +3697,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => {
                     const preset55: SpinReward[] = [
                       { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151', minLevel: 0 },
-                      { id: 'sp-2', label: '$0.20 USDT', amount: 0.2, probability: 25, color: '#06b6d4', minLevel: 0 },
-                      { id: 'sp-3', label: '$0.50 USDT', amount: 0.5, probability: 15, color: '#10b981', minLevel: 0 },
-                      { id: 'sp-4', label: '$1.00 USDT', amount: 1.0, probability: 10, color: '#8b5cf6', minLevel: 0 },
-                      { id: 'sp-5', label: '$2.00 USDT', amount: 2.0, probability: 3, color: '#f59e0b', minLevel: 0 },
-                      { id: 'sp-6', label: '$5.00 USDT', amount: 5.0, probability: 1.5, color: '#ec4899', minLevel: 0 },
-                      { id: 'sp-7', label: '$10.00 BIG', amount: 10.0, probability: 0.4, color: '#ef4444', minLevel: 0 },
-                      { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.0, probability: 0.1, color: '#eab308', minLevel: 0 },
+                      { id: 'sp-2', label: '₹10 INR', amount: 10, probability: 25, color: '#06b6d4', minLevel: 0 },
+                      { id: 'sp-3', label: '₹25 INR', amount: 25, probability: 15, color: '#10b981', minLevel: 0 },
+                      { id: 'sp-4', label: '₹50 INR', amount: 50, probability: 10, color: '#8b5cf6', minLevel: 0 },
+                      { id: 'sp-5', label: '₹100 INR', amount: 100, probability: 3, color: '#f59e0b', minLevel: 0 },
+                      { id: 'sp-6', label: '₹250 INR', amount: 250, probability: 1.5, color: '#ec4899', minLevel: 0 },
+                      { id: 'sp-7', label: '₹500 BIG', amount: 500, probability: 0.4, color: '#ef4444', minLevel: 0 },
+                      { id: 'sp-8', label: '₹2,500 MEGA 🎉', amount: 2500, probability: 0.1, color: '#eab308', minLevel: 0 },
                     ];
                     setEditableSettings({
                       ...editableSettings,
                       spinWheelRewards: preset55,
-                      spinTicketPrice: 1.0,
+                      spinTicketPrice: 50,
                       spinHouseProfitPercent: 55.0,
                     });
                     setIsSettingsDirty(true);
@@ -2185,7 +3716,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="px-3.5 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                  Apply 55% Profit ($1.00 Spin) Preset
+                  Apply 55% Profit (₹50 Spin) Preset
                 </button>
 
                 <button
@@ -2194,8 +3725,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     const currentRewards = editableSettings.spinWheelRewards || [];
                     const newReward: SpinReward = {
                       id: `sp-${Date.now()}`,
-                      label: '$0.50 USDT',
-                      amount: 0.5,
+                      label: '₹25 INR',
+                      amount: 25,
                       probability: 5,
                       color: '#10b981',
                       minLevel: 0,
@@ -2280,13 +3811,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div>
                 <label className="text-[11px] font-bold text-amber-400 uppercase block mb-1">
-                  Every Spin Cost ($ USDT)
+                  Every Spin Cost (₹ INR)
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={editableSettings.spinTicketPrice !== undefined ? String(editableSettings.spinTicketPrice) : '1.0'}
+                    value={editableSettings.spinTicketPrice !== undefined ? String(editableSettings.spinTicketPrice) : '50'}
                     onChange={(e) => {
                       const val = e.target.value;
                       setEditableSettings({
@@ -2297,10 +3828,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     }}
                     className="w-full bg-[#0d1726] border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 font-extrabold text-xs focus:outline-none focus:border-amber-400"
                   />
-                  <span className="text-xs text-slate-400 shrink-0">USDT</span>
+                  <span className="text-xs text-slate-400 shrink-0">INR</span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Cost per extra spin ticket (e.g. $1.00 USDT).
+                  Cost per extra spin ticket (e.g. ₹50 INR).
                 </span>
               </div>
 
@@ -2368,7 +3899,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                       <div className="flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-md text-cyan-300">
                         <span>Avg Payout per Spin:</span>
-                        <span className="font-mono font-extrabold text-white">${expectedPayout.toFixed(3)} USDT</span>
+                        <span className="font-mono font-extrabold text-white">₹{expectedPayout.toFixed(2)} INR</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-md text-emerald-300">
@@ -2449,14 +3980,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           setIsSettingsDirty(true);
                         }}
                         className="w-full bg-[#0d1726] border border-slate-700 focus:border-purple-400 rounded-xl px-3 py-2 text-white font-bold text-xs focus:outline-none"
-                        placeholder="e.g. $0.50 USDT or Try Again"
+                        placeholder="e.g. ₹25 INR or Try Again"
                       />
                     </div>
 
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="text-[10px] text-emerald-400 uppercase font-bold block mb-1 truncate" title="Prize Amount ($ USDT)">
-                          Amount ($)
+                        <label className="text-[10px] text-emerald-400 uppercase font-bold block mb-1 truncate" title="Prize Amount (₹ INR)">
+                          Amount (₹)
                         </label>
                         <input
                           type="text"
@@ -2572,10 +4103,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div>
                 <h4 className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
                   <Image className="w-4 h-4 text-cyan-400" />
-                  Tether Mart Store Hero Banner Slider Manager
+                  SportX Mart Store Hero Banner Slider Manager
                 </h4>
                 <p className="text-[11px] text-slate-400">
-                  Manage custom promotional hero banner slides displayed at the top of Tether Mart Store.
+                  Manage custom promotional hero banner slides displayed at the top of SportX Mart Store.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -2585,7 +4116,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     const defaultBanners = [
                       {
                         id: `hb-1-${Date.now()}`,
-                        badge: 'OFFICIAL CYBER MALL • TETHER MART',
+                        badge: 'OFFICIAL CYBER MALL • SPORTX MART',
                         title: 'Next-Gen DePIN & Web3 Mining Rigs',
                         subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets.',
                         discount: 'UP TO 35% OFF',
@@ -2597,7 +4128,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       {
                         id: `hb-2-${Date.now()}`,
                         badge: 'NEW ARRIVALS • WEB3 APPAREL',
-                        title: 'TetherMart Official Cyberpunk Merch',
+                        title: 'SportX Mart Official Merch',
                         subtitle: 'Exclusive hoodies, embroidered polo tees & custom cap collections crafted with premium cotton blends.',
                         discount: 'BUY 1 GET 1 20% OFF',
                         cta: 'Shop Web3 Apparel',
@@ -2609,7 +4140,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         id: `hb-3-${Date.now()}`,
                         badge: 'MILITARY-GRADE COLD STORAGE',
                         title: 'Unhackable Hardware Wallets & Vaults',
-                        subtitle: 'Keep your USDT, Bitcoin & Ethereum bulletproof with certified offline storage devices & physical seed cards.',
+                        subtitle: 'Keep your INR gaming rewards, VIP passes & digital gear protected with certified hardware devices.',
                         discount: 'FREE EXPRESS AIR SHIPPING',
                         cta: 'Explore Cold Storage',
                         category: 'Hardware Wallets',
@@ -2640,7 +4171,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => {
                     const newBanner = {
                       id: `hb-${Date.now()}`,
-                      badge: 'SPECIAL PROMO • TETHER MART',
+                      badge: 'SPECIAL PROMO • SPORTX MART',
                       title: 'New Store Banner Headline',
                       subtitle: 'Add banner description and promotion details here.',
                       discount: 'EXCLUSIVE OFFER',
@@ -2799,7 +4330,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             updated[idx] = { ...updated[idx], badge: e.target.value };
                             updateEditableSettings({ ...editableSettings, heroBanners: updated });
                           }}
-                          placeholder="e.g. OFFICIAL CYBER MALL • TETHER MART"
+                          placeholder="e.g. OFFICIAL CYBER MALL • SPORTX MART"
                           className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-slate-200 font-bold mt-1 text-[11px]"
                         />
                       </div>
@@ -2910,7 +4441,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <span>SECTION 2.9: ⚡ 5-TIER LUCKY DRAW LOTTERY & PRIZE CONFIGURATION</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Configure coupon ticket entry cost, 1st to 5th grand prize payouts, and 45x guaranteed series reward pool ($ USDT).
+                  Configure coupon ticket entry cost, 1st to 5th grand prize payouts, and 45x guaranteed series reward pool (₹ INR).
                 </p>
               </div>
               <button
@@ -2925,10 +4456,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#070e1d] border border-slate-700/60 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-slate-300 block">🎟️ Coupon Ticket Price ($):</label>
+                <label className="text-xs font-bold text-slate-300 block">🎟️ Coupon Ticket Price (₹):</label>
                 <input
                   type="number"
-                  min="0.1"
+                  min="1"
                   step="any"
                   value={ldTicketPrice}
                   onChange={(e) => {
@@ -2938,11 +4469,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   }}
                   className="w-full bg-[#02050e] border border-slate-700 rounded-lg px-3 py-2 text-white font-black text-sm focus:border-amber-400 focus:outline-none"
                 />
-                <span className="text-[10px] text-slate-500 block">Price in USDT per 6-digit coupon</span>
+                <span className="text-[10px] text-slate-500 block">Price in ₹ INR per 6-digit coupon</span>
               </div>
 
               <div className="bg-[#070e1d] border border-amber-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-amber-400 block">🥇 1st Grand Prize ($):</label>
+                <label className="text-xs font-bold text-amber-400 block">🥇 1st Grand Prize (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -2959,7 +4490,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-purple-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-purple-400 block">🥈 2nd Prize ($):</label>
+                <label className="text-xs font-bold text-purple-400 block">🥈 2nd Prize (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -2976,7 +4507,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-cyan-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-cyan-400 block">🥉 3rd Prize ($):</label>
+                <label className="text-xs font-bold text-cyan-400 block">🥉 3rd Prize (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -2993,7 +4524,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-emerald-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-emerald-400 block">⭐ 4th Prize ($):</label>
+                <label className="text-xs font-bold text-emerald-400 block">⭐ 4th Prize (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -3010,7 +4541,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-rose-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-rose-400 block">🎖️ 5th Prize ($):</label>
+                <label className="text-xs font-bold text-rose-400 block">🎖️ 5th Prize (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -3027,7 +4558,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-yellow-500/40 rounded-xl p-3.5 space-y-1 sm:col-span-2">
-                <label className="text-xs font-bold text-yellow-400 block">🎁 Guaranteed Prize Pool ($ USDT per Winner):</label>
+                <label className="text-xs font-bold text-yellow-400 block">🎁 Guaranteed Prize Pool (₹ INR per Winner):</label>
                 <input
                   type="number"
                   min="0"
@@ -3040,7 +4571,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   }}
                   className="w-full bg-[#02050e] border border-yellow-500/60 rounded-lg px-3 py-2 text-yellow-300 font-black text-sm focus:border-yellow-400 focus:outline-none"
                 />
-                <span className="text-[10px] text-slate-500 block">Payout to 45 Winners across matching 5-digit series (Total Guaranteed Pool: 45 × ${ldPrizeGuaranteed || 0} = ${(45 * (Number(ldPrizeGuaranteed) || 0)).toFixed(0)} USDT)</span>
+                <span className="text-[10px] text-slate-500 block">Payout to 45 Winners across matching 5-digit series (Total Guaranteed Pool: 45 × ₹{ldPrizeGuaranteed || 0} = ₹{(45 * (Number(ldPrizeGuaranteed) || 0)).toLocaleString('en-IN')} INR)</span>
               </div>
             </div>
           </div>
@@ -3070,12 +4601,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <span className="text-slate-400">Min Deposit Amount ($ USDT):</span>
+                  <span className="text-slate-400">Min Deposit Amount (₹ INR):</span>
                   <input
                     type="number"
                     min="1"
                     step="any"
-                    value={editableSettings.minDepositAmount ?? 10}
+                    value={editableSettings.minDepositAmount ?? 100}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
@@ -3086,12 +4617,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <div>
-                  <span className="text-slate-400">Min MLM Withdrawal ($ USDT):</span>
+                  <span className="text-slate-400">Min MLM Withdrawal (₹ INR):</span>
                   <input
                     type="number"
                     min="1"
                     step="any"
-                    value={editableSettings.minWithdrawalAmount ?? 10}
+                    value={editableSettings.minWithdrawalAmount ?? 200}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
@@ -3102,12 +4633,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <div>
-                  <span className="text-slate-400">Min Winning Withdrawal ($ USDT):</span>
+                  <span className="text-slate-400">Min Winning Withdrawal (₹ INR):</span>
                   <input
                     type="number"
                     min="1"
                     step="any"
-                    value={editableSettings.winningWithdrawalMinAmount ?? 5}
+                    value={editableSettings.winningWithdrawalMinAmount ?? 100}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
@@ -3150,12 +4681,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <div>
-                  <span className="text-slate-400">Auto Instant Payout Limit ($ USDT):</span>
+                  <span className="text-slate-400">Auto Instant Payout Limit (₹ INR):</span>
                   <input
                     type="number"
                     min="0"
                     step="any"
-                    value={editableSettings.autoPayoutThresholdUSDT ?? 20}
+                    value={editableSettings.autoPayoutThresholdUSDT ?? 2000}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
@@ -3163,10 +4694,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       })
                     }
                     className="w-full bg-[#050911] border border-emerald-500/50 rounded-lg p-2 text-emerald-300 font-bold mt-1"
-                    placeholder="20 (≤$20 Auto, >$20 Admin Manual Approval)"
+                    placeholder="2000 (≤₹2,000 Auto, >₹2,000 Admin Manual Approval)"
                   />
                   <p className="text-[10px] text-emerald-400/80 mt-0.5">
-                    ≤ ${editableSettings.autoPayoutThresholdUSDT ?? 20} instant auto blockchain transfer, &gt; ${editableSettings.autoPayoutThresholdUSDT ?? 20} requires manual Admin Approval.
+                    ≤ ₹{editableSettings.autoPayoutThresholdUSDT ?? 2000} instant auto payout, &gt; ₹{editableSettings.autoPayoutThresholdUSDT ?? 2000} requires manual Admin Approval.
                   </p>
                 </div>
                 <div>
@@ -3186,17 +4717,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <div className="sm:col-span-2 lg:col-span-3">
-                  <span className="text-slate-400">USDT to INR Rate:</span>
+                  <span className="text-slate-400">Platform Currency Mode (Native ₹ INR = 1):</span>
                   <input
                     type="number"
                     step="0.1"
-                    value={editableSettings.rates?.usdtToInr ?? 100}
+                    value={editableSettings.rates?.usdtToInr ?? 1}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
                         rates: {
-                          ...(editableSettings.rates || { usdtToInr: 100, inrToUsdt: 0.01 }),
-                          usdtToInr: parseFloat(e.target.value) || 0,
+                          ...(editableSettings.rates || { usdtToInr: 1, inrToUsdt: 1 }),
+                          usdtToInr: parseFloat(e.target.value) || 1,
                         },
                       })
                     }
@@ -3206,14 +4737,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            {/* Admin Wallet Addresses */}
+            {/* Admin Gateway Reference Addresses */}
             <div className="space-y-3 bg-[#0b1424] p-5 rounded-2xl border border-slate-800">
               <div className="text-amber-400 font-bold uppercase text-[10px]">
-                Admin Official Deposit Wallet Addresses
+                Legacy Gateway / Backup Wallet Addresses (UPI is Primary in Settings)
               </div>
               <div className="space-y-2">
                 <div>
-                  <span className="text-slate-400">BEP20 Address:</span>
+                  <span className="text-slate-400">Primary Reference ID / Legacy BEP20:</span>
                   <input
                     type="text"
                     value={editableSettings.walletAddresses?.BEP20 ?? ''}
@@ -3230,7 +4761,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <div>
-                  <span className="text-slate-400">TRC20 Address:</span>
+                  <span className="text-slate-400">Secondary Reference ID / Legacy TRC20:</span>
                   <input
                     type="text"
                     value={editableSettings.walletAddresses?.TRC20 ?? ''}
@@ -3291,20 +4822,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <span className="text-slate-400 text-xs font-bold">Guaranteed Base Pot ($ USDT):</span>
+                  <span className="text-slate-400 text-xs font-bold">Guaranteed Base Pot (₹ INR):</span>
                   <input
                     type="number"
                     step="1"
-                    value={editableSettings.dailyTournament?.basePot ?? 250}
+                    value={editableSettings.dailyTournament?.basePot ?? 25000}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
                         dailyTournament: {
                           ...(editableSettings.dailyTournament || {
                             enabled: true,
-                            basePot: 250,
+                            basePot: 25000,
                             turnoverContributionPercent: 5,
-                            minWagerToQualify: 10,
+                            minWagerToQualify: 500,
                             title: 'Daily Top Bettor Championship 🏆',
                             prizeDistribution: [],
                           }),
@@ -3329,9 +4860,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         dailyTournament: {
                           ...(editableSettings.dailyTournament || {
                             enabled: true,
-                            basePot: 250,
+                            basePot: 25000,
                             turnoverContributionPercent: 5,
-                            minWagerToQualify: 10,
+                            minWagerToQualify: 500,
                             title: 'Daily Top Bettor Championship 🏆',
                             prizeDistribution: [],
                           }),
@@ -3345,20 +4876,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <span className="text-slate-400 text-xs font-bold">Min Daily Wager to Qualify ($):</span>
+                  <span className="text-slate-400 text-xs font-bold">Min Daily Wager to Qualify (₹ INR):</span>
                   <input
                     type="number"
                     step="1"
-                    value={editableSettings.dailyTournament?.minWagerToQualify ?? 10}
+                    value={editableSettings.dailyTournament?.minWagerToQualify ?? 500}
                     onChange={(e) =>
                       updateEditableSettings({
                         ...editableSettings,
                         dailyTournament: {
                           ...(editableSettings.dailyTournament || {
                             enabled: true,
-                            basePot: 250,
+                            basePot: 25000,
                             turnoverContributionPercent: 5,
-                            minWagerToQualify: 10,
+                            minWagerToQualify: 500,
                             title: 'Daily Top Bettor Championship 🏆',
                             prizeDistribution: [],
                           }),
@@ -3452,9 +4983,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </span>
                         )}
                       </td>
-                      <td className="p-3 font-bold text-[#0ef]">${(u.depositBalance || 0).toFixed(2)}</td>
-                      <td className="p-3 font-bold text-emerald-400">${u.balance.toFixed(2)}</td>
-                      <td className="p-3 font-bold text-cyan-400">${u.upgradeBalance.toFixed(2)}</td>
+                      <td className="p-3 font-bold text-[#0ef]">₹{(u.depositBalance || 0).toFixed(2)}</td>
+                      <td className="p-3 font-bold text-emerald-400">₹{u.balance.toFixed(2)}</td>
+                      <td className="p-3 font-bold text-cyan-400">₹{u.upgradeBalance.toFixed(2)}</td>
                       <td className="p-3 text-slate-300">
                         {settings.packages.find((p) => p.id === u.activePackageId)?.name || 'None'}
                       </td>
@@ -3597,16 +5128,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                     </div>
 
-                    {/* Wallet Address */}
+                    {/* Wallet / UPI Address */}
                     <div className="sm:col-span-2">
                       <label className="text-xs text-slate-300 font-bold block mb-1">
-                        USDT Wallet Address
+                        UPI ID / Bank Payout Details
                       </label>
                       <input
                         type="text"
                         value={editWallet}
                         onChange={(e) => setEditWallet(e.target.value)}
-                        placeholder="0x..."
+                        placeholder="user@upi or Bank Account..."
                         className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 font-mono text-xs focus:outline-none focus:border-amber-500"
                       />
                     </div>
@@ -3638,16 +5169,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <option value="none">None (No Active Package)</option>
                         {settings.packages.map((pkg) => (
                           <option key={pkg.id} value={pkg.id}>
-                            {pkg.name} (${pkg.price} USDT)
+                            {pkg.name} (₹{pkg.price} INR)
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    {/* Deposit Wallet Balance ($) */}
+                    {/* Deposit Wallet Balance (₹) */}
                     <div>
                       <label className="text-xs text-[#0ef] font-bold block mb-1">
-                        Deposit Wallet Balance ($ USDT) [Package Fund]
+                        Deposit Wallet Balance (₹ INR) [Package Fund]
                       </label>
                       <input
                         type="number"
@@ -3658,10 +5189,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                     </div>
 
-                    {/* Withdrawable Balance ($) */}
+                    {/* Withdrawable Balance (₹) */}
                     <div>
                       <label className="text-xs text-emerald-400 font-bold block mb-1">
-                        Withdrawable Balance ($ USDT)
+                        Withdrawable Balance (₹ INR)
                       </label>
                       <input
                         type="number"
@@ -3672,10 +5203,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                     </div>
 
-                    {/* Upgrade Balance ($) */}
+                    {/* Upgrade Balance (₹) */}
                     <div>
                       <label className="text-xs text-cyan-400 font-bold block mb-1">
-                        Upgrade Fund Balance ($ USDT)
+                        Upgrade Fund Balance (₹ INR)
                       </label>
                       <input
                         type="number"
@@ -3798,31 +5329,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
           </div>
 
-          {/* Web3 Hot Wallet Live Status Card */}
+          {/* Settlement Gateway Live Status Card */}
           <div className="bg-[#050911] border border-cyan-500/30 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
             <div className="space-y-1">
-              <div className="text-[10px] uppercase font-bold text-slate-400">🛡️ SafePal Receiver Address (BEP20)</div>
-              <div className="font-mono text-cyan-300 truncate" title={web3Status?.address || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679'}>
-                {web3Status?.address || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679'}
+              <div className="text-[10px] uppercase font-bold text-slate-400">🛡️ Gateway Receiver Reference</div>
+              <div className="font-mono text-cyan-300 truncate" title={web3Status?.address || 'UPI / Bank Gateway Active'}>
+                {web3Status?.address || 'UPI / Bank Gateway Active'}
               </div>
             </div>
             <div className="space-y-1">
-              <div className="text-[10px] uppercase font-bold text-slate-400">⛽ SafePal BNB Gas Balance</div>
+              <div className="text-[10px] uppercase font-bold text-slate-400">⚡ Settlement Node Status</div>
               <div className="font-bold font-mono flex items-center gap-2">
                 <span className={web3Status?.isGasReady ? 'text-emerald-400' : 'text-amber-400'}>
-                  {web3Status?.bnbBalance !== undefined ? `${web3Status.bnbBalance} BNB` : 'Checking...'}
+                  {web3Status?.bnbBalance !== undefined ? `${web3Status.bnbBalance} Units` : 'Checking...'}
                 </span>
                 {!web3Status?.isGasReady && (
                   <span className="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                    Add ~$5 BNB
+                    Manual Approval Active
                   </span>
                 )}
               </div>
             </div>
             <div className="space-y-1">
-              <div className="text-[10px] uppercase font-bold text-slate-400">💵 SafePal USDT Balance</div>
+              <div className="text-[10px] uppercase font-bold text-slate-400">💵 Gateway Reserve Balance</div>
               <div className="font-bold font-mono text-emerald-400">
-                {web3Status?.usdtBalance !== undefined ? `${(Number(web3Status.usdtBalance) || 0).toFixed(2)} USDT` : 'Checking...'}
+                {web3Status?.usdtBalance !== undefined ? `₹${(Number(web3Status.usdtBalance) || 0).toLocaleString('en-IN')} INR` : 'Checking...'}
               </div>
             </div>
           </div>
@@ -3832,18 +5363,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <thead className="bg-[#050911] text-slate-400 uppercase text-[10px]">
                 <tr>
                   <th className="p-3">User</th>
-                  <th className="p-3">Amount</th>
-                  <th className="p-3">Network</th>
-                  <th className="p-3">TXID</th>
+                  <th className="p-3">Amount (₹ INR)</th>
+                  <th className="p-3">Rail / Method</th>
+                  <th className="p-3">UTR / Ref ID</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800 text-slate-300">
-                {depositRequests.map((dep) => (
+                {depositRequests.map((dep) => {
+                  const usdtToInrRate = Number(settings.rates?.usdtToInr) || 1;
+                  const depInr = dep.inrAmount || Math.round(dep.amount * usdtToInrRate);
+                  const depBonusCfg = settings.depositBonus;
+                  const depUser = users.find((u) => u.id === dep.userId);
+                  const eligibleForBonus =
+                    depBonusCfg?.enabled &&
+                    (depBonusCfg.applyTo !== 'first_deposit_only' || !depUser?.hasFirstDepositApproved);
+                  const matchedBonusTier = eligibleForBonus
+                    ? [...(depBonusCfg?.tiers || [])]
+                        .filter((t) => t.enabled !== false && Number(t.bonusValue) > 0)
+                        .sort((a, b) => Number(b.minAmount) - Number(a.minAmount))
+                        .find((t) => depInr >= Number(t.minAmount))
+                    : undefined;
+                  const estBonusInr = dep.bonusInr
+                    ? dep.bonusInr
+                    : matchedBonusTier
+                    ? matchedBonusTier.bonusType === 'fixed'
+                      ? Number(matchedBonusTier.bonusValue)
+                      : (depInr * Number(matchedBonusTier.bonusValue)) / 100
+                    : 0;
+
+                  return (
                   <tr key={dep.id}>
                     <td className="p-3 font-bold text-white">#{dep.userNodeId} ({dep.userName})</td>
-                    <td className="p-3 font-bold text-emerald-400">${dep.amount} USDT</td>
+                    <td className="p-3 font-bold text-emerald-400">
+                      <div>₹{depInr.toLocaleString('en-IN')} INR</div>
+                      {estBonusInr > 0 && (
+                        <div className="text-[10px] text-amber-300 font-bold mt-0.5">
+                          {dep.status === 'approved' ? '🎁 Bonus Credited:' : '🎁 Auto Bonus:'} +₹{estBonusInr.toFixed(0)}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-3 text-slate-400">{dep.network}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-2 bg-[#050911] border border-slate-800 px-2.5 py-1.5 rounded-lg max-w-[220px]">
@@ -3902,7 +5462,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -3928,31 +5489,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
           </div>
 
-          {/* Web3 Hot Wallet Live Status Card */}
+          {/* Payout Gateway Live Status Card */}
           <div className="bg-[#050911] border border-amber-500/30 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
             <div className="space-y-1">
-              <div className="text-[10px] uppercase font-bold text-slate-400">🛡️ SafePal Hot Wallet (BEP20)</div>
-              <div className="font-mono text-amber-300 truncate" title={web3Status?.address || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679'}>
-                {web3Status?.address || '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679'}
+              <div className="text-[10px] uppercase font-bold text-slate-400">🛡️ Payout Gateway Reference</div>
+              <div className="font-mono text-amber-300 truncate" title={web3Status?.address || 'UPI / Bank Payout Mode'}>
+                {web3Status?.address || 'UPI / Bank Payout Mode'}
               </div>
             </div>
             <div className="space-y-1">
-              <div className="text-[10px] uppercase font-bold text-slate-400">⛽ SafePal BNB Gas Status</div>
+              <div className="text-[10px] uppercase font-bold text-slate-400">⚡ Auto-Dispatch Status</div>
               <div className="font-bold font-mono flex items-center gap-2">
                 <span className={web3Status?.isGasReady ? 'text-emerald-400' : 'text-amber-400'}>
-                  {web3Status?.bnbBalance !== undefined ? `${web3Status.bnbBalance} BNB` : 'Checking...'}
+                  {web3Status?.bnbBalance !== undefined ? `${web3Status.bnbBalance} Units` : 'Checking...'}
                 </span>
                 {!web3Status?.isGasReady && (
                   <span className="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                    Add ~$5 BNB to SafePal for Auto-Payouts
+                    Manual UPI/Bank Approval Ready
                   </span>
                 )}
               </div>
             </div>
             <div className="space-y-1">
-              <div className="text-[10px] uppercase font-bold text-slate-400">💵 SafePal USDT Balance</div>
+              <div className="text-[10px] uppercase font-bold text-slate-400">💵 Gateway Reserve Balance</div>
               <div className="font-bold font-mono text-emerald-400">
-                {web3Status?.usdtBalance !== undefined ? `${(Number(web3Status.usdtBalance) || 0).toFixed(2)} USDT` : 'Checking...'}
+                {web3Status?.usdtBalance !== undefined ? `₹${(Number(web3Status.usdtBalance) || 0).toLocaleString('en-IN')} INR` : 'Checking...'}
               </div>
             </div>
           </div>
@@ -3962,10 +5523,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <thead className="bg-[#050911] text-slate-400 uppercase text-[10px]">
                 <tr>
                   <th className="p-3">User</th>
-                  <th className="p-3">Req ($)</th>
+                  <th className="p-3">Req (₹)</th>
                   <th className="p-3">20% Reinvest</th>
-                  <th className="p-3">Net ($)</th>
-                  <th className="p-3">Target Address</th>
+                  <th className="p-3">Net (₹)</th>
+                  <th className="p-3">Target UPI / Bank</th>
                   <th className="p-3">Action</th>
                 </tr>
               </thead>
@@ -3973,9 +5534,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {withdrawalRequests.map((wd) => (
                   <tr key={wd.id}>
                     <td className="p-3 font-bold text-white">#{wd.userNodeId} ({wd.userName})</td>
-                    <td className="p-3 font-bold">${wd.requestedAmount}</td>
-                    <td className="p-3 text-amber-400">${wd.upgradeDeduction.toFixed(2)}</td>
-                    <td className="p-3 font-bold text-emerald-400">${wd.netAmount.toFixed(2)}</td>
+                    <td className="p-3 font-bold">₹{wd.requestedAmount}</td>
+                    <td className="p-3 text-amber-400">₹{wd.upgradeDeduction.toFixed(2)}</td>
+                    <td className="p-3 font-bold text-emerald-400">₹{wd.netAmount.toFixed(2)}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-2 bg-[#050911] border border-slate-800 px-2.5 py-1.5 rounded-lg max-w-[260px]">
                         <span className="text-cyan-300 font-mono text-[11px] truncate flex-1" title={wd.targetAddress}>
@@ -3985,7 +5546,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           type="button"
                           onClick={() => handleCopyText(`wd-${wd.id}`, wd.targetAddress)}
                           className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded flex items-center gap-1.5 text-[10px] font-bold shrink-0 transition"
-                          title="Click to Copy User Wallet Address"
+                          title="Click to Copy UPI / Bank Payout Details"
                         >
                           {copiedId === `wd-${wd.id}` ? (
                             <>
@@ -3995,7 +5556,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           ) : (
                             <>
                               <Copy className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Copy Address</span>
+                              <span>Copy Details</span>
                             </>
                           )}
                         </button>
@@ -4009,7 +5570,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             onClick={() => handleAutoDispatchWithdrawal(wd.id)}
                             disabled={dispatchingWdId === wd.id}
                             className="px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold rounded text-[10px] flex items-center gap-1 shadow-md shadow-amber-500/20 transition"
-                            title="Instant Blockchain Payout via SafePal Hot Wallet"
+                            title="Instant Automated Payout Dispatch"
                           >
                             <Zap className={`w-3 h-3 ${dispatchingWdId === wd.id ? 'animate-spin' : ''}`} />
                             {dispatchingWdId === wd.id ? 'Sending...' : '⚡ Auto-Dispatch'}
@@ -4058,7 +5619,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={onForceBoostingWinner}
                 className="px-4 py-2 bg-amber-500 text-black font-bold text-xs rounded-xl shadow"
               >
-                Force Winner Payout ($50)
+                Force Winner Payout (₹{(settings.boostingPool?.rewardAmount || 5000).toLocaleString('en-IN')})
               </button>
               <button
                 onClick={onSyncBoostingQueue}
@@ -4117,7 +5678,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <tr>
                   <th className="p-3">Node ID</th>
                   <th className="p-3">Type</th>
-                  <th className="p-3">Amount ($)</th>
+                  <th className="p-3">Amount (₹)</th>
                   <th className="p-3">Details</th>
                   <th className="p-3">Timestamp</th>
                 </tr>
@@ -4127,7 +5688,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <tr key={tx.id}>
                     <td className="p-3 font-bold text-cyan-300">#{tx.userNodeId}</td>
                     <td className="p-3 font-bold capitalize">{tx.type}</td>
-                    <td className="p-3 font-bold text-emerald-400">${tx.amount.toFixed(2)}</td>
+                    <td className="p-3 font-bold text-emerald-400">₹{tx.amount.toFixed(2)}</td>
                     <td className="p-3 text-slate-400">{tx.notes || '-'}</td>
                     <td className="p-3 text-slate-500 text-[10px]">
                       {new Date(tx.createdAt).toLocaleString()}
@@ -4392,10 +5953,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div>
                 <h4 className="text-sm font-black text-cyan-300 uppercase tracking-wider flex items-center gap-2">
                   <Image className="w-5 h-5 text-cyan-400" />
-                  <span>Tether Mart Store Hero Banner Slider Manager</span>
+                  <span>SportX Mart Store Hero Banner Slider Manager</span>
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Manage promo banner slides & custom image URLs displayed at the top of Tether Mart Store.
+                  Manage promo banner slides & custom image URLs displayed at the top of SportX Mart Store.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -4418,7 +5979,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     const defaultBanners = [
                       {
                         id: `hb-1-${Date.now()}`,
-                        badge: 'OFFICIAL CYBER MALL • TETHER MART',
+                        badge: 'OFFICIAL CYBER MALL • SPORTX MART',
                         title: 'Next-Gen DePIN & Web3 Mining Rigs',
                         subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets.',
                         discount: 'UP TO 35% OFF',
@@ -4430,7 +5991,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       {
                         id: `hb-2-${Date.now()}`,
                         badge: 'NEW ARRIVALS • WEB3 APPAREL',
-                        title: 'TetherMart Official Cyberpunk Merch',
+                        title: 'SportX Mart Official Merch',
                         subtitle: 'Exclusive hoodies, embroidered polo tees & custom cap collections crafted with premium cotton blends.',
                         discount: 'BUY 1 GET 1 20% OFF',
                         cta: 'Shop Web3 Apparel',
@@ -4442,7 +6003,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         id: `hb-3-${Date.now()}`,
                         badge: 'MILITARY-GRADE COLD STORAGE',
                         title: 'Unhackable Hardware Wallets & Vaults',
-                        subtitle: 'Keep your USDT, Bitcoin & Ethereum bulletproof with certified offline storage devices & physical seed cards.',
+                        subtitle: 'Keep your INR gaming rewards, VIP passes & digital gear protected with certified hardware devices.',
                         discount: 'FREE EXPRESS AIR SHIPPING',
                         cta: 'Explore Cold Storage',
                         category: 'Hardware Wallets',
@@ -4473,7 +6034,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => {
                     const newBanner = {
                       id: `hb-${Date.now()}`,
-                      badge: 'SPECIAL PROMO • TETHER MART',
+                      badge: 'SPECIAL PROMO • SPORTX MART',
                       title: 'New Store Banner Headline',
                       subtitle: 'Add banner description and promotion details here.',
                       discount: 'EXCLUSIVE OFFER',
@@ -4632,7 +6193,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             updated[idx] = { ...updated[idx], badge: e.target.value };
                             updateEditableSettings({ ...editableSettings, heroBanners: updated });
                           }}
-                          placeholder="e.g. OFFICIAL CYBER MALL • TETHER MART"
+                          placeholder="e.g. OFFICIAL CYBER MALL • SPORTX MART"
                           className="w-full bg-[#0d1726] border border-slate-700 rounded-lg p-2 text-slate-200 font-bold mt-1 text-[11px]"
                         />
                       </div>
@@ -4739,10 +6300,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-amber-400" />
-                <span>TetherMart Product & Rate Management</span>
+                <span>SportX Mart Product & Rate Management</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                List new items, set rates in USDT, adjust available stock, or manage customer orders.
+                List new items, set rates in ₹ INR, adjust available stock, or manage customer orders.
               </p>
             </div>
 
@@ -4776,12 +6337,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-slate-400 font-bold block mb-1">Price (USDT $)</label>
+                  <label className="text-slate-400 font-bold block mb-1">Price (₹ INR)</label>
                   <input
                     type="number"
                     value={newProdPrice}
                     onChange={(e) => setNewProdPrice(e.target.value)}
-                    placeholder="100"
+                    placeholder="1000"
                     className="w-full bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-emerald-400 font-bold focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -4970,8 +6531,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <tr>
                     <th className="p-3">Product Item</th>
                     <th className="p-3">Category</th>
-                    <th className="p-3">Rate (USDT)</th>
-                    <th className="p-3">Rate (INR)</th>
+                    <th className="p-3">Rate (₹ INR)</th>
+                    <th className="p-3">Display Value</th>
                     <th className="p-3">Stock</th>
                     <th className="p-3">Badge</th>
                     <th className="p-3 text-right">Actions</th>
@@ -4979,7 +6540,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-300">
                   {products.map((prod) => {
-                    const inrVal = prod.priceInr || prod.priceUsdt * (settings.rates.usdtToInr || 100);
+                    const inrVal = prod.priceInr || prod.priceUsdt * (settings.rates.usdtToInr || 1);
 
                     return (
                       <tr key={prod.id} className="hover:bg-slate-900/50 transition">
@@ -5017,7 +6578,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <td className="p-3 font-semibold text-cyan-300">{prod.category}</td>
 
                         <td className="p-3 font-bold text-emerald-400">
-                          ${prod.priceUsdt} USDT
+                          ₹{prod.priceUsdt.toLocaleString('en-IN')} INR
                         </td>
 
                         <td className="p-3 text-slate-400 font-mono">
@@ -5111,7 +6672,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
 
                     <div>
-                      <label className="text-slate-300 font-bold block mb-1">Price (USDT $)</label>
+                      <label className="text-slate-300 font-bold block mb-1">Price (₹ INR)</label>
                       <input
                         type="number"
                         value={editPrice}
@@ -5119,7 +6680,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-emerald-400 font-bold focus:outline-none focus:border-amber-500 text-sm"
                       />
                       <span className="text-[10px] text-slate-500 mt-0.5 block">
-                        ≈ ₹{(Number(editPrice || 0) * (settings.rates.usdtToInr || 100)).toLocaleString('en-IN')} INR
+                        Display: ₹{Number(editPrice || 0).toLocaleString('en-IN')} INR
                       </span>
                     </div>
 
@@ -5266,7 +6827,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-amber-500"
                       />
                       <label htmlFor="editFeatured" className="text-xs text-slate-200 font-bold cursor-pointer">
-                        Mark as "TetherMart Choice / Featured Product"
+                        Mark as "SportX Mart Choice / Featured Product"
                       </label>
                     </div>
                   </div>
@@ -5356,7 +6917,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </div>
                           )}
                         </td>
-                        <td className="p-3 font-bold text-emerald-400">{ord.quantity}x (${ord.totalUsdt} USDT)</td>
+                        <td className="p-3 font-bold text-emerald-400">{ord.quantity}x (₹{ord.totalUsdt} INR)</td>
                         <td className="p-3 text-slate-400 max-w-[180px] truncate" title={ord.shippingAddress}>
                           {ord.shippingAddress}
                         </td>
@@ -5417,12 +6978,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => {
                   setNewRankName('');
                   setNewRankRewardTitle('');
-                  setNewRankBonusUsdt('100');
-                  setNewRankMinSelfPkg('50');
+                  setNewRankBonusUsdt('2500');
+                  setNewRankMinSelfPkg('1000');
                   setNewRankReqDirects('5');
                   setNewRankReqSamePkg('5');
                   setNewRankUpToLevel('3');
-                  setNewRankReqVolume('1000');
+                  setNewRankReqVolume('50000');
                   setNewRankIcon('Award');
                   setNewRankColor('#f59e0b');
                   setIsCreatingRank(true);
@@ -5469,29 +7030,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="text"
                     value={newRankRewardTitle}
                     onChange={(e) => setNewRankRewardTitle(e.target.value)}
-                    placeholder="e.g. iPhone 15 Pro, Dubai Trip"
+                    placeholder="e.g. iPhone 16 Pro, Dubai Trip"
                     className="w-full bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-emerald-400 font-bold block mb-1">Reward USDT Bonus ($)</label>
+                  <label className="text-emerald-400 font-bold block mb-1">Reward Cash Bonus (₹ INR)</label>
                   <input
                     type="number"
                     value={newRankBonusUsdt}
                     onChange={(e) => setNewRankBonusUsdt(e.target.value)}
-                    placeholder="100"
+                    placeholder="2500"
                     className="w-full bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-cyan-300 font-bold block mb-1">Self Active Package ($)</label>
+                  <label className="text-cyan-300 font-bold block mb-1">Self Active Package (₹ INR)</label>
                   <input
                     type="number"
                     value={newRankMinSelfPkg}
                     onChange={(e) => setNewRankMinSelfPkg(e.target.value)}
-                    placeholder="50"
+                    placeholder="1000"
                     className="w-full bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
@@ -5530,12 +7091,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-bold block mb-1">Team Volume Req. ($)</label>
+                  <label className="text-slate-300 font-bold block mb-1">Team Volume Req. (₹ INR)</label>
                   <input
                     type="number"
                     value={newRankReqVolume}
                     onChange={(e) => setNewRankReqVolume(e.target.value)}
-                    placeholder="1000"
+                    placeholder="50000"
                     className="w-full bg-[#050911] border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-slate-500"
                   />
                 </div>
@@ -5592,7 +7153,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     const newRank: RankConfig = {
                       id: `rnk-${Date.now()}`,
                       name: newRankName.trim(),
-                      rewardTitle: newRankRewardTitle.trim() || `$${newRankBonusUsdt} Cash Reward`,
+                      rewardTitle: newRankRewardTitle.trim() || `₹${newRankBonusUsdt} Cash Reward`,
                       bonusUsdt: Number(newRankBonusUsdt) || 0,
                       minSelfPackagePrice: Number(newRankMinSelfPkg) || 0,
                       requiredDirects: Number(newRankReqDirects) || 0,
@@ -5654,7 +7215,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-emerald-400 font-bold block mb-1">Reward USDT Bonus ($)</label>
+                    <label className="text-emerald-400 font-bold block mb-1">Reward Cash Bonus (₹ INR)</label>
                     <input
                       type="number"
                       value={editRankBonusUsdtVal}
@@ -5664,7 +7225,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-cyan-300 font-bold block mb-1">Self Active Package ($)</label>
+                    <label className="text-cyan-300 font-bold block mb-1">Self Active Package (₹ INR)</label>
                     <input
                       type="number"
                       value={editRankMinSelfPkgVal}
@@ -5705,7 +7266,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Team Volume Req. ($)</label>
+                    <label className="text-slate-300 font-bold block mb-1">Team Volume Req. (₹ INR)</label>
                     <input
                       type="number"
                       value={editRankReqVolumeVal}
@@ -5765,7 +7326,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           ? {
                               ...r,
                               name: editRankNameVal.trim(),
-                              rewardTitle: editRankRewardTitleVal.trim() || `$${editRankBonusUsdtVal} Cash Reward`,
+                              rewardTitle: editRankRewardTitleVal.trim() || `₹${editRankBonusUsdtVal} Cash Reward`,
                               bonusUsdt: Number(editRankBonusUsdtVal) || 0,
                               minSelfPackagePrice: Number(editRankMinSelfPkgVal) || 0,
                               requiredDirects: Number(editRankReqDirectsVal) || 0,
@@ -5832,8 +7393,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <div className="text-xs font-extrabold text-emerald-300">{rank.rewardTitle || 'Cash Reward'}</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-[10px] text-slate-400 font-bold uppercase">Cash USDT</div>
-                          <div className="text-sm font-extrabold text-emerald-400">${rank.bonusUsdt}</div>
+                          <div className="text-[10px] text-slate-400 font-bold uppercase">Cash INR</div>
+                          <div className="text-sm font-extrabold text-emerald-400">₹{rank.bonusUsdt}</div>
                         </div>
                       </div>
 
@@ -5841,7 +7402,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                         <div className="bg-[#070e1b] border border-slate-800/80 p-2.5 rounded-xl space-y-0.5">
                           <span className="text-slate-400 text-[10px] uppercase block">Self Package</span>
-                          <span className="font-extrabold text-cyan-300">${rank.minSelfPackagePrice || 0}+</span>
+                          <span className="font-extrabold text-cyan-300">₹{rank.minSelfPackagePrice || 0}+</span>
                         </div>
 
                         <div className="bg-[#070e1b] border border-slate-800/80 p-2.5 rounded-xl space-y-0.5">
@@ -5865,7 +7426,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       {rank.requiredVolume && rank.requiredVolume > 0 ? (
                         <div className="text-[10px] text-slate-400 flex justify-between bg-[#070e1b] px-3 py-1.5 rounded-lg border border-slate-800">
                           <span>Team Volume Required:</span>
-                          <span className="font-bold text-amber-300">${rank.requiredVolume.toLocaleString()}</span>
+                          <span className="font-bold text-amber-300">₹{rank.requiredVolume.toLocaleString('en-IN')}</span>
                         </div>
                       ) : null}
                     </div>
@@ -6047,7 +7608,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Package Upgrades</span>
                 <Zap className="w-4 h-4 text-emerald-400" />
               </div>
-              <div className="text-2xl font-extrabold text-emerald-400">${totalPackageRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-extrabold text-emerald-400">₹{totalPackageRevenue.toLocaleString('en-IN')}</div>
               <div className="text-[10px] text-slate-400">{packageUpgrades.length} packages activated</div>
             </div>
 
@@ -6057,7 +7618,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Approved Withdrawals</span>
                 <ArrowUpRight className="w-4 h-4 text-cyan-400" />
               </div>
-              <div className="text-2xl font-extrabold text-cyan-300">${totalNetApprovedWithdrawals.toLocaleString()}</div>
+              <div className="text-2xl font-extrabold text-cyan-300">₹{totalNetApprovedWithdrawals.toLocaleString('en-IN')}</div>
               <div className="text-[10px] text-slate-400">{approvedWithdrawals.length} Approved ({pendingWithdrawals.length} Pending)</div>
             </div>
 
@@ -6067,7 +7628,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Approved Deposits</span>
                 <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
               </div>
-              <div className="text-2xl font-extrabold text-emerald-300">${totalApprovedDepositsAmount.toLocaleString()}</div>
+              <div className="text-2xl font-extrabold text-emerald-300">₹{totalApprovedDepositsAmount.toLocaleString('en-IN')}</div>
               <div className="text-[10px] text-slate-400">{approvedDeposits.length} deposits approved</div>
             </div>
           </div>
@@ -6203,7 +7764,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               {item.packageName}
                             </span>
                           </td>
-                          <td className="p-3 text-emerald-400 font-extrabold">${item.packagePrice}</td>
+                          <td className="p-3 text-emerald-400 font-extrabold">₹{item.packagePrice}</td>
                           <td className="p-3 text-slate-400">{formatYYYYMMDD(item.activatedAt)}</td>
                         </tr>
                       ))
@@ -6242,9 +7803,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <td className="p-3 text-slate-500">{idx + 1}</td>
                           <td className="p-3 text-amber-400 font-bold">{w.userNodeId}</td>
                           <td className="p-3 font-sans font-bold text-white">{w.userName}</td>
-                          <td className="p-3 text-white font-bold">${w.requestedAmount}</td>
-                          <td className="p-3 text-slate-400">${w.upgradeDeduction || 0}</td>
-                          <td className="p-3 text-cyan-300 font-extrabold">${w.netAmount || w.requestedAmount}</td>
+                          <td className="p-3 text-white font-bold">₹{w.requestedAmount}</td>
+                          <td className="p-3 text-slate-400">₹{w.upgradeDeduction || 0}</td>
+                          <td className="p-3 text-cyan-300 font-extrabold">₹{w.netAmount || w.requestedAmount}</td>
                           <td className="p-3 font-sans">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
@@ -6277,8 +7838,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <th className="p-3">Node ID</th>
                       <th className="p-3">Name</th>
                       <th className="p-3">Amount</th>
-                      <th className="p-3">Network</th>
-                      <th className="p-3">Tx Hash</th>
+                      <th className="p-3">Method</th>
+                      <th className="p-3">UTR / Ref ID</th>
                       <th className="p-3">Status</th>
                       <th className="p-3">Date</th>
                     </tr>
@@ -6296,7 +7857,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <td className="p-3 text-slate-500">{idx + 1}</td>
                           <td className="p-3 text-amber-400 font-bold">{d.userNodeId}</td>
                           <td className="p-3 font-sans font-bold text-white">{d.userName}</td>
-                          <td className="p-3 text-emerald-400 font-extrabold">${d.amount}</td>
+                          <td className="p-3 text-emerald-400 font-extrabold">₹{d.amount}</td>
                           <td className="p-3 text-cyan-300">{d.network}</td>
                           <td className="p-3 text-slate-400 truncate max-w-[120px]">{d.txHash || '-'}</td>
                           <td className="p-3 font-sans">
@@ -6350,23 +7911,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
             <div className="bg-[#070d18] border border-cyan-500/30 p-4 rounded-xl space-y-1">
               <div className="text-slate-400 font-sans">Total Live Stakes</div>
-              <div className="text-2xl font-black text-cyan-300">${colorStats?.totalStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-2xl font-black text-cyan-300">₹{colorStats?.totalStakes?.toFixed(2) || '0.00'}</div>
               <div className="text-[10px] text-slate-500">{colorStats?.betsCount || 0} active bets placed</div>
             </div>
 
             <div className="bg-[#070d18] border border-emerald-500/30 p-4 rounded-xl space-y-1">
               <div className="text-emerald-400 font-bold font-sans">Green Stakes (2x)</div>
-              <div className="text-xl font-bold text-white">${colorStats?.greenStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-xl font-bold text-white">₹{colorStats?.greenStakes?.toFixed(2) || '0.00'}</div>
             </div>
 
             <div className="bg-[#070d18] border border-rose-500/30 p-4 rounded-xl space-y-1">
               <div className="text-rose-400 font-bold font-sans">Red Stakes (2x)</div>
-              <div className="text-xl font-bold text-white">${colorStats?.redStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-xl font-bold text-white">₹{colorStats?.redStakes?.toFixed(2) || '0.00'}</div>
             </div>
 
             <div className="bg-[#070d18] border border-purple-500/30 p-4 rounded-xl space-y-1">
               <div className="text-purple-400 font-bold font-sans">Violet Stakes (4.5x)</div>
-              <div className="text-xl font-bold text-white">${colorStats?.violetStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-xl font-bold text-white">₹{colorStats?.violetStakes?.toFixed(2) || '0.00'}</div>
             </div>
           </div>
 
@@ -6507,8 +8068,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         : `Auto Max Profit Predicted Winner: Number #${colorStats.projectedLowestNumber}`}
                     </div>
                     <div className="text-[11px] text-slate-400 font-sans">
-                      Estimated Round Payout: <span className="text-white font-bold">${(colorStats.adminMode === 'smart_retention_60_40' ? (colorStats.projected6040Payout ?? colorStats.projectedLowestPayout) : colorStats.projectedLowestPayout)?.toFixed(2)}</span>
-                      {' '}(Total Pool: ${(colorStats.totalStakes || 0).toFixed(2)})
+                      Estimated Round Payout: <span className="text-white font-bold">₹{(colorStats.adminMode === 'smart_retention_60_40' ? (colorStats.projected6040Payout ?? colorStats.projectedLowestPayout) : colorStats.projectedLowestPayout)?.toFixed(2)}</span>
+                      {' '}(Total Pool: ₹{(colorStats.totalStakes || 0).toFixed(2)})
                     </div>
                   </div>
                 </div>
@@ -6600,23 +8161,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
               <div className="text-xs text-slate-400">Total Recent Bets Volume</div>
-              <div className="text-2xl font-black text-amber-400">${dragonTigerStats?.totalStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-2xl font-black text-amber-400">₹{dragonTigerStats?.totalStakes?.toFixed(2) || '0.00'}</div>
               <div className="text-[10px] text-slate-500">{dragonTigerStats?.recentBetsCount || 0} bets placed</div>
             </div>
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
               <div className="text-xs text-slate-400">🐉 Dragon Stakes (2.0X)</div>
-              <div className="text-2xl font-black text-rose-400">${dragonTigerStats?.dragonStakes?.toFixed(2) || '0.00'}</div>
-              <div className="text-[10px] text-slate-500">Liability: ${(dragonTigerStats?.dragonPayout || (dragonTigerStats?.dragonStakes || 0) * 2).toFixed(2)}</div>
+              <div className="text-2xl font-black text-rose-400">₹{dragonTigerStats?.dragonStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">Liability: ₹{(dragonTigerStats?.dragonPayout || (dragonTigerStats?.dragonStakes || 0) * 2).toFixed(2)}</div>
             </div>
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
               <div className="text-xs text-slate-400">🐅 Tiger Stakes (2.0X)</div>
-              <div className="text-2xl font-black text-amber-400">${dragonTigerStats?.tigerStakes?.toFixed(2) || '0.00'}</div>
-              <div className="text-[10px] text-slate-500">Liability: ${(dragonTigerStats?.tigerPayout || (dragonTigerStats?.tigerStakes || 0) * 2).toFixed(2)}</div>
+              <div className="text-2xl font-black text-amber-400">₹{dragonTigerStats?.tigerStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">Liability: ₹{(dragonTigerStats?.tigerPayout || (dragonTigerStats?.tigerStakes || 0) * 2).toFixed(2)}</div>
             </div>
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
               <div className="text-xs text-slate-400">👔 Tie Stakes (8.0X)</div>
-              <div className="text-2xl font-black text-emerald-400">${dragonTigerStats?.tieStakes?.toFixed(2) || '0.00'}</div>
-              <div className="text-[10px] text-slate-500">Liability: ${(dragonTigerStats?.tiePayout || (dragonTigerStats?.tieStakes || 0) * 8).toFixed(2)}</div>
+              <div className="text-2xl font-black text-emerald-400">₹{dragonTigerStats?.tieStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-[10px] text-slate-500">Liability: ₹{(dragonTigerStats?.tiePayout || (dragonTigerStats?.tieStakes || 0) * 8).toFixed(2)}</div>
             </div>
           </div>
 
@@ -6744,8 +8305,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       : `Auto Max Profit Predicted Winner: [${(dragonTigerStats?.projectedLowestWinner || 'DRAGON').toUpperCase()}]`}
                   </div>
                   <div className="text-[11px] text-slate-400 font-sans">
-                    Estimated Round Payout Liability: <span className="text-white font-bold">${(dragonTigerStats?.adminMode === 'smart_retention_60_40' ? (dragonTigerStats?.projected6040Payout ?? 0) : (dragonTigerStats?.projectedLowestPayout ?? 0)).toFixed(2)}</span>
-                    {' '}(Total Pool: ${(dragonTigerStats?.totalStakes || 0).toFixed(2)})
+                    Estimated Round Payout Liability: <span className="text-white font-bold">₹{(dragonTigerStats?.adminMode === 'smart_retention_60_40' ? (dragonTigerStats?.projected6040Payout ?? 0) : (dragonTigerStats?.projectedLowestPayout ?? 0)).toFixed(2)}</span>
+                    {' '}(Total Pool: ₹{(dragonTigerStats?.totalStakes || 0).toFixed(2)})
                   </div>
                 </div>
               </div>
@@ -6856,7 +8417,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
               <div className="text-xs text-slate-400">Total Stakes in Round</div>
-              <div className="text-2xl font-black text-rose-400">${aviatorStats?.totalStakes?.toFixed(2) || '0.00'}</div>
+              <div className="text-2xl font-black text-rose-400">₹{aviatorStats?.totalStakes?.toFixed(2) || '0.00'}</div>
               <div className="text-[10px] text-slate-500">{aviatorStats?.activeBetsCount || 0} active bets</div>
             </div>
             <div className="bg-[#070d18] border border-slate-800 p-4 rounded-xl">
@@ -7008,10 +8569,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <Trophy className="w-4 h-4 text-amber-400" />
               </div>
               <div className="text-3xl font-black text-amber-300 mt-2">
-                ${tournamentData?.totalPot?.toFixed(2) || (editableSettings.dailyTournament?.basePot ?? 250).toFixed(2)}
+                ₹{(tournamentData?.totalPot ?? editableSettings.dailyTournament?.basePot ?? 25000).toLocaleString('en-IN')}
               </div>
               <div className="text-[11px] text-slate-400 mt-1">
-                Guaranteed: ${(editableSettings.dailyTournament?.basePot ?? 250).toFixed(2)} + Dynamic Turnover
+                Guaranteed: ₹{(editableSettings.dailyTournament?.basePot ?? 25000).toLocaleString('en-IN')} + Dynamic Turnover
               </div>
             </div>
 
@@ -7021,10 +8582,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <Zap className="w-4 h-4 text-cyan-400" />
               </div>
               <div className="text-3xl font-black text-cyan-300 mt-2">
-                ${tournamentData?.totalWagerVolume?.toFixed(2) || '0.00'}
+                ₹{tournamentData?.totalWagerVolume?.toFixed(2) || '0.00'}
               </div>
               <div className="text-[11px] text-slate-400 mt-1">
-                +{editableSettings.dailyTournament?.turnoverContributionPercent ?? 5}% added to pot (${((tournamentData?.totalWagerVolume || 0) * ((editableSettings.dailyTournament?.turnoverContributionPercent ?? 5) / 100)).toFixed(2)})
+                +{editableSettings.dailyTournament?.turnoverContributionPercent ?? 5}% added to pot (₹{((tournamentData?.totalWagerVolume || 0) * ((editableSettings.dailyTournament?.turnoverContributionPercent ?? 5) / 100)).toFixed(2)})
               </div>
             </div>
 
@@ -7047,7 +8608,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <ShieldCheck className="w-4 h-4 text-purple-400" />
               </div>
               <div className="text-3xl font-black text-purple-300 mt-2">
-                ${(editableSettings.dailyTournament?.minWagerToQualify ?? 10).toFixed(2)}
+                ₹{(editableSettings.dailyTournament?.minWagerToQualify ?? 500).toLocaleString('en-IN')}
               </div>
               <div className="text-[11px] text-slate-400 mt-1">
                 Turnover threshold to unlock rank prize
@@ -7078,7 +8639,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div>
                         <span className="font-bold text-amber-400">#{w.rank}</span> <span className="text-white font-medium">{w.name}</span> <span className="text-[10px] text-slate-400 font-mono">({w.nodeId})</span>
                       </div>
-                      <span className="font-bold text-emerald-400">+${w.prizeAmount.toFixed(2)} USDT</span>
+                      <span className="font-bold text-emerald-400">+₹{w.prizeAmount.toFixed(2)} INR</span>
                     </div>
                   ))}
                 </div>
@@ -7155,12 +8716,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-slate-300 font-bold block mb-1">Guaranteed Base Pot ($):</label>
+                      <label className="text-xs text-slate-300 font-bold block mb-1">Guaranteed Base Pot (₹):</label>
                       <input
                         type="number"
                         step="10"
                         min="0"
-                        value={editableSettings.dailyTournament?.basePot ?? 250}
+                        value={editableSettings.dailyTournament?.basePot ?? 25000}
                         onChange={(e) => {
                           setIsSettingsDirty(true);
                           updateEditableSettings({
@@ -7168,9 +8729,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             dailyTournament: {
                               ...(editableSettings.dailyTournament || {
                                 enabled: true,
-                                basePot: 250,
+                                basePot: 25000,
                                 turnoverContributionPercent: 5,
-                                minWagerToQualify: 10,
+                                minWagerToQualify: 500,
                                 title: 'Daily Top Bettor Championship 🏆',
                                 prizeDistribution: [],
                               }),
@@ -7197,9 +8758,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             dailyTournament: {
                               ...(editableSettings.dailyTournament || {
                                 enabled: true,
-                                basePot: 250,
+                                basePot: 25000,
                                 turnoverContributionPercent: 5,
-                                minWagerToQualify: 10,
+                                minWagerToQualify: 500,
                                 title: 'Daily Top Bettor Championship 🏆',
                                 prizeDistribution: [],
                               }),
@@ -7213,12 +8774,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-300 font-bold block mb-1">Min Daily Wager to Qualify ($ USDT):</label>
+                    <label className="text-xs text-slate-300 font-bold block mb-1">Min Daily Wager to Qualify (₹ INR):</label>
                     <input
                       type="number"
                       step="5"
                       min="0"
-                      value={editableSettings.dailyTournament?.minWagerToQualify ?? 10}
+                      value={editableSettings.dailyTournament?.minWagerToQualify ?? 500}
                       onChange={(e) => {
                         setIsSettingsDirty(true);
                         updateEditableSettings({
@@ -7226,9 +8787,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           dailyTournament: {
                             ...(editableSettings.dailyTournament || {
                               enabled: true,
-                              basePot: 250,
+                              basePot: 25000,
                               turnoverContributionPercent: 5,
-                              minWagerToQualify: 10,
+                              minWagerToQualify: 500,
                               title: 'Daily Top Bettor Championship 🏆',
                               prizeDistribution: [],
                             }),
@@ -7335,7 +8896,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         { rank: 10, percent: 1 },
                       ]
                   ).map((tier, idx) => {
-                    const currentPot = tournamentData?.totalPot || editableSettings.dailyTournament?.basePot || 250;
+                    const currentPot = tournamentData?.totalPot || editableSettings.dailyTournament?.basePot || 25000;
                     const estimatedPrize = (currentPot * (tier.percent / 100)).toFixed(2);
                     return (
                       <div key={tier.rank} className="flex items-center justify-between bg-[#070e1b] border border-slate-800 rounded-xl p-2.5 text-xs">
@@ -7399,7 +8960,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
 
                           <div className="w-24 text-right">
-                            <span className="text-emerald-400 font-bold font-mono">~${estimatedPrize}</span>
+                            <span className="text-emerald-400 font-bold font-mono">~₹{estimatedPrize}</span>
                           </div>
                         </div>
                       </div>
@@ -7468,16 +9029,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <div className="text-[10px] text-amber-400/80">{item.userNodeId}</div>
                             </td>
                             <td className="py-2.5 text-right font-bold text-cyan-300">
-                              ${item.totalWagered.toFixed(2)}
+                              ₹{item.totalWagered.toFixed(2)}
                             </td>
                             <td className="py-2.5 text-center text-slate-400">
                               {item.betsCount}
                             </td>
                             <td className="py-2.5 text-right">
                               {item.projectedPrize > 0 ? (
-                                <span className="font-bold text-emerald-400">+${item.projectedPrize.toFixed(2)}</span>
+                                <span className="font-bold text-emerald-400">+₹{item.projectedPrize.toFixed(2)}</span>
                               ) : (
-                                <span className="text-slate-400">$0.00</span>
+                                <span className="text-slate-400">₹0.00</span>
                               )}
                             </td>
                             <td className="py-2.5 text-center pr-2">
@@ -7486,8 +9047,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   Qualified
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30" title={`Requires $${editableSettings.dailyTournament?.minWagerToQualify || 10} minimum turnover`}>
-                                  Below Min ($)
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30" title={`Requires ₹${editableSettings.dailyTournament?.minWagerToQualify || 500} minimum turnover`}>
+                                  Below Min (₹)
                                 </span>
                               )}
                             </td>
@@ -7565,27 +9126,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="bg-[#070e1d] border border-slate-800 rounded-2xl p-4 text-center">
               <span className="text-[10px] text-slate-400 font-bold block">TICKET PRICE</span>
-              <span className="text-lg font-black text-white">${ldTicketPrice || 5}</span>
+              <span className="text-lg font-black text-white">₹{ldTicketPrice || 100}</span>
             </div>
             <div className="bg-[#070e1d] border border-amber-500/30 rounded-2xl p-4 text-center">
               <span className="text-[10px] text-amber-400 font-bold block">🥇 1st PRIZE</span>
-              <span className="text-lg font-black text-amber-300">${ldPrize1 || 250}</span>
+              <span className="text-lg font-black text-amber-300">₹{ldPrize1 || 25000}</span>
             </div>
             <div className="bg-[#070e1d] border border-purple-500/30 rounded-2xl p-4 text-center">
               <span className="text-[10px] text-purple-400 font-bold block">🥈 2nd PRIZE</span>
-              <span className="text-lg font-black text-purple-300">${ldPrize2 || 100}</span>
+              <span className="text-lg font-black text-purple-300">₹{ldPrize2 || 10000}</span>
             </div>
             <div className="bg-[#070e1d] border border-cyan-500/30 rounded-2xl p-4 text-center">
               <span className="text-[10px] text-cyan-400 font-bold block">🥉 3rd PRIZE</span>
-              <span className="text-lg font-black text-cyan-300">${ldPrize3 || 50}</span>
+              <span className="text-lg font-black text-cyan-300">₹{ldPrize3 || 5000}</span>
             </div>
             <div className="bg-[#070e1d] border border-emerald-500/30 rounded-2xl p-4 text-center">
               <span className="text-[10px] text-emerald-400 font-bold block">⭐ 4th PRIZE</span>
-              <span className="text-lg font-black text-emerald-300">${ldPrize4 || 25}</span>
+              <span className="text-lg font-black text-emerald-300">₹{ldPrize4 || 2500}</span>
             </div>
             <div className="bg-[#070e1d] border border-rose-500/30 rounded-2xl p-4 text-center">
               <span className="text-[10px] text-rose-400 font-bold block">🎖️ 5th PRIZE</span>
-              <span className="text-lg font-black text-rose-300">${ldPrize5 || 15}</span>
+              <span className="text-lg font-black text-rose-300">₹{ldPrize5 || 1500}</span>
             </div>
           </div>
 
@@ -7595,7 +9156,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div>
                 <h3 className="text-sm font-black text-amber-300 flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-amber-400" />
-                  <span>Prize Amounts Configuration ($ USDT)</span>
+                  <span>Prize Amounts Configuration (₹ INR)</span>
                 </h3>
                 <span className="text-xs text-slate-400">Values update instantly and persist permanently</span>
               </div>
@@ -7611,18 +9172,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#070e1d] border border-slate-700/60 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-slate-300 block">🎟️ Coupon Ticket Price ($):</label>
+                <label className="text-xs font-bold text-slate-300 block">🎟️ Coupon Ticket Price (₹):</label>
                 <input
                   type="number"
-                  min="0.1"
-                  step="0.5"
+                  min="1"
+                  step="1"
                   value={ldTicketPrice}
                   onChange={(e) => {
                     setLdTicketPrice(e.target.value === '' ? '' : Number(e.target.value));
                     setIsSettingsDirty(true);
                   }}
                   onBlur={(e) => {
-                    const val = e.target.value === '' ? 5 : Number(e.target.value);
+                    const val = e.target.value === '' ? 100 : Number(e.target.value);
                     handleSaveLuckyDrawConfig({ ticketPrice: val });
                   }}
                   className="w-full bg-[#02050e] border border-slate-700 rounded-lg px-3 py-2 text-white font-black text-sm focus:border-amber-400 focus:outline-none"
@@ -7631,7 +9192,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-amber-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-amber-400 block">🥇 1st Prize Amount ($):</label>
+                <label className="text-xs font-bold text-amber-400 block">🥇 1st Prize Amount (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -7641,7 +9202,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     setIsSettingsDirty(true);
                   }}
                   onBlur={(e) => {
-                    const val = e.target.value === '' ? 250 : Number(e.target.value);
+                    const val = e.target.value === '' ? 25000 : Number(e.target.value);
                     handleSaveLuckyDrawConfig({ prizeAmount: val });
                   }}
                   className="w-full bg-[#02050e] border border-amber-500/60 rounded-lg px-3 py-2 text-amber-300 font-black text-sm focus:border-amber-400 focus:outline-none"
@@ -7650,7 +9211,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-purple-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-purple-400 block">🥈 2nd Prize Amount ($):</label>
+                <label className="text-xs font-bold text-purple-400 block">🥈 2nd Prize Amount (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -7660,7 +9221,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     setIsSettingsDirty(true);
                   }}
                   onBlur={(e) => {
-                    const val = e.target.value === '' ? 100 : Number(e.target.value);
+                    const val = e.target.value === '' ? 10000 : Number(e.target.value);
                     handleSaveLuckyDrawConfig({ secondPrizeAmount: val });
                   }}
                   className="w-full bg-[#02050e] border border-purple-500/60 rounded-lg px-3 py-2 text-purple-300 font-black text-sm focus:border-purple-400 focus:outline-none"
@@ -7669,7 +9230,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-cyan-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-cyan-400 block">🥉 3rd Prize Amount ($):</label>
+                <label className="text-xs font-bold text-cyan-400 block">🥉 3rd Prize Amount (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -7679,7 +9240,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     setIsSettingsDirty(true);
                   }}
                   onBlur={(e) => {
-                    const val = e.target.value === '' ? 50 : Number(e.target.value);
+                    const val = e.target.value === '' ? 5000 : Number(e.target.value);
                     handleSaveLuckyDrawConfig({ thirdPrizeAmount: val });
                   }}
                   className="w-full bg-[#02050e] border border-cyan-500/60 rounded-lg px-3 py-2 text-cyan-300 font-black text-sm focus:border-cyan-400 focus:outline-none"
@@ -7688,7 +9249,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-emerald-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-emerald-400 block">⭐ 4th Prize Amount ($):</label>
+                <label className="text-xs font-bold text-emerald-400 block">⭐ 4th Prize Amount (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -7698,7 +9259,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     setIsSettingsDirty(true);
                   }}
                   onBlur={(e) => {
-                    const val = e.target.value === '' ? 25 : Number(e.target.value);
+                    const val = e.target.value === '' ? 2500 : Number(e.target.value);
                     handleSaveLuckyDrawConfig({ fourthPrizeAmount: val });
                   }}
                   className="w-full bg-[#02050e] border border-emerald-500/60 rounded-lg px-3 py-2 text-emerald-300 font-black text-sm focus:border-emerald-400 focus:outline-none"
@@ -7707,7 +9268,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-rose-500/40 rounded-xl p-3.5 space-y-1">
-                <label className="text-xs font-bold text-rose-400 block">🎖️ 5th Prize Amount ($):</label>
+                <label className="text-xs font-bold text-rose-400 block">🎖️ 5th Prize Amount (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -7717,7 +9278,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     setIsSettingsDirty(true);
                   }}
                   onBlur={(e) => {
-                    const val = e.target.value === '' ? 15 : Number(e.target.value);
+                    const val = e.target.value === '' ? 1500 : Number(e.target.value);
                     handleSaveLuckyDrawConfig({ fifthPrizeAmount: val });
                   }}
                   className="w-full bg-[#02050e] border border-rose-500/60 rounded-lg px-3 py-2 text-rose-300 font-black text-sm focus:border-rose-400 focus:outline-none"
@@ -7726,7 +9287,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="bg-[#070e1d] border border-yellow-500/40 rounded-xl p-3.5 space-y-1 sm:col-span-2">
-                <label className="text-xs font-bold text-yellow-400 block">🎁 Guaranteed Prize Amount ($):</label>
+                <label className="text-xs font-bold text-yellow-400 block">🎁 Guaranteed Prize Amount (₹):</label>
                 <input
                   type="number"
                   min="0"
@@ -7736,7 +9297,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     setIsSettingsDirty(true);
                   }}
                   onBlur={(e) => {
-                    const val = e.target.value === '' ? 5 : Number(e.target.value);
+                    const val = e.target.value === '' ? 500 : Number(e.target.value);
                     handleSaveLuckyDrawConfig({ guaranteedPrizeAmount: val });
                   }}
                   className="w-full bg-[#02050e] border border-yellow-500/60 rounded-lg px-3 py-2 text-yellow-300 font-black text-sm focus:border-yellow-400 focus:outline-none"
@@ -7785,7 +9346,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {([1, 2, 3, 4, 5] as const).map((step) => {
                 const stKey = String(step) as '1' | '2' | '3' | '4' | '5';
                 const prizeTitles = ['1st Prize (🥇)', '2nd Prize (🥈)', '3rd Prize (🥉)', '4th Prize (⭐)', '5th Prize (🎖️)'];
-                const prizeAmounts = [ldPrize1 || 250, ldPrize2 || 100, ldPrize3 || 50, ldPrize4 || 25, ldPrize5 || 15];
+                const prizeAmounts = [ldPrize1 || 25000, ldPrize2 || 10000, ldPrize3 || 5000, ldPrize4 || 2500, ldPrize5 || 1500];
                 const currentForced = ldForcedPrizes[stKey] || { userId: '', ticketNumber: '' };
                 const chosenUser = users.find((u) => u.id === currentForced.userId);
 
@@ -7800,7 +9361,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   >
                     <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
                       <span className="text-xs font-black text-amber-300">{prizeTitles[step - 1]}</span>
-                      <span className="text-xs font-bold text-emerald-400">${prizeAmounts[step - 1]}</span>
+                      <span className="text-xs font-bold text-emerald-400">₹{prizeAmounts[step - 1]}</span>
                     </div>
 
                     <div className="space-y-1">
@@ -7861,7 +9422,1386 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* Delete User Confirmation Modal */}
+      {/* TAB: UPI PAYMENT GATEWAY & 100+ ROTATION POOL */}
+      {activeTab === 'upi_gateway' && (
+        <div className="space-y-6">
+          {/* Top Header Card */}
+          <div className="bg-[#0b1424] border border-cyan-500/30 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="text-base font-black uppercase tracking-wider text-cyan-300 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-cyan-400" />
+                  UPI Payment Gateway & 100+ Dynamic Rotation Pool
+                </h3>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                Har deposit me user ko alag-alag rotating UPI ID show hogi. Ek baar me 100+ UPI IDs paste karke pool me add karein aur subdomain ya direct gateway se seamless deposits accept karein.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleTestRotatingUpi}
+                disabled={testingUpi}
+                className="px-3.5 py-2 rounded-xl bg-[#0e224b] hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${testingUpi ? 'animate-spin' : ''}`} />
+                <span>Test Next UPI</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveGatewayConfig}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 text-xs font-black transition shadow-lg shadow-cyan-500/20 flex items-center gap-1.5 active:scale-95"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Gateway Config</span>
+              </button>
+            </div>
+          </div>
+
+          {/* KPI Metrics Grid */}
+          {(() => {
+            const pool = settings?.paymentGateway?.upiPool || [];
+            const activeCount = pool.filter((u) => u.isActive !== false).length;
+            const totalHits = pool.reduce((acc, curr) => acc + (curr.usedCount || 0), 0);
+            const totalCollected = pool.reduce((acc, curr) => acc + (curr.totalCollected || 0), 0);
+
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-[#091326] border border-blue-900/50 rounded-2xl p-4">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Total UPIs in Pool</div>
+                  <div className="text-2xl font-black text-white mt-1 flex items-baseline gap-1.5">
+                    <span>{pool.length}</span>
+                    <span className="text-xs text-cyan-400 font-semibold font-mono">/ 100+ Max</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1">Multi-Bank Pool Capacity</div>
+                </div>
+
+                <div className="bg-[#091326] border border-emerald-500/30 rounded-2xl p-4">
+                  <div className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider">Active In Rotation</div>
+                  <div className="text-2xl font-black text-emerald-400 mt-1 flex items-baseline gap-1.5">
+                    <span>{activeCount}</span>
+                    <span className="text-xs text-slate-400 font-mono">({Math.round((activeCount / (pool.length || 1)) * 100)}%)</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1">Ready to serve users</div>
+                </div>
+
+                <div className="bg-[#091326] border border-amber-500/30 rounded-2xl p-4">
+                  <div className="text-[11px] text-amber-400 font-bold uppercase tracking-wider">Rotation Strategy</div>
+                  <div className="text-base font-black text-amber-300 mt-1 capitalize truncate">
+                    {gatewayRotationStrategy === 'roundRobin'
+                      ? 'Round-Robin (Cycle)'
+                      : gatewayRotationStrategy === 'leastUsed'
+                      ? 'Least-Used First'
+                      : 'Random Rotation'}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1">Automatic bank balancing</div>
+                </div>
+
+                <div className="bg-[#091326] border border-cyan-500/30 rounded-2xl p-4">
+                  <div className="text-[11px] text-cyan-400 font-bold uppercase tracking-wider">Total Collected (₹)</div>
+                  <div className="text-2xl font-black text-white mt-1 font-mono">
+                    ₹{totalCollected.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1">{totalHits} deposits processed</div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Test Next UPI Result Banner */}
+          {testRotatingUpiResult && (
+            <div className="bg-[#071638] border border-cyan-500/50 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center font-black">
+                  🎯
+                </div>
+                <div>
+                  <div className="text-xs font-black text-white flex items-center gap-2">
+                    <span>NEXT SERVED UPI IN ROTATION:</span>
+                    <span className="font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">
+                      {testRotatingUpiResult.upiId}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-300 mt-0.5">
+                    Payee: <strong className="text-white">{testRotatingUpiResult.payeeName}</strong> • Provider: <strong className="text-emerald-400">{testRotatingUpiResult.provider}</strong> • Active Pool: {testRotatingUpiResult.activePoolCount}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTestRotatingUpiResult(null)}
+                className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-[#0a1838]"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* TWO-COLUMN GRID: BULK IMPORT & GATEWAY CONFIG */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT: BULK IMPORT 100+ UPI IDs */}
+            <div className="lg:col-span-7 bg-[#091326] border border-blue-900/50 rounded-2xl p-5 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-blue-900/40 pb-3">
+                <div>
+                  <h4 className="text-sm font-black text-white flex items-center gap-2">
+                    <Upload className="w-4 h-4 text-cyan-400" />
+                    <span>Bulk Paste 100+ UPI IDs (One-Click Import)</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Ek baar me 100 tak alag-alag UPI IDs paste karein. Har line me ek UPI ID dalein.
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono bg-cyan-500/10 text-cyan-300 px-2 py-1 rounded-lg border border-cyan-500/30 font-bold">
+                  Bulk 100+
+                </span>
+              </div>
+
+              {/* Textarea */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
+                  <span>Paste UPI List:</span>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {upiBulkText.split(/[\r\n]+/).filter((x) => x.trim().length > 3).length} UPI lines detected
+                  </span>
+                </div>
+                <textarea
+                  rows={8}
+                  placeholder={`merchant1@okaxis, SportX Pay 1\nmerchant2@paytm, SportX Gaming\nspeedpay99@ybl\nnexusgaming@icici, Nexus Pay\nuser100@okhdfcbank\n...paste up to 100+ UPI IDs here`}
+                  value={upiBulkText}
+                  onChange={(e) => setUpiBulkText(e.target.value)}
+                  className="w-full p-3.5 rounded-xl bg-[#050a18] border border-cyan-500/30 text-white font-mono text-xs focus:outline-none focus:border-cyan-400 transition placeholder:text-slate-600 leading-relaxed"
+                />
+                <div className="text-[10px] text-slate-400 leading-normal flex items-center gap-1.5">
+                  <span className="text-cyan-400 font-bold">💡 Format:</span>
+                  <span><code className="bg-black/50 px-1 py-0.5 rounded text-cyan-300">upi@bank</code> or <code className="bg-black/50 px-1 py-0.5 rounded text-cyan-300">upi@bank, Payee Name</code> (Newline or comma separated)</span>
+                </div>
+              </div>
+
+              {/* Import Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
+                    Default Payee Name:
+                  </label>
+                  <input
+                    type="text"
+                    value={upiDefaultName}
+                    onChange={(e) => setUpiDefaultName(e.target.value)}
+                    placeholder="e.g. SportX Gaming Official"
+                    className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-blue-900/50 text-white text-xs font-semibold focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
+                    Daily Limit per UPI (₹):
+                  </label>
+                  <input
+                    type="number"
+                    value={upiDailyLimit}
+                    onChange={(e) => setUpiDailyLimit(Number(e.target.value) || 100000)}
+                    placeholder="100000"
+                    className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-blue-900/50 text-white text-xs font-semibold focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+              </div>
+
+              {/* Append vs Replace Radio */}
+              <div className="flex items-center gap-4 text-xs font-bold text-slate-300 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="importMode"
+                    checked={!upiReplaceAll}
+                    onChange={() => setUpiReplaceAll(false)}
+                    className="text-cyan-500 focus:ring-0"
+                  />
+                  <span>Append to existing pool</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-amber-300">
+                  <input
+                    type="radio"
+                    name="importMode"
+                    checked={upiReplaceAll}
+                    onChange={() => setUpiReplaceAll(true)}
+                    className="text-amber-500 focus:ring-0"
+                  />
+                  <span>Replace entire pool</span>
+                </label>
+              </div>
+
+              {/* Feedback Message */}
+              {upiBulkMsg && (
+                <div
+                  className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                    upiBulkMsg.type === 'success'
+                      ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-rose-500/10 text-rose-300 border border-rose-500/30'
+                  }`}
+                >
+                  {upiBulkMsg.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>{upiBulkMsg.text}</span>
+                </div>
+              )}
+
+              {/* Submit Bulk Button */}
+              <button
+                type="button"
+                onClick={() => handleBulkImportUpi()}
+                disabled={upiBulkLoading || !upiBulkText.trim()}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:brightness-105 active:scale-95 disabled:opacity-50 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-cyan-500/25 transition flex items-center justify-center gap-2"
+              >
+                {upiBulkLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Importing UPI Pool...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    <span>⚡ Bulk Import 100+ UPI IDs Now</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* RIGHT: GATEWAY CONFIG & SUBDOMAIN SETUP */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="bg-[#091326] border border-blue-900/50 rounded-2xl p-5 shadow-xl space-y-4">
+                <div className="border-b border-blue-900/40 pb-3">
+                  <h4 className="text-sm font-black text-white flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-emerald-400" />
+                    <span>Rotation Engine & Subdomain Setup</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Configure rotation logic and optional external subdomain.
+                  </p>
+                </div>
+
+                {/* Rotation Strategy Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-200">
+                    UPI Rotation Mode:
+                  </label>
+                  <select
+                    value={gatewayRotationStrategy}
+                    onChange={(e: any) => setGatewayRotationStrategy(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#050a18] border border-cyan-500/30 text-white text-xs font-bold focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="roundRobin">Round-Robin (Har baar agla UPI ID - 1 by 1 Cycle)</option>
+                    <option value="leastUsed">Least-Used First (Sabse kam use hui UPI pehle - Load Balancing)</option>
+                    <option value="random">Random Rotation (Poore pool se random selection)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    {gatewayRotationStrategy === 'roundRobin' && 'Har naya user agle number ki UPI dekhega. 100 UPIs ho toh 1 se 100 tak line se cycle chalega.'}
+                    {gatewayRotationStrategy === 'leastUsed' && 'Jis UPI pe sabse kam payments hui hain usse pehle pick karega taaki sabhi UPI barabar use ho.'}
+                    {gatewayRotationStrategy === 'random' && 'Har deposit request pe pool se randomly koi bhi active UPI assign hogi.'}
+                  </p>
+                </div>
+
+                {/* Subdomain Input */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-200 flex items-center justify-between">
+                    <span>Subdomain / Gateway URL:</span>
+                    <span className="text-[10px] text-cyan-400 font-mono">pay.yourdomain.com</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={gatewaySubdomain}
+                    onChange={(e) => setGatewaySubdomain(e.target.value)}
+                    placeholder="https://pay.sportx.game"
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#050a18] border border-blue-900/50 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    Hostinger ya VPS me <code className="text-cyan-300">pay.yourdomain.com</code> create karke is URL pe map kar sakte hain. Standalone gateway checkout user ko separate page me open hoga.
+                  </p>
+                </div>
+
+                {/* QR Timer Seconds */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-200">
+                    Payment Expiry Countdown (Seconds):
+                  </label>
+                  <input
+                    type="number"
+                    min={60}
+                    max={3600}
+                    value={gatewayTimerSeconds}
+                    onChange={(e) => setGatewayTimerSeconds(Number(e.target.value) || 600)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#050a18] border border-blue-900/50 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                  <p className="text-[10px] text-slate-400">Default: 600 seconds (10 minutes) for user to complete payment.</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveGatewayConfig}
+                  className="w-full py-2.5 rounded-xl bg-[#0e2450] hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-black transition flex items-center justify-center gap-1.5 active:scale-95"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Update Gateway Settings</span>
+                </button>
+              </div>
+
+              {/* Quick Actions Card */}
+              <div className="bg-[#091326] border border-blue-900/50 rounded-2xl p-4 space-y-2.5">
+                <div className="text-xs font-black text-slate-200 uppercase tracking-wide">
+                  Quick Pool Actions
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingSingle(true)}
+                    className="p-2.5 rounded-xl bg-[#0e214d] hover:bg-blue-900/40 border border-blue-800/40 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Add Single UPI</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetUpiCounts}
+                    className="p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold transition flex items-center justify-center gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset Counts</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Add Single UPI Modal / Inline Form */}
+          {isAddingSingle && (
+            <div className="bg-[#081532] border border-cyan-500/40 rounded-2xl p-4 shadow-xl space-y-3 animate-in zoom-in-95">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-black text-white flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-cyan-400" />
+                  <span>Add Single UPI ID to Rotation Pool</span>
+                </h5>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingSingle(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddSingleUpi} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
+                    UPI ID (VPA):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. speedpay@okaxis"
+                    value={singleUpiId}
+                    onChange={(e) => setSingleUpiId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-cyan-500/40 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">
+                    Payee / Account Name:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SpeedPay Enterprise"
+                    value={singleUpiName}
+                    onChange={(e) => setSingleUpiName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-blue-900/50 text-white text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="py-2 px-4 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-black text-xs hover:brightness-105 active:scale-95 transition"
+                >
+                  Save to Pool
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ACTIVE UPI POOL TABLE */}
+          <div className="bg-[#091326] border border-blue-900/50 rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-900/40 pb-4">
+              <div>
+                <h4 className="text-sm font-black text-white flex items-center gap-2">
+                  <Database className="w-4 h-4 text-cyan-400" />
+                  <span>Active UPI Rotation Pool Table</span>
+                  <span className="text-[10px] bg-blue-900/60 text-cyan-300 font-mono px-2 py-0.5 rounded-full border border-blue-800">
+                    {(settings?.paymentGateway?.upiPool || []).length} Total
+                  </span>
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Click the toggle to activate or pause any UPI ID instantly without deleting it.
+                </p>
+              </div>
+
+              {/* Search Filter */}
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Filter UPI or Bank..."
+                  value={upiSearchQuery}
+                  onChange={(e) => setUpiSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[#050a18] border border-blue-900/50 text-white text-xs font-mono placeholder:text-slate-600 focus:outline-none focus:border-cyan-400"
+                />
+                <Filter className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            {/* Table */}
+            {(() => {
+              const fullPool = settings?.paymentGateway?.upiPool || [];
+              const filtered = fullPool.filter((item) => {
+                if (!upiSearchQuery.trim()) return true;
+                const q = upiSearchQuery.toLowerCase();
+                return (
+                  item.upiId.toLowerCase().includes(q) ||
+                  (item.name || '').toLowerCase().includes(q) ||
+                  (item.provider || '').toLowerCase().includes(q)
+                );
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="py-12 text-center text-slate-500 text-xs">
+                    No UPI IDs found matching your search.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead>
+                      <tr className="border-b border-blue-900/40 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                        <th className="py-2.5 px-3">#</th>
+                        <th className="py-2.5 px-3">UPI ID (VPA)</th>
+                        <th className="py-2.5 px-3">Payee Name</th>
+                        <th className="py-2.5 px-3">Bank / Provider</th>
+                        <th className="py-2.5 px-3 text-center">Status</th>
+                        <th className="py-2.5 px-3 text-center">Times Shown</th>
+                        <th className="py-2.5 px-3 text-right">Collected (₹)</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-blue-900/20 font-mono text-[11px]">
+                      {filtered.map((item, idx) => (
+                        <tr
+                          key={item.id || idx}
+                          className={`hover:bg-[#0c1a3b]/50 transition ${
+                            !item.isActive ? 'opacity-40 bg-black/20' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-3 text-slate-500">{idx + 1}</td>
+                          <td className="py-3 px-3 font-bold text-cyan-300 flex items-center gap-1.5">
+                            <span className="truncate max-w-[200px]">{item.upiId}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator?.clipboard?.writeText(item.upiId);
+                                alert(`Copied ${item.upiId}`);
+                              }}
+                              className="text-slate-500 hover:text-white"
+                              title="Copy UPI"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </td>
+                          <td className="py-3 px-3 font-sans font-semibold text-white truncate max-w-[150px]">
+                            {item.name || 'Merchant'}
+                          </td>
+                          <td className="py-3 px-3 font-sans">
+                            <span className="px-2 py-0.5 rounded-full bg-blue-900/40 text-slate-300 text-[10px] border border-blue-800/40">
+                              {item.provider || 'UPI'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleUpi(item.id)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase transition ${
+                                item.isActive
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                              }`}
+                            >
+                              {item.isActive ? 'Active' : 'Paused'}
+                            </button>
+                          </td>
+                          <td className="py-3 px-3 text-center font-bold text-slate-200">
+                            {item.usedCount || 0}
+                          </td>
+                          <td className="py-3 px-3 text-right font-bold text-emerald-400">
+                            ₹{(item.totalCollected || 0).toLocaleString('en-IN')}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUpi(item.id, item.upiId)}
+                              className="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition ml-auto"
+                              title="Delete from pool"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: SUB-ADMINS & ROLES RBAC MANAGEMENT */}
+      {activeTab === 'subadmins' && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-[#0b1424] border border-purple-500/40 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-purple-400" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-purple-400">
+                    Sovereign Sub-Admin & Role-Based Access Control (RBAC)
+                  </span>
+                </div>
+                <h3 className="text-xl font-extrabold text-white mt-1">
+                  Sub-Admin Account Generator & Granular Power Isolation
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-3xl">
+                  Super Admin yaha se kisi bhi staff ya operator ke liye custom User ID & Password bana sakta hai aur unhe strictly limited power assign kar sakta hai. 
+                  (Jaise: Sirf deposit approve karna, sirf withdrawal check karna, ya sirf Aviator / Color game ka outcome decide karna).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="bg-[#060b17] border border-purple-500/30 rounded-xl px-4 py-2 text-center">
+                  <div className="text-[10px] text-slate-400 font-bold uppercase">Total Sub-Admins</div>
+                  <div className="text-xl font-black text-purple-300 font-mono">{subadminsList.length}</div>
+                </div>
+                <div className="bg-[#060b17] border border-emerald-500/30 rounded-xl px-4 py-2 text-center">
+                  <div className="text-[10px] text-slate-400 font-bold uppercase">Active Staff</div>
+                  <div className="text-xl font-black text-emerald-300 font-mono">
+                    {subadminsList.filter((s) => s.status === 'active').length}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchSubadmins}
+                  disabled={loadingSubadmins}
+                  className="p-3 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-xl transition flex items-center justify-center"
+                  title="Refresh Sub-Admin list"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingSubadmins ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Create Sub-Admin Card */}
+          <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div className="border-b border-slate-800 pb-4">
+              <h4 className="text-base font-black text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-emerald-400" />
+                <span>Create New Sub-Admin Account</span>
+              </h4>
+              <p className="text-xs text-slate-400 mt-1">
+                Enter login credentials and select authority presets or customize permission checkboxes.
+              </p>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-300 block">
+                ⚡ Quick Power Preset (Role Templates):
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyPreset('deposit_only')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    subFormPreset === 'deposit_only'
+                      ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <ArrowDownLeft className="w-3.5 h-3.5" />
+                  <span>💰 Deposit Approver Only</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => applyPreset('withdraw_only')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    subFormPreset === 'withdraw_only'
+                      ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span>💸 Withdrawal Officer Only</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => applyPreset('game_master')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    subFormPreset === 'game_master'
+                      ? 'bg-amber-500 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.4)]'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Dices className="w-3.5 h-3.5" />
+                  <span>🎮 Game Master (Win/Loss Controller)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => applyPreset('gateway_manager')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    subFormPreset === 'gateway_manager'
+                      ? 'bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.4)]'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>⚡ Payment & UPI Gateway Desk</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => applyPreset('support_staff')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    subFormPreset === 'support_staff'
+                      ? 'bg-indigo-500 text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>👤 User Support & Balances</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => applyPreset('auditor')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    subFormPreset === 'auditor'
+                      ? 'bg-slate-400 text-slate-950 shadow-[0_0_12px_rgba(148,163,184,0.4)]'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>📊 Financial Reports & Audit</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSubFormPreset('custom')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    subFormPreset === 'custom'
+                      ? 'bg-purple-500 text-white shadow-[0_0_12px_rgba(168,85,247,0.4)]'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>⚙️ Custom Selection</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Form Fields */}
+            <form onSubmit={handleCreateSubadmin} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Staff Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ramesh Kumar"
+                    value={subFormName}
+                    onChange={(e) => setSubFormName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#060b17] border border-slate-700 text-white text-xs font-mono placeholder:text-slate-600 focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">User ID / Login ID</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. SUB-DEP01"
+                    value={subFormNodeId}
+                    onChange={(e) => setSubFormNodeId(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#060b17] border border-slate-700 text-amber-300 text-xs font-mono font-bold placeholder:text-slate-600 focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Email Address (Optional)</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. ramesh@sportx.game"
+                    value={subFormEmail}
+                    onChange={(e) => setSubFormEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#060b17] border border-slate-700 text-white text-xs font-mono placeholder:text-slate-600 focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Login Password</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Pass@12345"
+                    value={subFormPassword}
+                    onChange={(e) => setSubFormPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#060b17] border border-slate-700 text-emerald-400 text-xs font-mono font-bold placeholder:text-slate-600 focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">Role Designation / Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Deposit Approval Desk / Game Outcome Controller"
+                  value={subFormRoleName}
+                  onChange={(e) => setSubFormRoleName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#060b17] border border-slate-700 text-white text-xs font-mono placeholder:text-slate-600 focus:outline-none focus:border-purple-400"
+                />
+              </div>
+
+              {/* Granular Permission Matrix */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-t border-slate-800 pt-4">
+                  <label className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-purple-400" />
+                    <span>Assign Specific Powers & Module Access (Checkboxes):</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    Checked items will be visible in this Sub-Admin's dashboard.
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Deposits */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageDeposits
+                      ? 'bg-emerald-950/30 border-emerald-500/50 text-emerald-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageDeposits)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageDeposits: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-emerald-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
+                        <span>Deposit Approvals (जमा स्वीकृति)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        UPI & Bank INR deposit request approve/reject karne aur deposit balance credit karne ka access.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Withdrawals */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageWithdrawals
+                      ? 'bg-cyan-950/30 border-cyan-500/50 text-cyan-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageWithdrawals)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageWithdrawals: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-cyan-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <ArrowUpRight className="w-4 h-4 text-cyan-400" />
+                        <span>Withdrawal Approvals (निकासी स्वीकृति)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Withdrawal requests check karna, reject par balance refund karna aur Hot Wallet blockchain dispatch.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Color Prediction Outcome */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageColorPrediction
+                      ? 'bg-green-950/30 border-green-500/50 text-green-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageColorPrediction)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageColorPrediction: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-green-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Dices className="w-4 h-4 text-green-400" />
+                        <span>Color Prediction Rigging (Win Go कंट्रोल)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Agla result kya aayega (Red/Green/Violet, 0-9), manual vs lowest payout switch karna.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Dragon vs Tiger Outcome */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageDragonTiger
+                      ? 'bg-amber-950/30 border-amber-500/50 text-amber-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageDragonTiger)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageDragonTiger: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-amber-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-amber-400" />
+                        <span>Dragon vs Tiger Outcome (विनर कंट्रोल)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Dragon, Tiger ya Tie me se agla winner kaun hoga manually set karna.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Aviator Crash Control */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageAviator
+                      ? 'bg-red-950/30 border-red-500/50 text-red-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageAviator)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageAviator: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-red-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-red-400" />
+                        <span>Aviator Crash Control (क्रैश मल्टीप्लायर)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Plane kitne multiplier par blast hoga (e.g. 1.20x par harana ya 50x par jitana).
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Lottery & Lucky Draw */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageLottery
+                      ? 'bg-yellow-950/30 border-yellow-500/50 text-yellow-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageLottery)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageLottery: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-yellow-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Ticket className="w-4 h-4 text-yellow-400" />
+                        <span>Lottery & Lucky Draw (लॉटरी विनर)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Daily prize draw ka winning ticket number force karna aur prizes set karna.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* UPI Gateway Pool */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageUpiGateway
+                      ? 'bg-blue-950/30 border-blue-500/50 text-blue-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageUpiGateway)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageUpiGateway: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-blue-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <HardDrive className="w-4 h-4 text-cyan-400" />
+                        <span>UPI Gateway & 100+ Pool (पेमेंट गेटवे)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Rotating UPI addresses pool manage karna, bulk upload aur active/pause toggle karna.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* User Balances */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageUsers
+                      ? 'bg-indigo-950/30 border-indigo-500/50 text-indigo-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageUsers)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageUsers: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-indigo-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-indigo-400" />
+                        <span>User Manager & Balances (यूजर बैलेंस)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        User directory dekhna, withdrawable & deposit balance manually add/deduct karna.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Tournament */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageTournament
+                      ? 'bg-amber-950/30 border-amber-500/50 text-amber-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageTournament)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageTournament: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-amber-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Trophy className="w-4 h-4 text-yellow-400" />
+                        <span>Top Bettor Tournament (टूर्नामेंट)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Daily turnover leaderboard, prize pool aur top rankers manage karna.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Date-wise Reports */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canViewReports
+                      ? 'bg-emerald-950/30 border-emerald-500/50 text-emerald-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canViewReports)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canViewReports: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-emerald-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                        <span>Financial Reports & PDF (रिपोर्ट्स)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Date-wise turnover, deposits aur payouts ki summary report PDF export karna.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Audit Logs */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canViewAudit
+                      ? 'bg-slate-800/80 border-slate-600 text-slate-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canViewAudit)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canViewAudit: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-slate-400 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <FileText className="w-4 h-4 text-slate-400" />
+                        <span>Audit Trail & Activity Logs (लॉग्स)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Platform transactions history aur admin action records dekhna.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* System Settings */}
+                  <label className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                    subFormPermissions.canManageSettings
+                      ? 'bg-amber-950/30 border-amber-500/50 text-amber-200'
+                      : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(subFormPermissions.canManageSettings)}
+                      onChange={(e) => {
+                        setSubFormPreset('custom');
+                        setSubFormPermissions({ ...subFormPermissions, canManageSettings: e.target.checked });
+                      }}
+                      className="mt-0.5 rounded text-amber-500 focus:ring-0"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Sliders className="w-4 h-4 text-amber-400" />
+                        <span>System Config (सिस्टम सेटिंग्स)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Global exchange rate, minimum deposit & contact support links badalna.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {subadminMsg && (
+                <div className={`p-3 rounded-xl text-xs font-bold border ${
+                  subadminMsg.type === 'success'
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
+                    : 'bg-red-500/10 border-red-500/40 text-red-300'
+                }`}>
+                  {subadminMsg.text}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSavingSubadmin}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-extrabold text-sm shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center justify-center gap-2 transition disabled:opacity-50"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{isSavingSubadmin ? 'Creating Sub-Admin Account...' : 'Create & Activate Sub-Admin'}</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Sub-Admins Directory Table */}
+          <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <h4 className="text-base font-black text-white flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-purple-400" />
+                  <span>Existing Sub-Admins Directory</span>
+                  <span className="text-xs bg-purple-900/60 text-purple-300 font-mono px-2.5 py-0.5 rounded-full border border-purple-700">
+                    {subadminsList.length} Accounts
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Manage active powers, reset credentials, pause accounts, or test login directly.
+                </p>
+              </div>
+            </div>
+
+            {subadminsList.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 text-xs">
+                Abhi tak koi Sub-Admin nahi banaya gaya hai. Upar diye gaye form se naya Sub-Admin create karein.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-500 font-bold bg-[#070e1b]">
+                      <th className="py-3 px-3">Sub-Admin Info</th>
+                      <th className="py-3 px-3">User ID / Login</th>
+                      <th className="py-3 px-3">Role Title</th>
+                      <th className="py-3 px-3">Assigned Powers</th>
+                      <th className="py-3 px-3">Status</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {subadminsList.map((sub) => {
+                      const p = sub.adminPermissions || {};
+                      const powerList: string[] = [];
+                      if (p.canManageDeposits) powerList.push('Deposits');
+                      if (p.canManageWithdrawals) powerList.push('Withdrawals');
+                      if (p.canManageColorPrediction) powerList.push('Win Go (Color)');
+                      if (p.canManageDragonTiger) powerList.push('Dragon/Tiger');
+                      if (p.canManageAviator) powerList.push('Aviator Crash');
+                      if (p.canManageLottery) powerList.push('Lottery');
+                      if (p.canManageUpiGateway) powerList.push('UPI Gateway');
+                      if (p.canManageUsers) powerList.push('User Balance');
+                      if (p.canViewReports) powerList.push('PDF Reports');
+                      if (p.canManageSettings) powerList.push('Settings');
+                      if (p.canManageTournament) powerList.push('Tournament');
+
+                      return (
+                        <tr key={sub.id} className="hover:bg-slate-800/30 transition">
+                          <td className="py-3.5 px-3">
+                            <div className="font-bold text-white flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center text-xs font-mono">
+                                {sub.name.charAt(0)}
+                              </span>
+                              <div>
+                                <div>{sub.name}</div>
+                                <div className="text-[10px] text-slate-500 font-mono">{sub.email}</div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-3 font-mono font-bold text-amber-300">
+                            {sub.nodeId}
+                          </td>
+
+                          <td className="py-3.5 px-3">
+                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-purple-900/40 text-purple-300 border border-purple-700/50">
+                              {sub.adminRoleName || 'Operator'}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-3">
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {powerList.length === 0 ? (
+                                <span className="text-[10px] text-slate-500 italic">No powers assigned</span>
+                              ) : (
+                                powerList.map((pw, i) => (
+                                  <span
+                                    key={i}
+                                    className="text-[9px] bg-slate-800/80 text-cyan-300 px-2 py-0.5 rounded font-mono border border-slate-700"
+                                  >
+                                    {pw}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-3">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSubadminStatus(sub.id)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition ${
+                                sub.status === 'active'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                                  : 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
+                              }`}
+                            >
+                              {sub.status === 'active' ? '● Active' : '● Suspended'}
+                            </button>
+                          </td>
+
+                          <td className="py-3.5 px-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {onSwitchUser && (
+                                <button
+                                  type="button"
+                                  onClick={() => onSwitchUser(sub.id)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold transition flex items-center gap-1"
+                                  title="Test Sub-Admin isolation by logging into their limited view"
+                                >
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                  <span>Test View</span>
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSubadmin(sub);
+                                  setEditRoleName(sub.adminRoleName || '');
+                                  setEditPermissions(sub.adminPermissions || {});
+                                  setEditPasswordReset('');
+                                }}
+                                className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition"
+                                title="Edit Role & Permissions"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSubadmin(sub.id, sub.name)}
+                                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition"
+                                title="Delete Sub-Admin"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SUB-ADMIN MODAL */}
+      {editingSubadmin && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b1329] border border-purple-500/40 w-full max-w-2xl rounded-2xl p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400">
+                  <Edit2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    Edit Sub-Admin: {editingSubadmin.name} ({editingSubadmin.nodeId})
+                  </h3>
+                  <p className="text-xs text-slate-400">Update role permissions, title or reset login password.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingSubadmin(null)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-300">Role Designation</label>
+                  <input
+                    type="text"
+                    value={editRoleName}
+                    onChange={(e) => setEditRoleName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#060b17] border border-slate-700 text-white text-xs font-mono focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-300">Reset Password (Leave blank to keep current)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter new password"
+                    value={editPasswordReset}
+                    onChange={(e) => setEditPasswordReset(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#060b17] border border-slate-700 text-emerald-400 text-xs font-mono font-bold focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 block">Granular Authority Toggles:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {[
+                    { key: 'canManageDeposits', label: '💰 Deposit Approvals', desc: 'Approve/reject UPI & Bank INR deposit receipts' },
+                    { key: 'canManageWithdrawals', label: '💸 Withdrawal Approvals', desc: 'Approve/reject & Hot Wallet dispatch' },
+                    { key: 'canManageColorPrediction', label: '🎮 Win Go (Color Game)', desc: 'Force next color & number, risk mode' },
+                    { key: 'canManageDragonTiger', label: '⚡ Dragon vs Tiger', desc: 'Force next round winner (Dragon/Tiger/Tie)' },
+                    { key: 'canManageAviator', label: '🚀 Aviator Crash Game', desc: 'Force crash multiplier, early crash' },
+                    { key: 'canManageLottery', label: '🎟️ Lottery & Lucky Draw', desc: 'Forced winning tickets, prize pools' },
+                    { key: 'canManageUpiGateway', label: '⚡ UPI Gateway Pool', desc: 'Manage 100+ rotating UPI pool IDs' },
+                    { key: 'canManageUsers', label: '👤 User Balances', desc: 'Edit wallet balances & user directory' },
+                    { key: 'canManageTournament', label: '🏆 Bettor Tournament', desc: 'Leaderboard & tournament prizes' },
+                    { key: 'canViewReports', label: '📊 Financial Reports', desc: 'Date-wise turnover report & PDF' },
+                    { key: 'canViewAudit', label: '📋 Audit Logs', desc: 'View system audit trails' },
+                    { key: 'canManageSettings', label: '⚙️ System Config', desc: 'Global settings & rates' },
+                  ].map((item) => (
+                    <label
+                      key={item.key}
+                      className={`p-2.5 rounded-xl border transition cursor-pointer flex items-start gap-2.5 ${
+                        (editPermissions as any)[item.key]
+                          ? 'bg-purple-950/40 border-purple-500/50 text-purple-200'
+                          : 'bg-[#060b17] border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean((editPermissions as any)[item.key])}
+                        onChange={(e) =>
+                          setEditPermissions({
+                            ...editPermissions,
+                            [item.key]: e.target.checked,
+                          })
+                        }
+                        className="mt-0.5 rounded text-purple-500 focus:ring-0"
+                      />
+                      <div>
+                        <div className="font-bold text-white text-xs">{item.label}</div>
+                        <div className="text-[10px] text-slate-400">{item.desc}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingSubadmin(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateSubadminPermissions}
+                disabled={isSavingSubadmin}
+                className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-extrabold rounded-xl transition shadow-[0_0_15px_rgba(168,85,247,0.4)] flex items-center gap-2 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSavingSubadmin ? 'Saving Changes...' : 'Save Permissions'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {deletingUserModal && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0b1329] border border-red-500/40 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-4">
@@ -7894,7 +10834,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Balance:</span>
-                <span className="text-emerald-400 font-bold">${deletingUserModal.balance || 0}</span>
+                <span className="text-emerald-400 font-bold">₹{deletingUserModal.balance || 0}</span>
               </div>
             </div>
 

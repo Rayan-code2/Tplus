@@ -11,25 +11,29 @@ export interface User {
   activePackageId: string | null;
   packageActivatedAt: string | null;
   packageExpiryDays: number;
-  balance: number; // Available Withdrawable ($)
-  depositBalance: number; // Deposit / Fund Wallet ($) for buying packages/bets
-  upgradeBalance: number; // Reinvestment / Upgrade Wallet ($)
-  winningBalance?: number; // Game & Lottery Winnings Wallet ($) - 10% fee, no MLM conditions
-  winningEarned?: number; // Total Game & Lottery Winnings ($)
-  totalEarned: number; // Lifetime Earnings ($)
-  roiEarned: number; // Node Yield ($)
-  levelEarned: number; // Matrix Level Income ($)
-  sponsorEarned: number; // Direct Sponsor Income ($)
-  rankEarned: number; // Leadership Rank Bonuses ($)
-  boostingEarned: number; // Global Gold Pool ($)
-  spinEarned: number; // Daily Spin Rewards ($)
-  specialBonusEarned?: number; // Special 100% Level Matching Sponsor Bonus ($)
+  balance: number; // Available Agency / Commission Withdrawable (₹ INR)
+  depositBalance: number; // Deposit / Fund Wallet (₹ INR) for games & shopping
+  upgradeBalance: number; // Reinvestment / Upgrade Wallet (₹ INR)
+  winningBalance?: number; // Game & Lottery Winnings Wallet (₹ INR)
+  winningEarned?: number; // Total Game & Lottery Winnings (₹ INR)
+  totalEarned: number; // Lifetime Earnings (₹ INR)
+  roiEarned: number; // Node Yield (₹ INR)
+  levelEarned: number; // Matrix Level Income (₹ INR)
+  sponsorEarned: number; // Direct Sponsor Income (₹ INR)
+  rankEarned: number; // Leadership Rank Bonuses (₹ INR)
+  boostingEarned: number; // Global Gold Pool (₹ INR)
+  spinEarned: number; // Daily Spin Rewards (₹ INR)
+  specialBonusEarned?: number; // Special 100% Level Matching Sponsor Bonus (₹ INR)
   directReferralsCount: number;
   teamCount: number;
   teamVolume: number;
   rank: RankTier;
   status: 'active' | 'inactive' | 'banned';
   isAdmin?: boolean;
+  isSuperAdmin?: boolean;
+  isSubAdmin?: boolean;
+  adminRoleName?: string;
+  adminPermissions?: AdminPermissions;
   password?: string;
   registeredAt: string;
   lastRoiClaimAt: string;
@@ -46,6 +50,26 @@ export interface User {
   lastDailyCheckinAt?: string | null;
   dailyCheckinStreak?: number;
   totalDeposited?: number;
+}
+
+export interface AdminPermissions {
+  canManageDeposits?: boolean;
+  canManageWithdrawals?: boolean;
+  canManageUsers?: boolean;
+  canManageColorPrediction?: boolean;
+  canManageDragonTiger?: boolean;
+  canManageAviator?: boolean;
+  canManageTournament?: boolean;
+  canManageLottery?: boolean;
+  canManageUpiGateway?: boolean;
+  canManageSettings?: boolean;
+  canViewReports?: boolean;
+  canViewAudit?: boolean;
+  canManageProducts?: boolean;
+  canManageBoosting?: boolean;
+  canManageSqlite?: boolean;
+  canManageRanks?: boolean;
+  canManageSubAdmins?: boolean;
 }
 
 export interface Package {
@@ -121,9 +145,12 @@ export interface Transaction {
     | 'sponsor_game_win_bonus'
     | 'bet_turnover_commission'
     | 'first_deposit_bonus'
+    | 'signup_bonus'
     | 'vip_agent_bonus'
     | 'aviator_bet'
     | 'aviator_win'
+    | 'fantasy_entry'
+    | 'fantasy_win'
     | 'admin_adjust';
   amount: number;
   status: 'pending' | 'completed' | 'rejected';
@@ -139,7 +166,10 @@ export interface DepositRequest {
   userNodeId: string;
   userName: string;
   amount: number;
-  network: 'TRC20' | 'BEP20' | 'ERC20';
+  inrAmount?: number;
+  bonusAwarded?: number;
+  bonusInr?: number;
+  network: string;
   txHash: string;
   proofImage?: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -270,23 +300,29 @@ export interface SystemSettings {
   };
   withdrawalFeePercent: number;
   upgradeFundDeductionPercent: number;
-  minDepositAmount?: number; // Minimum USDT deposit amount allowed (e.g. $10)
-  minWithdrawalAmount?: number; // Minimum USDT withdrawal amount allowed (e.g. $10)
+  currencyMigratedToInr?: boolean;
+  minDepositAmount?: number; // Minimum ₹ INR deposit amount allowed (e.g. ₹100)
+  minWithdrawalAmount?: number; // Minimum ₹ INR withdrawal amount allowed (e.g. ₹200)
   sponsorGameWinPercent?: number; // Sponsor royalty % on downline game wins (e.g. 5%)
   winningWithdrawalFeePercent?: number; // Admin charge % on winning wallet withdrawals (e.g. 10%)
-  winningWithdrawalMinAmount?: number; // Min withdrawal from winning wallet (e.g. $5)
-  autoPayoutThresholdUSDT?: number; // Maximum USDT amount for automatic instant blockchain payout (e.g. $20). Amounts > threshold require Admin approval.
+  winningWithdrawalMinAmount?: number; // Min withdrawal from winning wallet (e.g. ₹100)
+  autoPayoutThresholdUSDT?: number; // Maximum ₹ INR amount for auto-dispatch vs manual review
   tickerText: string;
   spinWheelRewards: SpinReward[];
   spinWheelIntervalHours?: number;
   spinCreditsPerReset?: number;
-  spinTicketPrice?: number; // Cost per spin ticket in USDT (e.g., $45 or custom)
+  spinTicketPrice?: number; // Cost per spin ticket in ₹ INR
   spinHouseProfitPercent?: number; // House Profit margin % on Spin Wheel (e.g., 55% House Profit, 45% Player RTP)
   specialSponsorBonus?: SpecialSponsorBonusConfig;
   heroBanners?: HeroBannerSlide[];
   ranks: RankConfig[];
   dailyTournament?: DailyTournamentConfig;
   luckyDraw?: LuckyDrawConfig;
+  paymentGateway?: PaymentGatewayConfig;
+  gameSubdomains?: GameSubdomainsConfig;
+  enabledGames?: EnabledGamesConfig;
+  signupBonus?: SignupBonusConfig;
+  depositBonus?: DepositBonusConfig;
   smtp?: {
     host?: string;
     port?: number;
@@ -294,6 +330,86 @@ export interface SystemSettings {
     pass?: string;
     from?: string;
   };
+}
+
+export interface SignupBonusConfig {
+  enabled: boolean;
+  amountInr: number;
+  creditWallet: 'depositBalance' | 'winningBalance' | 'balance';
+  freeSpins?: number;
+}
+
+export interface DepositBonusTier {
+  id: string;
+  label?: string;
+  minAmount: number;
+  bonusType: 'percent' | 'fixed';
+  bonusValue: number;
+  enabled?: boolean;
+}
+
+export interface DepositBonusConfig {
+  enabled: boolean;
+  applyTo: 'all_deposits' | 'first_deposit_only';
+  creditWallet: 'depositBalance' | 'winningBalance' | 'balance';
+  tiers: DepositBonusTier[];
+}
+
+export interface EnabledGamesConfig {
+  aviator?: boolean;
+  colorprediction?: boolean;
+  cricket?: boolean;
+  dragontiger?: boolean;
+  luckydraw?: boolean;
+  chickenroad?: boolean;
+  rummy?: boolean;
+  slot777?: boolean;
+  spinwheel?: boolean;
+}
+
+export interface GameSubdomainUrls {
+  aviator?: string;
+  colorprediction?: string;
+  cricket?: string;
+  dragontiger?: string;
+  luckydraw?: string;
+  chickenroad?: string;
+  rummy?: string;
+  slot777?: string;
+  spinwheel?: string;
+}
+
+export interface GameSubdomainsConfig {
+  enabled: boolean;
+  rootDomain: string;
+  mainAppUrl?: string;
+  apiBaseUrl?: string;
+  autoSubdomainOnCustomDomain?: boolean;
+  urls?: GameSubdomainUrls;
+}
+
+export interface UpiPoolItem {
+  id: string;
+  upiId: string;
+  name: string;
+  provider?: string;
+  dailyLimit?: number;
+  usedCount: number;
+  totalCollected: number;
+  isActive: boolean;
+  createdAt: string;
+  notes?: string;
+}
+
+export interface PaymentGatewayConfig {
+  enabled: boolean;
+  rotationStrategy: 'roundRobin' | 'random' | 'leastUsed';
+  defaultUpiId: string;
+  defaultPayeeName: string;
+  subdomainUrl?: string;
+  qrTimerSeconds: number;
+  autoRotateOnRefresh: boolean;
+  upiPool: UpiPoolItem[];
 }
 
 export interface MatrixNode {
@@ -396,6 +512,7 @@ export interface ColorPredictionBet {
   amount: number;
   contractCount: number;
   totalBet: number;
+  amountInr?: number;
   payout: number;
   status: 'pending' | 'won' | 'lost';
   cashbackAwarded?: number;
@@ -403,11 +520,15 @@ export interface ColorPredictionBet {
 }
 
 export interface ColorPredictionResult {
+  id?: string;
   periodId: string;
   number: number; // 0 to 9
-  color: 'green' | 'red' | 'violet-green' | 'violet-red';
+  color: 'green' | 'red' | 'violet-green' | 'violet-red' | 'violet';
   size: 'big' | 'small';
-  completedAt: string;
+  completedAt?: string;
+  createdAt?: string;
+  blockHeight?: number;
+  hash?: string;
 }
 
 export interface ColorPredictionState {
@@ -482,6 +603,8 @@ export interface AviatorBet {
   payout: number;
   status: 'pending' | 'cashed_out' | 'crashed';
   createdAt: string;
+  slot?: number;
+  autoCashout?: number;
 }
 
 export interface AviatorState {
@@ -527,5 +650,103 @@ export interface DailyTournamentState {
     projectedPrize: number;
   };
 }
+
+export interface CricketPlayer {
+  id: string;
+  name: string;
+  team: string; // 'IND' | 'AUS' | 'CSK' | 'MI' etc.
+  teamShort: string;
+  role: 'WK' | 'BAT' | 'AR' | 'BOWL';
+  credits: number; // e.g. 9.5, 9.0, 8.5
+  avatar: string;
+  selectedByPercent: number; // e.g. 78.4%
+  points: number; // match fantasy points
+  runs?: number;
+  balls?: number;
+  fours?: number;
+  sixes?: number;
+  strikeRate?: number;
+  wickets?: number;
+  overs?: number;
+  maidens?: number;
+  economy?: number;
+  catches?: number;
+  stumpings?: number;
+  isCaptain?: boolean;
+  isViceCaptain?: boolean;
+}
+
+export interface FantasyContest {
+  id: string;
+  title: string;
+  tagline: string;
+  entryFee: number; // in USDT
+  prizePool: number; // in USDT
+  totalSpots: number;
+  filledSpots: number;
+  firstPrize: number;
+  winnerPercentage: number; // e.g. 60%
+  maxTeamsPerUser: number;
+  guaranteed: boolean;
+  status: 'open' | 'live' | 'completed';
+}
+
+export interface CricketMatch {
+  id: string;
+  title: string; // e.g. "India vs Australia - 3rd T20I"
+  series: string; // e.g. "T20 World Championship 2026"
+  matchType: 'T20' | 'ODI' | 'TEST';
+  team1: {
+    name: string;
+    shortName: string;
+    flag: string;
+    score?: string; // e.g. "186/4 (18.2 ov)"
+    color: string;
+  };
+  team2: {
+    name: string;
+    shortName: string;
+    flag: string;
+    score?: string; // e.g. "182/6 (20.0 ov)"
+    color: string;
+  };
+  venue: string;
+  startTime: string; // ISO or human format
+  status: 'upcoming' | 'live' | 'completed';
+  statusText: string; // e.g. "Live in 12m", "Match In Progress", "Completed"
+  megaPrizePool: number;
+  players: CricketPlayer[];
+  contests: FantasyContest[];
+}
+
+export interface UserFantasyTeam {
+  id: string;
+  userId: string;
+  userNodeId: string;
+  userName: string;
+  matchId: string;
+  contestId: string;
+  teamName: string; // e.g. "Team 1"
+  selectedPlayerIds: string[];
+  captainId: string; // 2x points
+  viceCaptainId: string; // 1.5x points
+  totalPoints: number;
+  rank?: number;
+  wonPrize?: number;
+  createdAt: string;
+}
+
+export interface FantasyLeaderboardEntry {
+  rank: number;
+  teamName: string;
+  userName: string;
+  userNodeId: string;
+  points: number;
+  prizeWon: number;
+  captainName: string;
+  viceCaptainName: string;
+  isCurrentUser?: boolean;
+}
+
 
 

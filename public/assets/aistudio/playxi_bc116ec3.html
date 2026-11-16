@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PlayXI Fantasy</title>
+<style>
+:root{--ac:#0b8f5a;--bg:#f2f3f5;--card:#fff;--tx:#14171c;--mu:#6b7280;--bd:#e3e5e9;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1114;--card:#1a1d22;--tx:#f1f3f5;--mu:#9aa1ab;--bd:#2a2e35}}
+:root[data-theme="dark"]{--bg:#0f1114;--card:#1a1d22;--tx:#f1f3f5;--mu:#9aa1ab;--bd:#2a2e35}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
+#app{width:100%;max-width:430px;height:100%;display:flex;flex-direction:column;background:var(--bg)}
+header{background:var(--ac);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:18px}
+header small{font-weight:500;font-size:13px;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:99px}
+main{flex:1;overflow-y:auto;padding:12px 12px 20px}
+nav{display:flex;background:var(--card);border-top:1px solid var(--bd)}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:8px 0 10px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button.on{color:var(--ac);font-weight:700}
+nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mu{color:var(--mu);font-size:13px}
+.vs{font-weight:700;font-size:16px}
+.btn{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;width:100%}
+.btn.sm{width:auto;padding:6px 12px;font-size:13px}.btn.ghost{background:none;color:var(--ac);border:1px solid var(--ac)}.btn.red{background:#d33}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bd);color:var(--mu)}
+.tag.live{background:var(--ac);color:#fff}
+input,select{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;margin:4px 0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pl{display:flex;align-items:center;gap:8px;padding:9px 6px;border-bottom:1px solid var(--bd)}
+.pl.sel{background:color-mix(in srgb,var(--ac) 12%,transparent)}
+.pl .nm{flex:1}.pl b{min-width:32px;text-align:right}
+.cv{width:28px;height:28px;border-radius:50%;border:1px solid var(--bd);background:none;color:var(--mu);font-size:11px;font-weight:700}
+.cv.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.bar{position:sticky;top:-12px;background:var(--bg);padding:6px 0 8px;z-index:2}
+.pill{display:flex;justify-content:space-between;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 12px;font-size:13px}
+h3{margin:14px 0 6px;font-size:15px}
+</style></head><body>
+<div id="app"><header><span id="nm"></span><small>🪙 <span id="coins"></span></small></header><main id="v"></main>
+<nav id="nav"></nav></div>
+<script>
+const ic={home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',teams:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-4 3-6 7-6s7 2 7 6M17 5a3.5 3.5 0 010 6M22 20c0-3-2-5-4-5.5"/>',ranks:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM7 6H4v2a3 3 0 003 3M17 6h3v2a3 3 0 01-3 3"/>',admin:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function seed(){const f='A. Rao,K. Singh,R. Nair,S. Iyer,M. Khan,V. Das,P. Shah,D. Mehta,T. Roy,N. Verma,J. Bose,H. Pillai,L. Gill,B. Jain,C. Menon,G. Patil,Y. Sethi,O. Kaur,E. Bhat,F. Dutta,I. Joshi,U. Naik'.split(',');
+const R=['WK','BAT','BAT','BAT','AR','AR','BOWL','BOWL','BOWL','BOWL','BAT'];
+const pl=f.map((n,i)=>({id:i+1,n,t:i<11?'a':'b',r:R[i%11],c:[8,9,9.5,10,8.5,9,8,8.5,9,10,7.5][i%11],pts:0}));
+return{name:'PlayXI',ac:'#0b8f5a',coins:1000,matches:[{id:1,a:'Blue Hawks',b:'Red Wolves',time:'Today, 7:30 PM',done:false,players:pl,bots:[]}],teams:[],pin:'1234'}}
+let S;try{S=JSON.parse(localStorage.getItem('playxi'))}catch(e){}if(!S)S=seed();
+const save=()=>{try{localStorage.setItem('playxi',JSON.stringify(S))}catch(e){}};
+let tab='home',mid=null,adm=false,B=null,rk=null;
+const M=id=>S.matches.find(m=>m.id==id);
+const tp=(t,m)=>t.ids.reduce((s,id)=>{const p=m.players.find(x=>x.id==id);return s+(p?p.pts*(id==t.cap?2:id==t.vc?1.5:1):0)},0);
+function nav(){const t=[['home','Home'],['teams','My teams'],['ranks','Ranks'],['admin','Admin']];
+document.getElementById('nav').innerHTML=t.map(([k,l])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')"><svg viewBox="0 0 24 24">${ic[k]}</svg>${l}</button>`).join('')}
+function go(k){tab=k;mid=null;B=null;draw()}
+function draw(){document.documentElement.style.setProperty('--ac',S.ac);document.getElementById('nm').textContent=S.name;document.getElementById('coins').textContent=S.coins;nav();
+const v=document.getElementById('v');v.innerHTML=B?build():tab=='home'?home():tab=='teams'?teams():tab=='ranks'?ranks():adm?admin():login();save()}
+function home(){return `<p class="mu">Play with virtual coins only. No real money.</p>`+S.matches.map(m=>`<div class="card"><div class="row"><span class="mu">Cricket · T20</span><span class="tag ${m.done?'':'live'}">${m.done?'Completed':m.time}</span></div>
+<div class="row" style="margin:12px 0"><span class="vs">${esc(m.a)}</span><span class="mu">vs</span><span class="vs">${esc(m.b)}</span></div>
+<button class="btn" onclick="start(${m.id})" ${m.done?'disabled style="opacity:.5"':''}>Create team</button></div>`).join('')||'<div class="card mu">No matches yet. Add one in Admin.</div>'}
+function start(id){mid=id;B={ids:[],cap:null,vc:null};draw()}
+function stat(m){const P=B.ids.map(i=>m.players.find(p=>p.id==i));return{n:P.length,cr:P.reduce((s,p)=>s+p.c,0),a:P.filter(p=>p.t=='a').length,b:P.filter(p=>p.t=='b').length,wk:P.filter(p=>p.r=='WK').length}}
+function build(){const m=M(mid),s=stat(m);const ok=s.n==11&&s.cr<=100&&s.a<=7&&s.b<=7&&s.wk>=1&&B.cap&&B.vc;const w=[];if(s.n<11)w.push('Pick '+(11-s.n)+' more player(s)');if(s.cr>100)w.push('Credits are over 100');if(s.a>7)w.push('Max 7 players from '+m.a+' (you have '+s.a+')');if(s.b>7)w.push('Max 7 players from '+m.b+' (you have '+s.b+')');if(s.n&&s.wk<1)w.push('Pick at least 1 WK');if(!B.cap)w.push('Choose a Captain (C)');if(!B.vc)w.push('Choose a Vice-Captain (VC)');
+return `<div class="bar"><div class="pill"><span>Players ${s.n}/11</span><span>Credits left ${(100-s.cr).toFixed(1)}</span><span>${s.a} - ${s.b}</span></div></div>
+<p class="mu">Pick 11 players, max 7 per team, at least 1 WK. Captain gets 2x, vice-captain 1.5x.</p>
+<div class="card" style="padding:0 8px">`+m.players.map(p=>{const on=B.ids.includes(p.id);return `<div class="pl ${on?'sel':''}"><div class="nm" onclick="pick(${p.id})"><div>${esc(p.n)}</div><div class="mu">${esc(p.t=='a'?m.a:m.b)} · ${p.r}</div></div>
+${on?`<button class="cv ${B.cap==p.id?'on':''}" onclick="cv('cap',${p.id})">C</button><button class="cv ${B.vc==p.id?'on':''}" onclick="cv('vc',${p.id})">VC</button>`:''}<b onclick="pick(${p.id})">${p.c}</b></div>`}).join('')+
+`</div>${w.length?`<div class="card" style="border-color:#d33;color:#d33;font-size:13px"><b>Cannot save yet:</b><br>${w.map(x=>'• '+esc(x)).join('<br>')}</div>`:''}<div class="g2"><button class="btn ghost" onclick="B=null;mid=null;draw()">Back</button><button class="btn" ${ok?'':'disabled style="opacity:.5"'} onclick="saveTeam()">Save team</button></div>`}
+function pick(id){const i=B.ids.indexOf(id);if(i>=0){B.ids.splice(i,1);if(B.cap==id)B.cap=null;if(B.vc==id)B.vc=null}else if(B.ids.length<11)B.ids.push(id);draw()}
+function cv(k,id){const o=k=='cap'?'vc':'cap';if(B[o]==id)B[o]=null;B[k]=id;draw()}
+function saveTeam(){S.teams.push({mid,...B});B=null;tab='teams';draw()}
+function teams(){return S.teams.length?S.teams.map((t,i)=>{const m=M(t.mid);if(!m)return'';const c=m.players.find(p=>p.id==t.cap),v=m.players.find(p=>p.id==t.vc);
+return `<div class="card"><div class="row"><b>Team ${i+1}</b><span class="tag ${m.done?'':'live'}">${m.done?tp(t,m)+' pts':'Upcoming'}</span></div><div class="mu">${esc(m.a)} vs ${esc(m.b)}</div><div style="margin-top:6px">C: ${esc(c?.n)} · VC: ${esc(v?.n)}</div></div>`}).join(''):'<div class="card mu">You have not created a team yet. Open Home and pick a match.</div>'}
+function ranks(){const ms=S.matches.filter(m=>m.done);if(!ms.length)return '<div class="card mu">Ranks appear after the admin publishes match results.</div>';
+if(!rk||!M(rk))rk=ms[0].id;const m=M(rk);const me=S.teams.filter(t=>t.mid==m.id).map((t,i)=>({n:'You · Team '+(i+1),p:tp(t,m),me:1}));
+const all=[...m.bots.map(b=>({n:b.n,p:b.p})),...me].sort((x,y)=>y.p-x.p);
+return `<select onchange="rk=this.value;draw()">${ms.map(x=>`<option value="${x.id}" ${x.id==rk?'selected':''}>${esc(x.a)} vs ${esc(x.b)}</option>`).join('')}</select><div class="card" style="padding:0 12px">`+all.map((r,i)=>`<div class="pl ${r.me?'sel':''}"><span class="mu" style="width:24px">${i+1}</span><span class="nm">${esc(r.n)}</span><b>${r.p}</b></div>`).join('')+'</div>'}
+function login(){return `<div class="card"><b>Admin login</b><input id="pin" type="password" placeholder="PIN (default 1234)"><button class="btn" onclick="if(pin.value==S.pin){adm=true;draw()}else alert('Wrong PIN')">Log in</button><p class="mu">Demo only. A real app needs server-side login.</p></div>`}
+function admin(){return `<div class="card"><b>App settings</b><input id="an" value="${esc(S.name)}" placeholder="App name"><div class="row"><span>Theme color</span><input id="ac" type="color" value="${S.ac}" style="width:60px;height:38px"></div>
+<input id="co" type="number" value="${S.coins}" placeholder="Coins"><button class="btn" onclick="S.name=an.value||'PlayXI';S.ac=ac.value;S.coins=+co.value||0;draw()">Save settings</button></div>
+<div class="card"><b>Add match</b><div class="g2"><input id="ma" placeholder="Team A"><input id="mb" placeholder="Team B"></div><input id="mt" placeholder="Start time, e.g. Sat, 7:30 PM"><button class="btn" onclick="addM()">Add match</button></div>`+
+S.matches.map(m=>`<h3>${esc(m.a)} vs ${esc(m.b)} ${m.done?'(done)':''}</h3><div class="card"><div class="g2"><input id="pn${m.id}" placeholder="Player name"><select id="pt${m.id}"><option value="a">${esc(m.a)}</option><option value="b">${esc(m.b)}</option></select><select id="pr${m.id}"><option>WK</option><option>BAT</option><option>AR</option><option>BOWL</option></select><input id="pc${m.id}" type="number" step="0.5" placeholder="Credits"></div>
+<button class="btn ghost" onclick="addP(${m.id})">Add player</button><p class="mu" style="margin:10px 0 2px">Fantasy points per player</p>`+
+m.players.map(p=>`<div class="row" style="margin:2px 0"><span class="nm">${esc(p.n)} <span class="mu">${p.r}</span></span><input type="number" value="${p.pts}" style="width:80px" onchange="M(${m.id}).players.find(x=>x.id==${p.id}).pts=+this.value;save()"><button class="cv" onclick="delP(${m.id},${p.id})">✕</button></div>`).join('')+
+`<div class="g2" style="margin-top:10px"><button class="btn" onclick="pub(${m.id})">Publish results</button><button class="btn red" onclick="delM(${m.id})">Delete match</button></div></div>`).join('')+
+`<button class="btn ghost" onclick="adm=false;draw()">Log out</button>`}
+function addM(){if(!ma.value||!mb.value)return alert('Enter both team names');S.matches.push({id:Date.now(),a:ma.value,b:mb.value,time:mt.value||'TBA',done:false,players:[],bots:[]});draw()}
+function addP(id){const m=M(id),n=document.getElementById('pn'+id).value;if(!n)return alert('Enter player name');m.players.push({id:Date.now(),n,t:document.getElementById('pt'+id).value,r:document.getElementById('pr'+id).value,c:+document.getElementById('pc'+id).value||8,pts:0});draw()}
+function delP(m,p){const x=M(m);x.players=x.players.filter(q=>q.id!=p);draw()}
+function delM(id){if(confirm('Delete this match?')){S.matches=S.matches.filter(m=>m.id!=id);S.teams=S.teams.filter(t=>t.mid!=id);draw()}}
+function pub(id){const m=M(id);if(m.players.length<11)return alert('Add at least 11 players first');m.done=true;
+const N=['Aarav','Diya','Kabir','Meera','Rohan','Sana','Veer','Isha'];m.bots=N.map(n=>{const sh=[...m.players].sort(()=>Math.random()-.5).slice(0,11);return{n,p:sh.reduce((s,p,i)=>s+p.pts*(i==0?2:i==1?1.5:1),0)}});draw()}
+draw();
+</script></body></html>

@@ -34,10 +34,32 @@ import {
   AviatorState,
   AviatorBet,
   SpinReward,
+  UpiPoolItem,
+  PaymentGatewayConfig,
+  GameSubdomainsConfig,
+  AdminPermissions,
 } from './src/types';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+
+// Cross-Subdomain CORS Middleware (shares Main Wallet & Auth Session across subdomains)
+app.use((req: Request, res: Response, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-user-id, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  next();
+});
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -53,8 +75,8 @@ const defaultSettings: SystemSettings = {
   packages: [
     {
       id: 'pkg-10',
-      name: 'Starter Node ($10)',
-      price: 10,
+      name: 'Starter Node (₹1,000)',
+      price: 1000,
       dailyRoiPercent: 1.5,
       durationDays: 100,
       maxMatrixLevels: 10,
@@ -65,8 +87,8 @@ const defaultSettings: SystemSettings = {
     },
     {
       id: 'pkg-20',
-      name: 'Booster Pass ($20)',
-      price: 20,
+      name: 'Booster Pass (₹2,000)',
+      price: 2000,
       dailyRoiPercent: 0,
       durationDays: 365,
       maxMatrixLevels: 15,
@@ -95,9 +117,9 @@ const defaultSettings: SystemSettings = {
     { level: 15, percent: 1 },
   ],
   boostingPool: {
-    rewardAmount: 50,
+    rewardAmount: 5000,
     minDirects: 2,
-    minPackagePrice: 10,
+    minPackagePrice: 1000,
     maxRebirthLimit: 6,
   },
   walletAddresses: {
@@ -106,30 +128,30 @@ const defaultSettings: SystemSettings = {
     ERC20: '0x6b8Ff2388d4aA6D208249AfcFDb14405Fb3f4679',
   },
   rates: {
-    usdtToInr: 100,
-    inrToUsdt: 0.01,
+    usdtToInr: 1,
+    inrToUsdt: 1,
   },
   withdrawalFeePercent: 10,
-  minDepositAmount: 10,
-  minWithdrawalAmount: 10,
+  minDepositAmount: 100,
+  minWithdrawalAmount: 200,
   upgradeFundDeductionPercent: 30,
   sponsorGameWinPercent: 5,
   winningWithdrawalFeePercent: 10,
-  winningWithdrawalMinAmount: 5,
-  autoPayoutThresholdUSDT: 20,
+  winningWithdrawalMinAmount: 100,
+  autoPayoutThresholdUSDT: 2000,
   tickerText:
-    '⚡ LIVE TETHERPLUS NETWORK: BTC/USDT $96,420 (+4.2%) | ETH/USDT $3,450 (+2.8%) | BNB/USDT $680 (+1.9%) | 🚀 GLOBAL BOOSTING POOL CYCLE #142 ACTIVE | TOTAL DISTRIBUTED: $1,485,200 USDT ⚡',
+    '⚡ LIVE SPORTX INDIA: INSTANT UPI DEPOSITS & WITHDRAWALS | 🔥 WIN GO, AVIATOR, CRICKET FANTASY & MEGA LOTTERY LIVE | 🚀 VIP CLUB & 5-LEVEL AGENCY COMMISSIONS | 🏆 TOTAL DISTRIBUTED: ₹1,48,52,000+ INR ⚡',
   spinWheelRewards: [
     { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151', minLevel: 0 },
-    { id: 'sp-2', label: '$0.20 USDT', amount: 0.2, probability: 25, color: '#06b6d4', minLevel: 0 },
-    { id: 'sp-3', label: '$0.50 USDT', amount: 0.5, probability: 15, color: '#10b981', minLevel: 0 },
-    { id: 'sp-4', label: '$1.00 USDT', amount: 1.0, probability: 10, color: '#8b5cf6', minLevel: 0 },
-    { id: 'sp-5', label: '$2.00 USDT', amount: 2.0, probability: 3, color: '#f59e0b', minLevel: 0 },
-    { id: 'sp-6', label: '$5.00 USDT', amount: 5.0, probability: 1.5, color: '#ec4899', minLevel: 0 },
-    { id: 'sp-7', label: '$10.00 BIG', amount: 10.0, probability: 0.4, color: '#ef4444', minLevel: 0 },
-    { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.0, probability: 0.1, color: '#eab308', minLevel: 0 },
+    { id: 'sp-2', label: '₹10 INR', amount: 10, probability: 25, color: '#06b6d4', minLevel: 0 },
+    { id: 'sp-3', label: '₹25 INR', amount: 25, probability: 15, color: '#10b981', minLevel: 0 },
+    { id: 'sp-4', label: '₹50 INR', amount: 50, probability: 10, color: '#8b5cf6', minLevel: 0 },
+    { id: 'sp-5', label: '₹100 INR', amount: 100, probability: 3, color: '#f59e0b', minLevel: 0 },
+    { id: 'sp-6', label: '₹250 INR', amount: 250, probability: 1.5, color: '#ec4899', minLevel: 0 },
+    { id: 'sp-7', label: '₹500 BIG', amount: 500, probability: 0.4, color: '#ef4444', minLevel: 0 },
+    { id: 'sp-8', label: '₹2,500 MEGA 🎉', amount: 2500, probability: 0.1, color: '#eab308', minLevel: 0 },
   ],
-  spinTicketPrice: 1.0,
+  spinTicketPrice: 50,
   spinHouseProfitPercent: 55.0,
   spinWheelIntervalHours: 24,
   spinCreditsPerReset: 1,
@@ -137,72 +159,72 @@ const defaultSettings: SystemSettings = {
     enabled: true,
     targetLevel: 7,
     matchingPercent: 100,
-    requiredSelfPackagePrice: 10,
+    requiredSelfPackagePrice: 1000,
     requiredDirectsCount: 2,
   },
   ranks: [
     {
       id: 'rnk-1',
       name: 'Bronze',
-      rewardTitle: '$25 Cash Reward',
-      bonusUsdt: 25,
-      minSelfPackagePrice: 20,
+      rewardTitle: '₹2,500 Cash Reward',
+      bonusUsdt: 2500,
+      minSelfPackagePrice: 1000,
       requiredDirects: 2,
       requiredSamePackageCount: 2,
       upToLevel: 2,
-      requiredVolume: 500,
+      requiredVolume: 50000,
       icon: 'Shield',
       color: '#cd7f32',
     },
     {
       id: 'rnk-2',
       name: 'Silver',
-      rewardTitle: '$125 Cash Reward',
-      bonusUsdt: 125,
-      minSelfPackagePrice: 50,
+      rewardTitle: '₹10,000 Cash Reward',
+      bonusUsdt: 10000,
+      minSelfPackagePrice: 2500,
       requiredDirects: 4,
       requiredSamePackageCount: 5,
       upToLevel: 3,
-      requiredVolume: 2500,
+      requiredVolume: 250000,
       icon: 'Award',
       color: '#c0c0c0',
     },
     {
       id: 'rnk-3',
       name: 'Gold',
-      rewardTitle: 'Smart Watch + $500 Bonus',
-      bonusUsdt: 500,
-      minSelfPackagePrice: 100,
+      rewardTitle: 'Smart Watch + ₹50,000 Bonus',
+      bonusUsdt: 50000,
+      minSelfPackagePrice: 5000,
       requiredDirects: 6,
       requiredSamePackageCount: 10,
       upToLevel: 5,
-      requiredVolume: 10000,
+      requiredVolume: 1000000,
       icon: 'Crown',
       color: '#ffd700',
     },
     {
       id: 'rnk-4',
       name: 'Diamond',
-      rewardTitle: 'iPhone 15 Pro ($2,500 Bonus)',
-      bonusUsdt: 2500,
-      minSelfPackagePrice: 250,
+      rewardTitle: 'iPhone 16 Pro (₹2,50,000 Bonus)',
+      bonusUsdt: 250000,
+      minSelfPackagePrice: 10000,
       requiredDirects: 10,
       requiredSamePackageCount: 20,
       upToLevel: 10,
-      requiredVolume: 50000,
+      requiredVolume: 5000000,
       icon: 'Gem',
       color: '#00ffff',
     },
     {
       id: 'rnk-5',
       name: 'Apex',
-      rewardTitle: 'Dubai VIP Trip ($10,000 Bonus)',
-      bonusUsdt: 10000,
-      minSelfPackagePrice: 500,
+      rewardTitle: 'Dubai VIP Trip (₹10,00,000 Bonus)',
+      bonusUsdt: 1000000,
+      minSelfPackagePrice: 25000,
       requiredDirects: 15,
       requiredSamePackageCount: 50,
       upToLevel: 0,
-      requiredVolume: 200000,
+      requiredVolume: 20000000,
       icon: 'Zap',
       color: '#ff007f',
     },
@@ -210,42 +232,42 @@ const defaultSettings: SystemSettings = {
   heroBanners: [
     {
       id: 'hb-1',
-      badge: 'OFFICIAL CYBER MALL • TETHER MART',
-      title: 'Next-Gen DePIN & Web3 Mining Rigs',
-      subtitle: 'Equip your Web3 node with top-tier ASIC miners, hardware cold wallets, and crypto security gadgets.',
+      badge: 'OFFICIAL CYBER MALL • SPORTX MART',
+      title: 'Next-Gen Gaming & Tech Hardware',
+      subtitle: 'Equip your gaming setup with pro accessories, smart gadgets, and instant INR cashback rewards.',
       discount: 'UP TO 35% OFF',
-      cta: 'Explore DePIN Rigs',
+      cta: 'Explore SportX Mart',
       category: 'Mining Hardware',
       image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
       enabled: true,
     },
     {
       id: 'hb-2',
-      badge: 'NEW ARRIVALS • WEB3 APPAREL',
-      title: 'TetherMart Official Cyberpunk Merch',
+      badge: 'NEW ARRIVALS • OFFICIAL APPAREL',
+      title: 'SportX Mart Official Merch',
       subtitle: 'Exclusive hoodies, embroidered polo tees & custom cap collections crafted with premium cotton blends.',
       discount: 'BUY 1 GET 1 20% OFF',
-      cta: 'Shop Web3 Apparel',
+      cta: 'Shop Official Apparel',
       category: 'Apparel & Merch',
       image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80',
       enabled: true,
     },
     {
       id: 'hb-3',
-      badge: 'MILITARY-GRADE COLD STORAGE',
-      title: 'Unhackable Hardware Wallets & Vaults',
-      subtitle: 'Keep your USDT, Bitcoin & Ethereum bulletproof with certified offline storage devices & physical seed cards.',
-      discount: 'FREE EXPRESS AIR SHIPPING',
-      cta: 'Explore Cold Storage',
+      badge: 'MILITARY-GRADE SECURITY',
+      title: 'Hardware Security Vaults & Accessories',
+      subtitle: 'Protect your digital assets and SportX rewards with certified security devices & backup kits.',
+      discount: 'FREE EXPRESS SHIPPING',
+      cta: 'Explore Security Gear',
       category: 'Hardware Wallets',
       image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80',
       enabled: true,
     },
     {
       id: 'hb-4',
-      badge: 'HIGH-TECH CYBER GADGETS',
-      title: 'DePIN Electronics & Smart Devices',
-      subtitle: 'Encrypted communication gear, high-performance node power supplies, and Web3 smart electronics.',
+      badge: 'HIGH-TECH SMART GADGETS',
+      title: 'Smart Electronics & Gaming Devices',
+      subtitle: 'Pro gaming audio gear, smartwatches, and high-performance electronics delivered pan-India.',
       discount: 'EARN UP TO 50% REBATE',
       cta: 'Browse Gadgets',
       category: 'Gadgets',
@@ -255,9 +277,9 @@ const defaultSettings: SystemSettings = {
   ],
   dailyTournament: {
     enabled: true,
-    basePot: 250.0,
+    basePot: 25000.0,
     turnoverContributionPercent: 5.0,
-    minWagerToQualify: 10.0,
+    minWagerToQualify: 500.0,
     title: 'Daily Top Bettor Championship 🏆',
     prizeDistribution: [
       { rank: 1, percent: 40 },
@@ -272,6 +294,71 @@ const defaultSettings: SystemSettings = {
       { rank: 10, percent: 1 },
     ],
   },
+  paymentGateway: {
+    enabled: true,
+    rotationStrategy: 'roundRobin',
+    defaultUpiId: 'sportxpay@okaxis',
+    defaultPayeeName: 'SportX Gaming Official',
+    subdomainUrl: '',
+    qrTimerSeconds: 600,
+    autoRotateOnRefresh: true,
+    upiPool: [
+      { id: 'upi-1', upiId: 'sportxpay1@okaxis', name: 'SportX Entertainment', provider: 'Axis Bank', dailyLimit: 100000, usedCount: 14, totalCollected: 28000, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
+      { id: 'upi-2', upiId: 'playhub.merchant@paytm', name: 'PlayHub Merchant', provider: 'Paytm Payments Bank', dailyLimit: 100000, usedCount: 9, totalCollected: 16500, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
+      { id: 'upi-3', upiId: 'speedpay99@ybl', name: 'SpeedPay Services', provider: 'PhonePe', dailyLimit: 100000, usedCount: 11, totalCollected: 21000, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
+      { id: 'upi-4', upiId: 'nexusgaming@icici', name: 'Nexus Gaming Pvt Ltd', provider: 'ICICI Bank', dailyLimit: 100000, usedCount: 6, totalCollected: 12000, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
+      { id: 'upi-5', upiId: 'sportxpremium@ibl', name: 'SportX Premium Pay', provider: 'PhonePe', dailyLimit: 100000, usedCount: 8, totalCollected: 14500, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
+      { id: 'upi-6', upiId: 'quickcollect.tech@okhdfcbank', name: 'QuickCollect Solutions', provider: 'HDFC Bank', dailyLimit: 100000, usedCount: 12, totalCollected: 24000, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
+      { id: 'upi-7', upiId: 'bharatpay.user88@sbi', name: 'Bharat Payments Direct', provider: 'State Bank of India', dailyLimit: 100000, usedCount: 5, totalCollected: 9500, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
+      { id: 'upi-8', upiId: 'royalwin24@barodampay', name: 'Royal Win Enterprise', provider: 'Bank of Baroda', dailyLimit: 100000, usedCount: 7, totalCollected: 13200, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
+    ],
+  },
+  gameSubdomains: {
+    enabled: true,
+    rootDomain: '',
+    mainAppUrl: '',
+    apiBaseUrl: '',
+    autoSubdomainOnCustomDomain: true,
+    urls: {
+      aviator: '',
+      colorprediction: '',
+      cricket: '',
+      dragontiger: '',
+      luckydraw: '',
+      chickenroad: '',
+      rummy: '',
+      slot777: '',
+      spinwheel: '',
+    },
+  },
+  enabledGames: {
+    aviator: true,
+    colorprediction: true,
+    cricket: true,
+    dragontiger: true,
+    luckydraw: true,
+    chickenroad: true,
+    rummy: true,
+    slot777: true,
+    spinwheel: true,
+  },
+  signupBonus: {
+    enabled: true,
+    amountInr: 50,
+    creditWallet: 'depositBalance',
+    freeSpins: 1,
+  },
+  depositBonus: {
+    enabled: true,
+    applyTo: 'all_deposits',
+    creditWallet: 'depositBalance',
+    tiers: [
+      { id: 'db-1000', label: 'Greater than ₹1,000', minAmount: 1000, bonusType: 'percent', bonusValue: 5, enabled: true },
+      { id: 'db-2000', label: 'Greater than ₹2,000', minAmount: 2000, bonusType: 'percent', bonusValue: 10, enabled: true },
+      { id: 'db-5000', label: 'Greater than ₹5,000', minAmount: 5000, bonusType: 'percent', bonusValue: 15, enabled: true },
+      { id: 'db-10000', label: 'Greater than ₹10,000', minAmount: 10000, bonusType: 'percent', bonusValue: 20, enabled: true },
+    ],
+  },
 };
 
 // Seed Users
@@ -279,8 +366,8 @@ const initialUsers: User[] = [
   {
     id: 'usr-root',
     nodeId: 'NX-ROOT01',
-    name: 'Sovereign Nexus (Root Master)',
-    email: 'admin@tetherplus.io',
+    name: 'SportX Master Admin',
+    email: 'admin@sportx.game',
     password: '123456',
     walletAddress: '0x88921a91e1293348f98a213985',
     sponsorId: null,
@@ -303,6 +390,28 @@ const initialUsers: User[] = [
     rank: 'Apex',
     status: 'active',
     isAdmin: true,
+    isSuperAdmin: true,
+    isSubAdmin: false,
+    adminRoleName: 'Super Admin (Master Sovereign)',
+    adminPermissions: {
+      canManageDeposits: true,
+      canManageWithdrawals: true,
+      canManageUsers: true,
+      canManageColorPrediction: true,
+      canManageDragonTiger: true,
+      canManageAviator: true,
+      canManageTournament: true,
+      canManageLottery: true,
+      canManageUpiGateway: true,
+      canManageSettings: true,
+      canViewReports: true,
+      canViewAudit: true,
+      canManageProducts: true,
+      canManageBoosting: true,
+      canManageSqlite: true,
+      canManageRanks: true,
+      canManageSubAdmins: true,
+    },
     registeredAt: new Date(Date.now() - 90 * 86400000).toISOString(),
     lastRoiClaimAt: new Date(Date.now() - 3600000).toISOString(),
     spinCredits: 5,
@@ -505,9 +614,9 @@ const initialTransactions: Transaction[] = [
     type: 'deposit',
     amount: 500,
     status: 'completed',
-    txHash: '0x8a92f8a1e2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9',
-    network: 'BEP20',
-    notes: 'Initial USDT Deposit Approved',
+    txHash: '431829104501',
+    network: 'UPI-QR',
+    notes: 'Initial INR UPI Deposit Approved',
     createdAt: new Date(Date.now() - 25 * 86400000).toISOString(),
   },
   {
@@ -517,7 +626,7 @@ const initialTransactions: Transaction[] = [
     type: 'sponsor_bonus',
     amount: 50,
     status: 'completed',
-    notes: 'Direct Sponsor Bonus from #NX-GAMMA4 ($500 Pkg)',
+    notes: 'Direct Sponsor Bonus from #NX-GAMMA4 (₹1,000 Pkg)',
     createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
   },
   {
@@ -525,7 +634,7 @@ const initialTransactions: Transaction[] = [
     userId: 'usr-demo',
     userNodeId: 'NX-GML9L6',
     type: 'boosting_payout',
-    amount: 50,
+    amount: 500,
     status: 'completed',
     notes: 'Global Gold Pool Cycle #88 Completed Reward',
     createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
@@ -539,12 +648,13 @@ const initialDepositRequests: DepositRequest[] = [
     userId: 'usr-beta3',
     userNodeId: 'NX-BETA3',
     userName: 'Valkyrie Crypto',
-    amount: 200,
-    network: 'TRC20',
-    txHash: '0x99283f12e82391283129381293812931238',
+    amount: 1000,
+    inrAmount: 1000,
+    network: 'UPI-QR',
+    txHash: '431829104512',
     status: 'pending',
     createdAt: new Date(Date.now() - 3600000).toISOString(),
-    adminNotes: 'Awaiting Blockchain confirmation verification',
+    adminNotes: 'Awaiting UPI UTR confirmation verification',
   },
 ];
 
@@ -555,15 +665,15 @@ const initialWithdrawalRequests: WithdrawalRequest[] = [
     userId: 'usr-alpha2',
     userNodeId: 'NX-ALPHA2',
     userName: 'Neo Matrix',
-    requestedAmount: 100,
-    upgradeDeduction: 20,
-    gasFee: 1.5,
-    netAmount: 78.5,
-    targetAddress: '0x992381283918239128391283',
-    network: 'BEP20',
+    requestedAmount: 500,
+    upgradeDeduction: 0,
+    gasFee: 50,
+    netAmount: 450,
+    targetAddress: 'neomatrix@okaxis',
+    network: 'UPI',
     status: 'pending',
     createdAt: new Date(Date.now() - 1800000).toISOString(),
-    adminNotes: 'Pending admin approval',
+    adminNotes: 'Pending admin UPI payout approval',
   },
 ];
 
@@ -619,13 +729,13 @@ const initialBoostingQueue: BoostingEntry[] = [
   },
 ];
 
-// Seed E-Commerce Products (Amazon-style store)
+// Seed E-Commerce Products (Amazon-style store, pure INR pricing)
 const initialProducts: Product[] = [
   {
     id: 'prod-1',
     title: 'Ledger Stax Crypto Hardware Wallet',
-    description: 'Next-gen Web3 curved E-Ink touchscreen hardware wallet with Bluetooth and wireless charging.',
-    priceUsdt: 279,
+    description: 'Next-gen curved E-Ink touchscreen hardware wallet with Bluetooth and wireless charging.',
+    priceUsdt: 25110,
     priceInr: 25110,
     category: 'Hardware Wallets',
     image: 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?auto=format&fit=crop&w=800&q=80',
@@ -638,9 +748,9 @@ const initialProducts: Product[] = [
   },
   {
     id: 'prod-2',
-    title: 'NVIDIA RTX 4090 Cyber Mining Rig',
-    description: 'High-performance liquid cooled mining GPU optimized for AI compute & multi-coin node validation.',
-    priceUsdt: 1599,
+    title: 'NVIDIA RTX 4090 Gaming Rig',
+    description: 'High-performance liquid cooled GPU optimized for pro gaming and high-speed compute.',
+    priceUsdt: 143910,
     priceInr: 143910,
     category: 'Mining Hardware',
     image: 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=800&q=80',
@@ -653,9 +763,9 @@ const initialProducts: Product[] = [
   },
   {
     id: 'prod-3',
-    title: 'Titanium Cold Storage Seed Phrase Plate',
-    description: 'Indestructible fireproof & waterproof 6000°F aerospace titanium plate for seed phrase recovery.',
-    priceUsdt: 45,
+    title: 'Titanium Security Backup Plate',
+    description: 'Indestructible fireproof & waterproof 6000°F aerospace titanium plate for secure recovery.',
+    priceUsdt: 4050,
     priceInr: 4050,
     category: 'Crypto Security',
     image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=800&q=80',
@@ -668,9 +778,9 @@ const initialProducts: Product[] = [
   },
   {
     id: 'prod-4',
-    title: 'Cyberpunk Web3 Smart Watch Pro',
-    description: 'Real-time crypto price tracker watch with OLED display, node alert alarms, and biometric auth.',
-    priceUsdt: 149,
+    title: 'SportX Smart Watch Pro',
+    description: 'Real-time gaming & fitness tracker watch with OLED display, alerts, and biometric auth.',
+    priceUsdt: 13410,
     priceInr: 13410,
     category: 'Gadgets',
     image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
@@ -683,24 +793,24 @@ const initialProducts: Product[] = [
   },
   {
     id: 'prod-5',
-    title: 'Decentralized WiFi 7 Mesh Node Router',
-    description: 'Earn passive crypto tokens by sharing encrypted decentralized bandwidth on DePIN network.',
-    priceUsdt: 199,
+    title: 'Ultra-Fast WiFi 7 Gaming Mesh Router',
+    description: 'Low-latency tri-band gaming router built for cloud gaming and instant match response.',
+    priceUsdt: 17910,
     priceInr: 17910,
     category: 'DePIN Electronics',
     image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80',
     stock: 18,
     rating: 4.6,
     reviewsCount: 45,
-    badge: 'DePIN Tech',
+    badge: 'Pro Gaming',
     featured: false,
     createdAt: new Date().toISOString(),
   },
   {
     id: 'prod-6',
-    title: 'TetherPlus Sovereign Cyber Hoodie',
-    description: 'Premium heavyweight cotton blend cyberpunk hoodie with embroidered Web3 node matrix logo.',
-    priceUsdt: 65,
+    title: 'SportX Sovereign Cyber Hoodie',
+    description: 'Premium heavyweight cotton blend hoodie with embroidered SportX logo.',
+    priceUsdt: 5850,
     priceInr: 5850,
     category: 'Apparel & Merch',
     image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80',
@@ -715,9 +825,9 @@ const initialProducts: Product[] = [
   },
   {
     id: 'prod-7',
-    title: 'TetherPlus Official Web3 Oversized T-Shirt',
-    description: 'High quality 240 GSM combed cotton oversized streetwear t-shirt with metallic gold T+ logo.',
-    priceUsdt: 35,
+    title: 'SportX Official Oversized T-Shirt',
+    description: 'High quality 240 GSM combed cotton oversized streetwear t-shirt with metallic SportX logo.',
+    priceUsdt: 3150,
     priceInr: 3150,
     category: 'Apparel & Merch',
     image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80',
@@ -759,13 +869,13 @@ const initialLuckyDraw: LuckyDrawState = {
   id: 'draw-001',
   title: '⚡ WEEKLY MEGA GRAND 5-TIER DRAW & GUARANTEED 45 JACKPOT',
   description: 'Pick your custom 6-digit lucky coupons! 5 Grand Single Winners (1st to 5th Prize) + 45 Guaranteed Winners across all matching 5-digit series!',
-  ticketPrice: 2,
-  prizeAmount: 250, // 1st Prize
-  secondPrizeAmount: 100, // 2nd Prize
-  thirdPrizeAmount: 50, // 3rd Prize
-  fourthPrizeAmount: 25, // 4th Prize
-  fifthPrizeAmount: 15, // 5th Prize
-  guaranteedPrizeAmount: 5, // Guaranteed Prize (45 Winners, 5 USDT each)
+  ticketPrice: 100,
+  prizeAmount: 25000, // 1st Prize (INR)
+  secondPrizeAmount: 10000, // 2nd Prize (INR)
+  thirdPrizeAmount: 5000, // 3rd Prize (INR)
+  fourthPrizeAmount: 2500, // 4th Prize (INR)
+  fifthPrizeAmount: 1500, // 5th Prize (INR)
+  guaranteedPrizeAmount: 500, // Guaranteed Prize (45 Winners, ₹500 INR each)
   targetEndTime: getNextSunday9PM(),
   status: 'active',
   currentDrawStep: 0,
@@ -843,7 +953,7 @@ let state = {
 // SMTP Configuration Helper
 function getSmtpConfig() {
   const smtpPass = process.env.SMTP_PASS || state.settings?.smtp?.pass;
-  const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || state.settings?.smtp?.from || state.settings?.smtp?.user || 'support@tetherplus.live';
+  const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || state.settings?.smtp?.from || state.settings?.smtp?.user || 'support@sportx.game';
   const smtpUser = process.env.SMTP_USER || process.env.SMTP_FROM || state.settings?.smtp?.user || smtpFrom;
   const smtpHost = process.env.SMTP_HOST || state.settings?.smtp?.host || (smtpUser.endsWith('@gmail.com') ? 'smtp.gmail.com' : 'smtpout.secureserver.net');
   const smtpPort = Number(process.env.SMTP_PORT || state.settings?.smtp?.port) || (smtpHost.includes('gmail') ? 587 : 465);
@@ -1437,6 +1547,9 @@ function loadFromSqlite() {
     ensureColorPredictionState();
     ensureSpinWheelSettings();
     ensureLuckyDrawPrizes();
+    ensurePaymentGatewaySettings();
+    ensureGameSubdomainSettings();
+    migrateStoreToPureInr();
 
     console.log(`✅ Loaded ${state.users.length} users, ${state.transactions.length} transactions from SQLite!`);
   } catch (err) {
@@ -1444,16 +1557,130 @@ function loadFromSqlite() {
   }
 }
 
+function migrateStoreToPureInr() {
+  if (!state.settings) state.settings = { ...defaultSettings };
+  if ((state.settings as any).currencyMigratedToInr) return;
+
+  // 1:1 native INR currency rates
+  state.settings.rates = { usdtToInr: 1, inrToUsdt: 1 };
+
+  // Normalize min limits & thresholds from old small USDT numbers to clean INR values
+  if ((state.settings.minDepositAmount ?? 0) < 50) state.settings.minDepositAmount = 100;
+  if ((state.settings.minWithdrawalAmount ?? 0) < 50) state.settings.minWithdrawalAmount = 200;
+  if ((state.settings.winningWithdrawalMinAmount ?? 0) < 50) state.settings.winningWithdrawalMinAmount = 100;
+  if ((state.settings.autoPayoutThresholdUSDT ?? 0) < 100) state.settings.autoPayoutThresholdUSDT = 2000;
+
+  // Normalize spin wheel slices & ticket price to INR if previously in USDT/$
+  const hasUsdSpinLabels = Array.isArray(state.settings.spinWheelRewards) &&
+    state.settings.spinWheelRewards.some((r) => (r.label || '').includes('$') || (r.label || '').includes('USDT'));
+  if (hasUsdSpinLabels || !state.settings.spinWheelRewards?.length) {
+    state.settings.spinWheelRewards = [...defaultSettings.spinWheelRewards];
+  }
+  if (!state.settings.spinTicketPrice || state.settings.spinTicketPrice < 5) {
+    state.settings.spinTicketPrice = 50;
+  }
+
+  // Normalize daily tournament pot to INR
+  if (state.settings.dailyTournament) {
+    if ((state.settings.dailyTournament.basePot ?? 0) <= 500) {
+      state.settings.dailyTournament.basePot = 25000;
+    }
+    if ((state.settings.dailyTournament.minWagerToQualify ?? 0) <= 50) {
+      state.settings.dailyTournament.minWagerToQualify = 500;
+    }
+  }
+
+  // Normalize Lucky Draw prices & prizes to INR
+  if (state.luckyDraw) {
+    if ((state.luckyDraw.ticketPrice ?? 0) < 20 || (state.luckyDraw.prizeAmount ?? 0) <= 1000) {
+      state.luckyDraw.ticketPrice = 100;
+      state.luckyDraw.prizeAmount = 25000;
+      state.luckyDraw.secondPrizeAmount = 10000;
+      state.luckyDraw.thirdPrizeAmount = 5000;
+      state.luckyDraw.fourthPrizeAmount = 2500;
+      state.luckyDraw.fifthPrizeAmount = 1500;
+      state.luckyDraw.guaranteedPrizeAmount = 500;
+    }
+    state.settings.luckyDraw = {
+      ticketPrice: state.luckyDraw.ticketPrice,
+      prizeAmount: state.luckyDraw.prizeAmount,
+      secondPrizeAmount: state.luckyDraw.secondPrizeAmount,
+      thirdPrizeAmount: state.luckyDraw.thirdPrizeAmount,
+      fourthPrizeAmount: state.luckyDraw.fourthPrizeAmount,
+      fifthPrizeAmount: state.luckyDraw.fifthPrizeAmount,
+      guaranteedPrizeAmount: state.luckyDraw.guaranteedPrizeAmount,
+      forcedPrizes: state.luckyDraw.forcedPrizes,
+    };
+  }
+
+  // Normalize Store product priceUsdt to match priceInr 1:1
+  if (Array.isArray(state.products)) {
+    state.products.forEach((p) => {
+      if (p.priceUsdt < 500 && p.priceInr > p.priceUsdt) {
+        p.priceUsdt = p.priceInr || Math.round(p.priceUsdt * 100);
+      }
+      if (!p.priceInr || p.priceInr < p.priceUsdt) {
+        p.priceInr = p.priceUsdt;
+      }
+    });
+  }
+
+  // Normalize Ranks to INR
+  if (Array.isArray(state.settings.ranks) && state.settings.ranks.length > 0) {
+    const firstRnk = state.settings.ranks[0];
+    if (firstRnk && firstRnk.bonusUsdt <= 50) {
+      state.settings.ranks = [...defaultSettings.ranks];
+    }
+  }
+
+  // Normalize Boosting pool & packages to INR
+  if (state.settings.boostingPool && state.settings.boostingPool.rewardAmount < 500) {
+    state.settings.boostingPool.rewardAmount = 5000;
+    state.settings.boostingPool.minPackagePrice = 1000;
+  }
+  if (Array.isArray(state.settings.packages)) {
+    state.settings.packages = state.settings.packages.map((pkg) => {
+      if (pkg.id === 'pkg-10' && pkg.price <= 20) {
+        return { ...pkg, name: 'Starter Node (₹1,000)', price: 1000 };
+      }
+      if (pkg.id === 'pkg-20' && pkg.price <= 50) {
+        return { ...pkg, name: 'Booster Pass (₹2,000)', price: 2000 };
+      }
+      return pkg;
+    });
+  }
+
+  // Normalize Cricket Matches to INR if old USDT seed titles are present
+  if (Array.isArray((state as any).cricketMatches)) {
+    const hasOldCricketUsdt = (state as any).cricketMatches.some((m: any) =>
+      Array.isArray(m.contests) && m.contests.some((c: any) => String(c.title || '').includes('USDT') || String(c.title || '').includes('$'))
+    );
+    if (hasOldCricketUsdt) {
+      (state as any).cricketMatches = defaultCricketMatches;
+    }
+  }
+
+  // Update ticker text if still mentioning USDT
+  if (typeof state.settings.tickerText === 'string' && (state.settings.tickerText.includes('USDT') || state.settings.tickerText.includes('BTC/USDT'))) {
+    state.settings.tickerText = defaultSettings.tickerText;
+  }
+
+  // Note: Existing user balances (balance, depositBalance, winningBalance, upgradeBalance) are preserved 1:1 as native INR.
+  (state.settings as any).currencyMigratedToInr = true;
+  saveStore();
+  console.log('🇮🇳 One-time Pure INR migration applied to store settings (balances preserved 1:1 as INR).');
+}
+
 function ensureSpinWheelSettings() {
   const defaultProfitSlices: SpinReward[] = [
     { id: 'sp-1', label: 'Try Again', amount: 0, probability: 45, color: '#374151', minLevel: 0 },
-    { id: 'sp-2', label: '$0.20 USDT', amount: 0.2, probability: 25, color: '#06b6d4', minLevel: 0 },
-    { id: 'sp-3', label: '$0.50 USDT', amount: 0.5, probability: 15, color: '#10b981', minLevel: 0 },
-    { id: 'sp-4', label: '$1.00 USDT', amount: 1.0, probability: 10, color: '#8b5cf6', minLevel: 0 },
-    { id: 'sp-5', label: '$2.00 USDT', amount: 2.0, probability: 3, color: '#f59e0b', minLevel: 0 },
-    { id: 'sp-6', label: '$5.00 USDT', amount: 5.0, probability: 1.5, color: '#ec4899', minLevel: 0 },
-    { id: 'sp-7', label: '$10.00 BIG', amount: 10.0, probability: 0.4, color: '#ef4444', minLevel: 0 },
-    { id: 'sp-8', label: '$50 MEGA 🎉', amount: 50.0, probability: 0.1, color: '#eab308', minLevel: 0 },
+    { id: 'sp-2', label: '₹10 INR', amount: 10, probability: 25, color: '#06b6d4', minLevel: 0 },
+    { id: 'sp-3', label: '₹25 INR', amount: 25, probability: 15, color: '#10b981', minLevel: 0 },
+    { id: 'sp-4', label: '₹50 INR', amount: 50, probability: 10, color: '#8b5cf6', minLevel: 0 },
+    { id: 'sp-5', label: '₹100 INR', amount: 100, probability: 3, color: '#f59e0b', minLevel: 0 },
+    { id: 'sp-6', label: '₹250 INR', amount: 250, probability: 1.5, color: '#ec4899', minLevel: 0 },
+    { id: 'sp-7', label: '₹500 BIG', amount: 500, probability: 0.4, color: '#ef4444', minLevel: 0 },
+    { id: 'sp-8', label: '₹2,500 MEGA 🎉', amount: 2500, probability: 0.1, color: '#eab308', minLevel: 0 },
   ];
 
   if (!state.settings) {
@@ -1467,10 +1694,189 @@ function ensureSpinWheelSettings() {
   const rewards = state.settings.spinWheelRewards;
   if (!Array.isArray(rewards) || rewards.length === 0) {
     state.settings.spinWheelRewards = defaultProfitSlices;
-    state.settings.spinTicketPrice = 1.0;
+    state.settings.spinTicketPrice = 50;
     state.settings.spinHouseProfitPercent = 55.0;
     saveStore();
   }
+}
+
+export function detectUpiProvider(upi: string): string {
+  const lower = (upi || '').toLowerCase();
+  if (lower.includes('@okhdfcbank') || lower.includes('@hdfc')) return 'HDFC Bank';
+  if (lower.includes('@okaxis') || lower.includes('@axis')) return 'Axis Bank';
+  if (lower.includes('@okicici') || lower.includes('@icici')) return 'ICICI Bank';
+  if (lower.includes('@oksbi') || lower.includes('@sbi')) return 'State Bank of India';
+  if (lower.includes('@paytm')) return 'Paytm Payments Bank';
+  if (lower.includes('@ybl') || lower.includes('@ibl') || lower.includes('@axl')) return 'PhonePe';
+  if (lower.includes('@barodampay')) return 'Bank of Baroda';
+  if (lower.includes('@postbank')) return 'India Post Payments Bank';
+  if (lower.includes('@airtel')) return 'Airtel Payments Bank';
+  if (lower.includes('@kotak') || lower.includes('@kmbl')) return 'Kotak Mahindra';
+  if (lower.includes('@pnb')) return 'Punjab National Bank';
+  if (lower.includes('@yesbank')) return 'Yes Bank';
+  if (lower.includes('@idfc')) return 'IDFC First Bank';
+  if (lower.includes('@upi')) return 'BHIM UPI';
+  return 'UPI Payment';
+}
+
+let upiRotationPointer = 0;
+
+function ensurePaymentGatewaySettings() {
+  if (!state.settings) {
+    state.settings = { ...defaultSettings };
+  }
+  if (!state.settings.paymentGateway || !Array.isArray(state.settings.paymentGateway.upiPool) || state.settings.paymentGateway.upiPool.length === 0) {
+    state.settings.paymentGateway = {
+      ...defaultSettings.paymentGateway!,
+      ...(state.settings.paymentGateway || {}),
+      upiPool: state.settings.paymentGateway?.upiPool?.length ? state.settings.paymentGateway.upiPool : defaultSettings.paymentGateway!.upiPool,
+    };
+    saveStore();
+  }
+}
+
+function ensureGameSubdomainSettings() {
+  if (!state.settings) {
+    state.settings = { ...defaultSettings };
+  }
+  const defSub = defaultSettings.gameSubdomains!;
+  let changed = false;
+  if (!state.settings.gameSubdomains || !state.settings.gameSubdomains.urls) {
+    state.settings.gameSubdomains = {
+      ...defSub,
+      ...(state.settings.gameSubdomains || {}),
+      urls: {
+        ...defSub.urls,
+        ...(state.settings.gameSubdomains?.urls || {}),
+      },
+    };
+    changed = true;
+  }
+  const defEnabled = defaultSettings.enabledGames!;
+  if (!state.settings.enabledGames) {
+    state.settings.enabledGames = { ...defEnabled };
+    changed = true;
+  } else {
+    (Object.keys(defEnabled) as Array<keyof typeof defEnabled>).forEach((k) => {
+      if (typeof state.settings.enabledGames![k] !== 'boolean') {
+        state.settings.enabledGames![k] = defEnabled[k];
+        changed = true;
+      }
+    });
+  }
+  if (!state.settings.signupBonus) {
+    state.settings.signupBonus = { ...defaultSettings.signupBonus! };
+    changed = true;
+  }
+  if (!state.settings.depositBonus || !Array.isArray(state.settings.depositBonus.tiers)) {
+    state.settings.depositBonus = {
+      ...defaultSettings.depositBonus!,
+      ...(state.settings.depositBonus || {}),
+      tiers: Array.isArray(state.settings.depositBonus?.tiers)
+        ? state.settings.depositBonus.tiers
+        : defaultSettings.depositBonus!.tiers,
+    };
+    changed = true;
+  }
+  if (typeof state.settings.tickerText === 'string' && state.settings.tickerText.includes('TETHERPLUS NETWORK')) {
+    state.settings.tickerText = state.settings.tickerText.replace(/LIVE TETHERPLUS NETWORK/g, 'LIVE SPORTX NETWORK');
+    changed = true;
+  }
+  if (state.settings.paymentGateway) {
+    if (state.settings.paymentGateway.defaultPayeeName === 'Jalwa Gaming Official') {
+      state.settings.paymentGateway.defaultPayeeName = 'SportX Gaming Official';
+      changed = true;
+    }
+    if (state.settings.paymentGateway.defaultUpiId === 'jalwagames2@okaxis') {
+      state.settings.paymentGateway.defaultUpiId = 'sportxpay@okaxis';
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveStore();
+  }
+}
+
+function applyDepositBonus(
+  user: User,
+  depositAmountInr: number,
+  dep: DepositRequest
+): { bonusUsdt: number; bonusInr: number; matchedTierLabel: string | null } {
+  const cfg = state.settings?.depositBonus;
+  if (!cfg || cfg.enabled === false) {
+    return { bonusUsdt: 0, bonusInr: 0, matchedTierLabel: null };
+  }
+  if (cfg.applyTo === 'first_deposit_only' && user.hasFirstDepositApproved) {
+    return { bonusUsdt: 0, bonusInr: 0, matchedTierLabel: null };
+  }
+
+  const depositInr =
+    dep.inrAmount && Number(dep.inrAmount) > 0
+      ? Number(dep.inrAmount)
+      : Number(depositAmountInr.toFixed(2));
+
+  const activeTiers = (cfg.tiers || [])
+    .filter((t) => t.enabled !== false && Number(t.minAmount) >= 0 && Number(t.bonusValue) > 0)
+    .sort((a, b) => Number(b.minAmount) - Number(a.minAmount));
+
+  const matchedTier = activeTiers.find((t) => depositInr >= Number(t.minAmount));
+  if (!matchedTier) {
+    return { bonusUsdt: 0, bonusInr: 0, matchedTierLabel: null };
+  }
+
+  let bonusInr = 0;
+  if (matchedTier.bonusType === 'fixed') {
+    bonusInr = Number((Number(matchedTier.bonusValue) || 0).toFixed(2));
+  } else {
+    const pct = Number(matchedTier.bonusValue) || 0;
+    bonusInr = Number((depositInr * (pct / 100)).toFixed(2));
+  }
+
+  if (bonusInr <= 0) {
+    return { bonusUsdt: 0, bonusInr: 0, matchedTierLabel: null };
+  }
+
+  const targetWallet = cfg.creditWallet || 'depositBalance';
+  if (targetWallet === 'winningBalance') {
+    user.winningBalance = Number(((user.winningBalance || 0) + bonusInr).toFixed(2));
+  } else if (targetWallet === 'balance') {
+    user.balance = Number(((user.balance || 0) + bonusInr).toFixed(2));
+  } else {
+    user.depositBalance = Number(((user.depositBalance || 0) + bonusInr).toFixed(2));
+  }
+
+  user.firstDepositBonusEarned = Number(((user.firstDepositBonusEarned || 0) + bonusInr).toFixed(2));
+  dep.bonusAwarded = bonusInr;
+  dep.bonusInr = bonusInr;
+
+  const tierText = matchedTier.label?.trim() || `≥ ₹${Number(matchedTier.minAmount).toLocaleString('en-IN')}`;
+  const bonusDetail =
+    matchedTier.bonusType === 'fixed'
+      ? `Flat ₹${bonusInr.toFixed(0)}`
+      : `${matchedTier.bonusValue}% (₹${bonusInr.toFixed(2)})`;
+
+  state.transactions.unshift({
+    id: `tx-${Date.now()}-depbonus`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'first_deposit_bonus',
+    amount: bonusInr,
+    status: 'completed',
+    txHash: dep.txHash,
+    network: dep.network,
+    notes: `🎁 Deposit Bonus [${tierText} • ${bonusDetail}]: +₹${bonusInr.toFixed(2)} INR credited to ${
+      targetWallet === 'winningBalance' ? 'Winning Wallet' : targetWallet === 'balance' ? 'Main Wallet' : 'Deposit Wallet'
+    }`,
+    createdAt: new Date().toISOString(),
+  });
+
+  return { bonusUsdt: bonusInr, bonusInr, matchedTierLabel: tierText };
+}
+
+function isServerGameEnabled(gameKey: keyof NonNullable<SystemSettings['enabledGames']>): boolean {
+  const map = state.settings?.enabledGames;
+  if (!map) return true;
+  return map[gameKey] !== false;
 }
 
 function loadStoreJson() {
@@ -1483,6 +1889,31 @@ function loadStoreJson() {
         if (Array.isArray(state.users)) {
           state.users.forEach((u) => {
             if (!u.password) u.password = '123456';
+            if (u.id === 'usr-root' || u.nodeId === 'NX-ROOT01') {
+              u.isAdmin = true;
+              u.isSuperAdmin = true;
+              u.isSubAdmin = false;
+              u.adminRoleName = 'Super Admin (Master Sovereign)';
+              u.adminPermissions = {
+                canManageDeposits: true,
+                canManageWithdrawals: true,
+                canManageUsers: true,
+                canManageColorPrediction: true,
+                canManageDragonTiger: true,
+                canManageAviator: true,
+                canManageTournament: true,
+                canManageLottery: true,
+                canManageUpiGateway: true,
+                canManageSettings: true,
+                canViewReports: true,
+                canViewAudit: true,
+                canManageProducts: true,
+                canManageBoosting: true,
+                canManageSqlite: true,
+                canManageRanks: true,
+                canManageSubAdmins: true,
+              };
+            }
           });
         }
         console.log('Successfully loaded persisted store from JSON!');
@@ -1491,6 +1922,9 @@ function loadStoreJson() {
     ensureLuckyDrawPrizes();
     ensureColorPredictionState();
     ensureSpinWheelSettings();
+    ensurePaymentGatewaySettings();
+    ensureGameSubdomainSettings();
+    migrateStoreToPureInr();
   } catch (err) {
     console.error('Failed to load JSON store:', err);
   }
@@ -1507,6 +1941,39 @@ function ensureColorPredictionState() {
   if (!state.colorPrediction.adminMode) state.colorPrediction.adminMode = 'lowest_payout';
   if (!state.colorPrediction.currentPeriodId) {
     state.colorPrediction.currentPeriodId = `${new Date().toISOString().slice(0, 10).replace(/-/g, '')}1001`;
+  }
+
+  // Populate at least 60 realistic history records if fewer than 50 exist
+  if (state.colorPrediction.history.length < 50) {
+    const basePeriodNum = 20250809100051088;
+    const baseBlock = 78242651;
+    const now = Date.now();
+    const sampleNumbers = [
+      7, 4, 2, 0, 9, 4, 1, 6, 5, 8, 3, 1, 8, 2, 6, 9, 0, 4, 7, 5,
+      3, 6, 8, 1, 2, 5, 9, 4, 0, 7, 2, 8, 3, 6, 1, 9, 5, 4, 0, 8,
+      7, 1, 3, 2, 6, 5, 9, 4, 8, 0, 3, 7, 2, 1, 6, 5, 8, 9, 4, 2
+    ];
+    const generated: any[] = [];
+    for (let i = 0; i < 60; i++) {
+      const periodSeq = basePeriodNum - i;
+      const num = sampleNumbers[i % sampleNumbers.length];
+      const isZero = num === 0;
+      const isFive = num === 5;
+      const isGreen = [1, 3, 7, 9].includes(num);
+      const color = isZero ? 'violet-red' : isFive ? 'violet-green' : isGreen ? 'green' : 'red';
+      const size = num >= 5 ? 'big' : 'small';
+      generated.push({
+        periodId: String(periodSeq),
+        number: num,
+        color,
+        size,
+        blockHeight: baseBlock - i * 20,
+        hash: ((num * 1337 + i * 7919) % 65536).toString(16).padStart(4, '0'),
+        completedAt: new Date(now - (i + 1) * 30000).toISOString(),
+        createdAt: new Date(now - (i + 1) * 30000).toISOString(),
+      });
+    }
+    state.colorPrediction.history = generated;
   }
 }
 
@@ -1585,7 +2052,7 @@ function awardGameWin(user: User, payout: number, gameName: string) {
           type: 'sponsor_game_win_bonus',
           amount: sponsorBonus,
           status: 'completed',
-          notes: `${sponsorPercent}% Sponsor ${isLottery ? 'Lottery' : 'Game'} Win Royalty from ${user.name}'s ${gameName} Win ($${payout.toFixed(2)})`,
+          notes: `${sponsorPercent}% Sponsor ${isLottery ? 'Lottery' : 'Game'} Win Royalty from ${user.name}'s ${gameName} Win (₹${payout.toFixed(2)} INR)`,
           createdAt: new Date().toISOString(),
         });
       }
@@ -1614,7 +2081,7 @@ function process5LevelBetTurnoverCommission(user: User, betAmount: number, gameN
     if (!sponsor) break;
 
     const commissionRate = BET_TURNOVER_LEVEL_PERCENTAGES[level - 1] / 100;
-    const commissionEarned = parseFloat((betAmount * commissionRate).toFixed(4));
+    const commissionEarned = parseFloat((betAmount * commissionRate).toFixed(2));
 
     if (commissionEarned > 0) {
       if (!sponsor.levelTurnover) {
@@ -1626,11 +2093,11 @@ function process5LevelBetTurnoverCommission(user: User, betAmount: number, gameN
 
       const lKey = `l${level}` as 'l1' | 'l2' | 'l3' | 'l4' | 'l5';
       sponsor.levelTurnover[lKey] = (sponsor.levelTurnover[lKey] || 0) + betAmount;
-      sponsor.levelCommission[lKey] = (sponsor.levelCommission[lKey] || 0) + commissionEarned;
+      sponsor.levelCommission[lKey] = Number(((sponsor.levelCommission[lKey] || 0) + commissionEarned).toFixed(2));
 
-      sponsor.referralCommissionEarned = (sponsor.referralCommissionEarned || 0) + commissionEarned;
-      sponsor.balance = (sponsor.balance || 0) + commissionEarned;
-      sponsor.totalEarned = (sponsor.totalEarned || 0) + commissionEarned;
+      sponsor.referralCommissionEarned = Number(((sponsor.referralCommissionEarned || 0) + commissionEarned).toFixed(2));
+      sponsor.balance = Number(((sponsor.balance || 0) + commissionEarned).toFixed(2));
+      sponsor.totalEarned = Number(((sponsor.totalEarned || 0) + commissionEarned).toFixed(2));
 
       state.transactions.unshift({
         id: `tx-turnover-l${level}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1639,7 +2106,7 @@ function process5LevelBetTurnoverCommission(user: User, betAmount: number, gameN
         type: 'bet_turnover_commission' as any,
         amount: commissionEarned,
         status: 'completed',
-        notes: `🏆 Level ${level} Bet Turnover Commission ($${commissionEarned.toFixed(4)}) from ${user.name}'s $${betAmount.toFixed(2)} Bet on ${gameName}`,
+        notes: `🏆 Level ${level} Bet Turnover Commission (₹${commissionEarned.toFixed(2)}) from ${user.name}'s ₹${betAmount.toFixed(2)} Bet on ${gameName}`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -1885,7 +2352,7 @@ function tickAviatorGame() {
   const elapsedSec = (now - av.startTime) / 1000;
 
   if (av.status === 'waiting') {
-    if (elapsedSec >= 5) {
+    if (elapsedSec >= 4) {
       av.status = 'flying';
       av.startTime = now;
       av.currentMultiplier = 1.00;
@@ -1895,23 +2362,24 @@ function tickAviatorGame() {
         av.forcedNextCrash = null;
       } else if (av.adminMode === 'lowest_payout') {
         const totalStakes = av.bets.filter((b) => b.status === 'pending').reduce((sum, b) => sum + b.amount, 0);
-        if (totalStakes > 50) {
-          av.targetCrashMultiplier = Number((1.05 + Math.random() * 0.45).toFixed(2));
+        if (totalStakes > 1000) {
+          av.targetCrashMultiplier = Number((1.25 + Math.random() * 0.95).toFixed(2));
         } else if (totalStakes > 0) {
-          av.targetCrashMultiplier = Number((1.12 + Math.random() * 1.20).toFixed(2));
+          av.targetCrashMultiplier = Number((1.35 + Math.random() * 2.10).toFixed(2));
         } else {
-          av.targetCrashMultiplier = Number((1.20 + Math.random() * 8.00).toFixed(2));
+          av.targetCrashMultiplier = Number((1.50 + Math.random() * 9.50).toFixed(2));
         }
       } else {
         const rand = Math.random();
-        if (rand < 0.15) av.targetCrashMultiplier = Number((1.01 + Math.random() * 0.15).toFixed(2));
-        else if (rand < 0.70) av.targetCrashMultiplier = Number((1.16 + Math.random() * 2.00).toFixed(2));
-        else if (rand < 0.90) av.targetCrashMultiplier = Number((3.16 + Math.random() * 5.00).toFixed(2));
-        else av.targetCrashMultiplier = Number((8.16 + Math.random() * 25.00).toFixed(2));
+        if (rand < 0.12) av.targetCrashMultiplier = Number((1.20 + Math.random() * 0.35).toFixed(2));
+        else if (rand < 0.65) av.targetCrashMultiplier = Number((1.40 + Math.random() * 2.50).toFixed(2));
+        else if (rand < 0.88) av.targetCrashMultiplier = Number((3.50 + Math.random() * 6.00).toFixed(2));
+        else av.targetCrashMultiplier = Number((9.50 + Math.random() * 30.00).toFixed(2));
       }
     }
   } else if (av.status === 'flying') {
-    const mult = Number((1.00 + Math.pow(elapsedSec / 2.5, 1.8)).toFixed(2));
+    // Smooth flight progression curve
+    const mult = Number((1.00 + Math.pow(elapsedSec / 2.8, 1.7) * 1.3).toFixed(2));
     av.currentMultiplier = mult;
 
     av.bets.forEach((bet) => {
@@ -1936,7 +2404,7 @@ function tickAviatorGame() {
       av.startTime = now;
 
       av.history.unshift(av.targetCrashMultiplier);
-      if (av.history.length > 20) av.history.pop();
+      if (av.history.length > 25) av.history.pop();
 
       av.bets.forEach((bet) => {
         if (bet.status === 'pending') {
@@ -1946,7 +2414,7 @@ function tickAviatorGame() {
       saveStore();
     }
   } else if (av.status === 'crashed') {
-    if (elapsedSec >= 4) {
+    if (elapsedSec >= 2.8) {
       av.status = 'waiting';
       av.currentRoundId = `AV-${now}`;
       av.currentMultiplier = 1.00;
@@ -2017,7 +2485,7 @@ function updateTeamVolumeAndCounts() {
         (t.notes.includes('Activated Package') || t.notes.includes('Booster Pass') || t.notes.includes('pkg-20'))
     );
     const isUpgraded = !!(
-      (activePkg && (activePkg.price >= 20 || activePkg.isUpgradePackage)) ||
+      (activePkg && (activePkg.price >= 2000 || activePkg.isUpgradePackage)) ||
       u.activePackageId === 'pkg-20' ||
       hasBoosterTx
     );
@@ -2025,9 +2493,80 @@ function updateTeamVolumeAndCounts() {
   });
 }
 
-// Helper to get active user for request (supports header 'x-user-id' for browser session isolation)
+function parseCookieHeader(cookieHeader?: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!cookieHeader) return result;
+  cookieHeader.split(';').forEach((part) => {
+    const eqIdx = part.indexOf('=');
+    if (eqIdx > 0) {
+      const k = part.slice(0, eqIdx).trim();
+      const v = part.slice(eqIdx + 1).trim();
+      try {
+        result[k] = decodeURIComponent(v);
+      } catch {
+        result[k] = v;
+      }
+    }
+  });
+  return result;
+}
+
+function getCookieRootDomain(req: Request): string | null {
+  const configuredRoot = (state.settings?.gameSubdomains?.rootDomain || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/.*$/, '')
+    .split(':')[0]
+    .toLowerCase();
+  const host = (req.hostname || req.headers.host || '').split(':')[0].toLowerCase();
+  const isLocalOrPreview =
+    !host ||
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    /^\d+\.\d+\.\d+\.\d+$/.test(host) ||
+    host.endsWith('.run.app') ||
+    host.endsWith('.web.app') ||
+    host.endsWith('.firebaseapp.com');
+
+  if (configuredRoot && host.endsWith(configuredRoot)) {
+    return `.${configuredRoot}`;
+  }
+  if (!isLocalOrPreview && host.includes('.')) {
+    const parts = host.split('.');
+    if (parts.length >= 2) {
+      return `.${parts.slice(-2).join('.')}`;
+    }
+  }
+  return null;
+}
+
+function setSessionCookie(res: Response, req: Request, userId: string) {
+  const domain = getCookieRootDomain(req);
+  const parts = [
+    `tp_user_id=${encodeURIComponent(userId)}`,
+    'Path=/',
+    'Max-Age=2592000',
+    'SameSite=Lax',
+  ];
+  if (domain) parts.push(`Domain=${domain}`);
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+function clearSessionCookie(res: Response, req: Request) {
+  const domain = getCookieRootDomain(req);
+  const parts = ['tp_user_id=', 'Path=/', 'Max-Age=0', 'SameSite=Lax'];
+  if (domain) parts.push(`Domain=${domain}`);
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+// Helper to get active user for request (supports header 'x-user-id', query/body userId, and cross-subdomain cookie 'tp_user_id')
 function getUserFromReq(req: Request): User | undefined {
-  const reqUserId = (req.headers['x-user-id'] as string) || (req.query.userId as string) || (req.body && req.body.userId);
+  const cookies = parseCookieHeader(req.headers.cookie);
+  const reqUserId =
+    (req.headers['x-user-id'] as string) ||
+    (req.query.userId as string) ||
+    (req.body && req.body.userId) ||
+    cookies['tp_user_id'];
   if (reqUserId && reqUserId.trim() !== '' && reqUserId !== 'undefined' && reqUserId !== 'null') {
     const found = state.users.find((u) => u.id === reqUserId || u.nodeId.toLowerCase() === reqUserId.toLowerCase());
     if (found) return found;
@@ -2035,10 +2574,57 @@ function getUserFromReq(req: Request): User | undefined {
   return undefined;
 }
 
+// Helper to verify granular admin & sub-admin permissions
+function checkAdminPermission(
+  req: Request,
+  permKey?: keyof AdminPermissions
+): { allowed: boolean; user?: User; error?: string; status: number } {
+  const user = getUserFromReq(req);
+  if (!user) {
+    // If not supplied in header, fallback to active super admin if configured
+    const rootUser = state.users.find((u) => u.id === 'usr-root' || u.nodeId === 'NX-ROOT01');
+    if (!req.headers['x-user-id'] && rootUser) {
+      return { allowed: true, user: rootUser, status: 200 };
+    }
+    return { allowed: false, error: 'Unauthorized: Admin authentication session required', status: 401 };
+  }
+
+  // Sovereign Super Admin has 100% unrestricted access to all operations
+  if (user.isSuperAdmin || user.id === 'usr-root' || user.nodeId === 'NX-ROOT01') {
+    return { allowed: true, user, status: 200 };
+  }
+
+  // Must be recognized as an Admin or Sub-Admin
+  if (!user.isAdmin && !user.isSubAdmin) {
+    return { allowed: false, user, error: 'Forbidden: Admin authorization required', status: 403 };
+  }
+
+  // Check if sub-admin status is inactive or banned
+  if (user.status !== 'active') {
+    return { allowed: false, user, error: 'Forbidden: Your Sub-Admin account is suspended or inactive', status: 403 };
+  }
+
+  // Check specific granular permission if requested
+  if (permKey) {
+    const hasPerm = Boolean(user.adminPermissions && user.adminPermissions[permKey]);
+    if (!hasPerm) {
+      return {
+        allowed: false,
+        user,
+        error: `Permission Denied: Your Sub-Admin role does not have '${String(permKey)}' authority.`,
+        status: 403,
+      };
+    }
+  }
+
+  return { allowed: true, user, status: 200 };
+}
+
 // API ROUTES
 
 // 1. Get Full Application State or Current User Context
 app.get('/api/state', (req: Request, res: Response) => {
+  ensureGameSubdomainSettings();
   updateTeamVolumeAndCounts();
   const currentUser = getUserFromReq(req);
   res.json({
@@ -2075,7 +2661,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
       (u.nodeId && u.nodeId.toLowerCase() === cleanInput) ||
       (u.email && u.email.toLowerCase() === cleanInput) ||
       (u.name && u.name.toLowerCase() === cleanInput) ||
-      ((cleanInput === 'admin' || cleanInput === 'root' || cleanInput === 'administrator' || cleanInput === 'admin@tetherplus.io') && (u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isAdmin))
+      ((cleanInput === 'admin' || cleanInput === 'root' || cleanInput === 'administrator' || cleanInput === 'admin@sportx.game' || cleanInput === 'admin@tetherplus.io') && (u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isAdmin))
   );
 
   if (!user) {
@@ -2099,12 +2685,14 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 
   // Set user as active session
   state.activeUserId = user.id;
+  setSessionCookie(res, req, user.id);
 
   res.json({ success: true, user });
 });
 
 // Logout endpoint
 app.post('/api/auth/logout', (req: Request, res: Response) => {
+  clearSessionCookie(res, req);
   res.json({ success: true });
 });
 
@@ -2154,20 +2742,20 @@ app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
       });
 
       await transporter.sendMail({
-        from: `"TetherPlus Security" <${smtpConfig.smtpFrom}>`,
+        from: `"SportX Security" <${smtpConfig.smtpFrom}>`,
         to: user.email,
-        subject: `TetherPlus - Password Reset OTP (${otp})`,
+        subject: `SportX - Password Reset OTP (${otp})`,
         html: `
           <div style="font-family: Arial, sans-serif; background-color: #0b1424; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #1e293b;">
-            <h2 style="color: #00eeff; margin-top: 0; text-align: center;">TetherPlus Password Reset</h2>
+            <h2 style="color: #00eeff; margin-top: 0; text-align: center;">SportX Password Reset</h2>
             <p>Hello <strong>${user.name || user.nodeId}</strong>,</p>
-            <p>You requested a password reset for your TetherPlus account (#${user.nodeId}). Here is your 6-digit verification OTP code:</p>
+            <p>You requested a password reset for your SportX account (#${user.nodeId}). Here is your 6-digit verification OTP code:</p>
             <div style="background-color: #050911; border: 1px solid #00eeff; border-radius: 8px; padding: 18px; text-align: center; margin: 20px 0;">
               <span style="font-size: 34px; font-weight: bold; letter-spacing: 8px; color: #00eeff;">${otp}</span>
             </div>
             <p style="font-size: 13px; color: #94a3b8;">This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
             <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;" />
-            <p style="font-size: 11px; color: #64748b; text-align: center;">TetherPlus Cyberpunk Ecosystem • ${smtpConfig.smtpFrom}</p>
+            <p style="font-size: 11px; color: #64748b; text-align: center;">SportX Gaming Platform • ${smtpConfig.smtpFrom}</p>
           </div>
         `,
       });
@@ -2329,6 +2917,11 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
   // 2x2 Matrix Placement Spillover Parent
   const placementUplineId = find2x2PlacementUplineId(sponsor.id, state.users);
 
+  const signupCfg = state.settings?.signupBonus;
+  const signupBonusInr = signupCfg?.enabled ? Math.max(0, Number(signupCfg.amountInr) || 0) : 0;
+  const signupFreeSpins = signupCfg ? Math.max(0, Number(signupCfg.freeSpins ?? 1)) : 1;
+  const signupWallet = signupCfg?.creditWallet || 'depositBalance';
+
   const newUser: User = {
     id: `usr-${Date.now()}`,
     nodeId: newNodeId,
@@ -2341,9 +2934,10 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
     activePackageId: null,
     packageActivatedAt: null,
     packageExpiryDays: 0,
-    balance: 0.0,
-    depositBalance: 0.0,
+    balance: signupWallet === 'balance' ? signupBonusInr : 0.0,
+    depositBalance: signupWallet === 'depositBalance' ? signupBonusInr : 0.0,
     upgradeBalance: 0.0,
+    winningBalance: signupWallet === 'winningBalance' ? signupBonusInr : 0.0,
     totalEarned: 0.0,
     roiEarned: 0.0,
     levelEarned: 0.0,
@@ -2358,11 +2952,26 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
     status: 'active',
     registeredAt: new Date().toISOString(),
     lastRoiClaimAt: new Date().toISOString(),
-    spinCredits: 1,
+    spinCredits: signupFreeSpins,
     lastSpinAt: null,
   };
 
   state.users.push(newUser);
+
+  if (signupBonusInr > 0) {
+    state.transactions.unshift({
+      id: `tx-${Date.now()}-signupbonus`,
+      userId: newUser.id,
+      userNodeId: newUser.nodeId,
+      type: 'signup_bonus',
+      amount: signupBonusInr,
+      status: 'completed',
+      notes: `🎁 Welcome Signup Bonus: +₹${signupBonusInr.toFixed(2)} INR credited to ${
+        signupWallet === 'winningBalance' ? 'Winning Wallet' : signupWallet === 'balance' ? 'Main Wallet' : 'Deposit Wallet'
+      }`,
+      createdAt: new Date().toISOString(),
+    });
+  }
 
   // Increment sponsor count
   sponsor.directReferralsCount += 1;
@@ -2388,14 +2997,14 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
       });
 
       transporter.sendMail({
-        from: `"TetherPlus Team" <${smtpConfig.smtpFrom}>`,
+        from: `"SportX Team" <${smtpConfig.smtpFrom}>`,
         to: newUser.email,
-        subject: `Welcome to TetherPlus Cyberpunk Ecosystem, ${newUser.name}! 🚀`,
+        subject: `Welcome to SportX Gaming Platform, ${newUser.name}! 🚀`,
         html: `
           <div style="font-family: Arial, sans-serif; background-color: #0b0f19; color: #f8fafc; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #1e293b;">
-            <h2 style="color: #06b6d4; margin-top: 0; font-size: 22px; text-align: center;">Welcome to TetherPlus! 🎉</h2>
+            <h2 style="color: #06b6d4; margin-top: 0; font-size: 22px; text-align: center;">Welcome to SportX! 🎉</h2>
             <p style="font-size: 15px; color: #cbd5e1; line-height: 1.6;">Hi <strong>${newUser.name}</strong>,</p>
-            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.6;">Thank you for registering on <strong>TetherPlus Web3 Cyberpunk Ecosystem</strong>. Your account has been successfully created!</p>
+            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.6;">Thank you for registering on <strong>SportX Gaming Platform</strong>. Your account has been successfully created!</p>
             
             <div style="background-color: #111827; border: 1px solid #374151; border-radius: 8px; padding: 18px; margin: 20px 0;">
               <p style="margin: 0 0 8px 0; font-size: 13px; color: #9ca3af;"><strong>Your Node ID:</strong> <span style="color: #38bdf8; font-family: monospace; font-size: 15px; font-weight: bold;">${newUser.nodeId}</span></p>
@@ -2403,14 +3012,14 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
               <p style="margin: 0; font-size: 13px; color: #9ca3af;"><strong>Sponsor:</strong> <span style="color: #a78bfa;">${sponsor.name} (${sponsor.nodeId})</span></p>
             </div>
 
-            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.6;">You can now activate packages, explore direct level rewards, participate in boosting pools, and build your decentralized team network.</p>
+            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.6;">You can now deposit funds, play all live games, unlock VIP rewards, and earn referral commissions.</p>
             
             <div style="text-align: center; margin: 28px 0;">
-              <a href="https://tetherplus.live" style="background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">Go to Dashboard</a>
+              <a href="https://sportx.game" style="background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">Go to Dashboard</a>
             </div>
 
             <hr style="border: 0; border-top: 1px solid #1e293b; margin: 20px 0;" />
-            <p style="font-size: 11px; color: #64748b; text-align: center;">TetherPlus Ecosystem • ${smtpConfig.smtpFrom}</p>
+            <p style="font-size: 11px; color: #64748b; text-align: center;">SportX Gaming Platform • ${smtpConfig.smtpFrom}</p>
           </div>
         `,
       }).then(() => {
@@ -2423,13 +3032,14 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
     }
   }
 
+  setSessionCookie(res, req, newUser.id);
   res.json({ success: true, user: newUser });
 });
 
 // 4. Packages/MLM Buy endpoint - Retired for Pure Gaming Platform
 app.post('/api/packages/buy', (req: Request, res: Response) => {
   return res.status(400).json({
-    error: 'TetherPlus is now a 100% pure gaming platform. No MLM package purchase is required! Deposit USDT to play Color Prediction, Aviator, Dragon vs Tiger, and earn via the 5-Level Agent Referral Turnover.',
+    error: 'SportX is a 100% pure gaming platform. No MLM package purchase is required! Deposit funds to play Color Prediction, Aviator, Dragon vs Tiger, and earn via the 5-Level Agent Referral Turnover.',
   });
 });
 
@@ -2440,44 +3050,63 @@ app.post('/api/roi/claim', (req: Request, res: Response) => {
   });
 });
 
-// 6. Submit Deposit Request (With Automated Blockchain Verification)
+// 6. Submit Deposit Request (Pure INR 1:1 UPI / Bank Deposit & Rotating UPI Tracking)
 app.post('/api/deposit', async (req: Request, res: Response) => {
-  const { amount, network, txHash } = req.body;
+  const { amount, network, txHash, upiId, inrAmount } = req.body;
   const user = getUserFromReq(req);
 
   if (!user) return res.status(400).json({ error: 'User not logged in' });
-  const numAmount = parseFloat(amount);
-  const minDeposit = state.settings.minDepositAmount !== undefined ? Number(state.settings.minDepositAmount) : 10;
-  if (!numAmount || numAmount < minDeposit) return res.status(400).json({ error: `Minimum deposit is $${minDeposit} USDT` });
-  if (!txHash || txHash.trim().length < 8)
-    return res.status(400).json({ error: 'Please enter a valid Transaction Hash / TXID' });
+  const rawInr = inrAmount !== undefined && Number(inrAmount) > 0 ? Number(inrAmount) : parseFloat(amount);
+  const numAmount = Number((rawInr || 0).toFixed(2));
+  const selectedNetwork = network || 'UPI-QR';
+
+  const minDeposit = state.settings.minDepositAmount !== undefined ? Number(state.settings.minDepositAmount) : 100;
+  if (!numAmount || numAmount < minDeposit) return res.status(400).json({ error: `Minimum deposit is ₹${minDeposit} INR` });
+  if (!txHash || txHash.trim().length < 6)
+    return res.status(400).json({ error: 'Please enter a valid 12-digit UTR or Transaction Ref ID' });
 
   const cleanTxHash = txHash.trim();
-  const selectedNetwork = network || 'BEP20';
 
-  // Anti-Replay Check: Ensure this TXID has not already been used/approved
+  // Anti-Replay Check: Ensure this TXID / UTR has not already been used/approved
   const alreadyUsed = state.depositRequests.some(
     (d) => d.txHash && d.txHash.toLowerCase() === cleanTxHash.toLowerCase() && d.status === 'approved'
   );
   if (alreadyUsed) {
-    return res.status(400).json({ error: 'This Transaction Hash (TXID) has already been claimed and credited.' });
+    return res.status(400).json({ error: 'This Transaction Ref / UTR has already been claimed and credited.' });
   }
 
-  // Attempt Automated On-Chain Blockchain Verification for BEP20
   let isAutoApproved = false;
   let verifiedAmount = numAmount;
-  let verificationNotes = 'Awaiting admin verification of blockchain transaction';
+  let verificationNotes = `Awaiting verification for UPI/Bank UTR: ${cleanTxHash}${upiId ? ` (Paid to ${upiId})` : ''}`;
 
+  const dep: DepositRequest = {
+    id: `dep-${Date.now()}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    userName: user.name,
+    amount: verifiedAmount,
+    inrAmount: verifiedAmount,
+    network: selectedNetwork,
+    txHash: cleanTxHash,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    adminNotes: verificationNotes,
+  };
+
+  // Optional legacy on-chain fallback if explicitly submitted with BEP20 0x hash
   if (selectedNetwork === 'BEP20' && cleanTxHash.startsWith('0x') && cleanTxHash.length === 66) {
     try {
       const companyAddress = state.settings.walletAddresses?.BEP20 || DEFAULT_HOT_WALLET_ADDRESS;
       const verifyRes = await verifyOnChainDeposit(cleanTxHash, companyAddress);
 
-      if (verifyRes.valid && verifyRes.amount && verifyRes.amount >= numAmount * 0.95) {
-        // Auto-approve on-chain verified deposit
+      if (verifyRes.valid && verifyRes.amount && verifyRes.amount > 0) {
         isAutoApproved = true;
-        verifiedAmount = verifyRes.amount;
-        verificationNotes = `⚡ Instant Auto-Verified on BSC Blockchain (Block #${verifyRes.blockNumber}, Sender: ${verifyRes.from?.substring(0, 8)}...)`;
+        verifiedAmount = Number(verifyRes.amount.toFixed(2));
+        dep.amount = verifiedAmount;
+        dep.inrAmount = verifiedAmount;
+        dep.status = 'approved';
+        verificationNotes = `⚡ Instant Auto-Verified Deposit (Ref #${verifyRes.blockNumber})`;
+        dep.adminNotes = verificationNotes;
 
         user.depositBalance = (user.depositBalance || 0) + verifiedAmount;
         user.totalDeposited = (user.totalDeposited || 0) + verifiedAmount;
@@ -2491,29 +3120,30 @@ app.post('/api/deposit', async (req: Request, res: Response) => {
           status: 'completed',
           txHash: cleanTxHash,
           network: selectedNetwork,
-          notes: `⚡ Instant Auto-Verified Deposit: +${verifiedAmount.toFixed(2)} USDT credited to Deposit Wallet`,
+          notes: `⚡ Instant Auto-Verified Deposit: +₹${verifiedAmount.toFixed(2)} INR credited to Deposit Wallet`,
           createdAt: new Date().toISOString(),
         });
+
+        applyDepositBonus(user, verifiedAmount, dep);
+        user.hasFirstDepositApproved = true;
       } else if (verifyRes.error) {
         verificationNotes = `Auto-check note: ${verifyRes.error} (Queued for manual admin verification)`;
+        dep.adminNotes = verificationNotes;
       }
     } catch (err: any) {
       console.warn('Auto deposit verification error:', err);
     }
   }
 
-  const dep: DepositRequest = {
-    id: `dep-${Date.now()}`,
-    userId: user.id,
-    userNodeId: user.nodeId,
-    userName: user.name,
-    amount: verifiedAmount,
-    network: selectedNetwork,
-    txHash: cleanTxHash,
-    status: isAutoApproved ? 'approved' : 'pending',
-    createdAt: new Date().toISOString(),
-    adminNotes: verificationNotes,
-  };
+  // Track INR collection directly on rotating UPI pool
+  if (upiId && state.settings.paymentGateway?.upiPool) {
+    const poolItem = state.settings.paymentGateway.upiPool.find(
+      (u) => u.upiId.toLowerCase() === upiId.toLowerCase()
+    );
+    if (poolItem) {
+      poolItem.totalCollected = (poolItem.totalCollected || 0) + verifiedAmount;
+    }
+  }
 
   state.depositRequests.unshift(dep);
   saveStore();
@@ -2522,10 +3152,224 @@ app.post('/api/deposit', async (req: Request, res: Response) => {
     success: true,
     autoApproved: isAutoApproved,
     message: isAutoApproved
-      ? `🎉 Blockchain transfer verified! ${verifiedAmount.toFixed(2)} USDT has been automatically credited to your Deposit Wallet!`
-      : 'Deposit request submitted successfully. It will be verified and credited shortly.',
+      ? `🎉 Deposit verified! ₹${verifiedAmount.toFixed(2)} INR${dep.bonusInr ? ` + ₹${dep.bonusInr.toFixed(2)} Bonus` : ''} has been automatically credited to your Deposit Wallet!`
+      : `Deposit request for ₹${verifiedAmount.toLocaleString('en-IN')} submitted! Your balance will be credited as soon as the 12-digit UTR is verified.`,
     depositRequest: dep,
     user,
+  });
+});
+
+// 6a. DYNAMIC ROTATING UPI ENDPOINT FOR DEPOSITS & PAYMENT GATEWAY
+app.get('/api/payment/active-upi', (req: Request, res: Response) => {
+  ensurePaymentGatewaySettings();
+  const gateway = state.settings.paymentGateway || defaultSettings.paymentGateway!;
+  const upiPool = gateway.upiPool || [];
+  const activePool = upiPool.filter((item) => item.isActive !== false);
+
+  if (activePool.length === 0) {
+    return res.json({
+      success: true,
+      upiId: gateway.defaultUpiId || 'sportxpay@okaxis',
+      payeeName: gateway.defaultPayeeName || 'SportX Gaming Official',
+      provider: detectUpiProvider(gateway.defaultUpiId || 'sportxpay@okaxis'),
+      id: 'default',
+      qrTimerSeconds: gateway.qrTimerSeconds || 600,
+      rotationStrategy: gateway.rotationStrategy || 'roundRobin',
+      activePoolCount: 0,
+      totalPoolCount: upiPool.length,
+      subdomainUrl: gateway.subdomainUrl || '',
+      sessionTxnId: `ORD-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+    });
+  }
+
+  let selected: UpiPoolItem;
+  const strategy = gateway.rotationStrategy || 'roundRobin';
+
+  if (strategy === 'leastUsed') {
+    // Pick the active UPI that has been shown the least
+    const sorted = [...activePool].sort((a, b) => (a.usedCount || 0) - (b.usedCount || 0));
+    selected = sorted[0];
+  } else if (strategy === 'random') {
+    // Pick a completely random active UPI
+    const randIdx = Math.floor(Math.random() * activePool.length);
+    selected = activePool[randIdx];
+  } else {
+    // Round-Robin sequential rotation
+    selected = activePool[upiRotationPointer % activePool.length];
+    upiRotationPointer = (upiRotationPointer + 1) % activePool.length;
+  }
+
+  // Increment usage count for this rotating UPI
+  selected.usedCount = (selected.usedCount || 0) + 1;
+  saveStore();
+
+  res.json({
+    success: true,
+    upiId: selected.upiId,
+    payeeName: selected.name,
+    provider: selected.provider || detectUpiProvider(selected.upiId),
+    id: selected.id,
+    usedCount: selected.usedCount,
+    qrTimerSeconds: gateway.qrTimerSeconds || 600,
+    rotationStrategy: strategy,
+    activePoolCount: activePool.length,
+    totalPoolCount: upiPool.length,
+    subdomainUrl: gateway.subdomainUrl || '',
+    sessionTxnId: `ORD-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+  });
+});
+
+// 6b. ADMIN: Bulk Upload up to 100+ UPI IDs at once
+app.post('/api/admin/upi-pool/bulk', (req: Request, res: Response) => {
+  ensurePaymentGatewaySettings();
+  const { bulkText, defaultName, replaceAll, dailyLimit } = req.body;
+
+  if (!bulkText || typeof bulkText !== 'string' || !bulkText.trim()) {
+    return res.status(400).json({ error: 'Please enter at least one valid UPI ID' });
+  }
+
+  const lines = bulkText.split(/[\r\n,;]+/);
+  const parsedItems: UpiPoolItem[] = [];
+  const existingPool = state.settings.paymentGateway?.upiPool || [];
+  const existingMap = new Set(replaceAll ? [] : existingPool.map((u) => u.upiId.toLowerCase().trim()));
+
+  for (let rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    // Support formats:
+    // 1. "merchant@bank"
+    // 2. "merchant@bank, Payee Name"
+    // 3. "merchant@bank | Payee Name"
+    // 4. "merchant@bank : Payee Name"
+    let upiId = '';
+    let name = defaultName?.trim() || 'Merchant Pay';
+
+    if (line.includes('|')) {
+      const parts = line.split('|');
+      upiId = parts[0].trim();
+      name = parts[1].trim() || name;
+    } else if (line.includes(':')) {
+      const parts = line.split(':');
+      upiId = parts[0].trim();
+      name = parts[1].trim() || name;
+    } else if (line.includes(',')) {
+      const parts = line.split(',');
+      upiId = parts[0].trim();
+      name = parts[1].trim() || name;
+    } else if (line.includes('\t')) {
+      const parts = line.split('\t');
+      upiId = parts[0].trim();
+      name = parts[1].trim() || name;
+    } else {
+      upiId = line;
+    }
+
+    // Clean up UPI ID (remove spaces, enforce @ if present)
+    upiId = upiId.replace(/\s+/g, '');
+    if (!upiId || upiId.length < 5 || !upiId.includes('@')) {
+      continue;
+    }
+
+    if (existingMap.has(upiId.toLowerCase())) {
+      continue; // Skip duplicate within this session
+    }
+    existingMap.add(upiId.toLowerCase());
+
+    parsedItems.push({
+      id: `upi-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      upiId,
+      name: name || 'Merchant Pay',
+      provider: detectUpiProvider(upiId),
+      dailyLimit: Number(dailyLimit) || 100000,
+      usedCount: 0,
+      totalCollected: 0,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  if (parsedItems.length === 0) {
+    return res.status(400).json({
+      error: 'No valid or new UPI IDs found. Format: name@bank or name@bank, Payee Name',
+    });
+  }
+
+  if (!state.settings.paymentGateway) {
+    state.settings.paymentGateway = { ...defaultSettings.paymentGateway! };
+  }
+
+  if (replaceAll) {
+    state.settings.paymentGateway.upiPool = parsedItems;
+  } else {
+    state.settings.paymentGateway.upiPool = [...existingPool, ...parsedItems];
+  }
+
+  saveStore();
+
+  res.json({
+    success: true,
+    addedCount: parsedItems.length,
+    totalCount: state.settings.paymentGateway.upiPool.length,
+    message: `Successfully imported ${parsedItems.length} rotating UPI IDs into the gateway pool!`,
+    pool: state.settings.paymentGateway.upiPool,
+  });
+});
+
+// 6c. ADMIN: Toggle Active/Paused state of a UPI ID
+app.post('/api/admin/upi-pool/toggle', (req: Request, res: Response) => {
+  ensurePaymentGatewaySettings();
+  const { id } = req.body;
+  if (!id) return res.status(400).json({ error: 'Missing UPI ID' });
+
+  const pool = state.settings.paymentGateway?.upiPool || [];
+  const item = pool.find((u) => u.id === id);
+  if (!item) return res.status(404).json({ error: 'UPI record not found' });
+
+  item.isActive = !item.isActive;
+  saveStore();
+
+  res.json({
+    success: true,
+    item,
+    message: `UPI ${item.upiId} is now ${item.isActive ? 'Active (in rotation)' : 'Paused (disabled)'}`,
+    pool,
+  });
+});
+
+// 6d. ADMIN: Delete a single UPI ID from pool
+app.delete('/api/admin/upi-pool/:id', (req: Request, res: Response) => {
+  ensurePaymentGatewaySettings();
+  const { id } = req.params;
+  const pool = state.settings.paymentGateway?.upiPool || [];
+  const idx = pool.findIndex((u) => u.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'UPI record not found' });
+
+  const removed = pool.splice(idx, 1)[0];
+  saveStore();
+
+  res.json({
+    success: true,
+    removed,
+    message: `Removed ${removed.upiId} from rotation pool`,
+    pool,
+  });
+});
+
+// 6e. ADMIN: Reset all usage and collection counts
+app.post('/api/admin/upi-pool/reset-counts', (req: Request, res: Response) => {
+  ensurePaymentGatewaySettings();
+  const pool = state.settings.paymentGateway?.upiPool || [];
+  pool.forEach((u) => {
+    u.usedCount = 0;
+    u.totalCollected = 0;
+  });
+  saveStore();
+
+  res.json({
+    success: true,
+    message: 'Reset all UPI usage counters and collection amounts to 0',
+    pool,
   });
 });
 
@@ -2543,7 +3387,7 @@ app.post('/api/wallet/convert-winnings', (req: Request, res: Response) => {
   const currentWinnings = user.winningBalance || 0;
   if (currentWinnings < numAmount) {
     return res.status(400).json({
-      error: `Insufficient Winnings Wallet balance ($${currentWinnings.toFixed(2)} USDT available).`
+      error: `Insufficient Winnings Wallet balance (₹${currentWinnings.toFixed(2)} INR available).`
     });
   }
 
@@ -2557,19 +3401,19 @@ app.post('/api/wallet/convert-winnings', (req: Request, res: Response) => {
     type: 'admin_adjust',
     amount: numAmount,
     status: 'completed',
-    notes: `🔄 Converted $${numAmount.toFixed(2)} USDT from Winnings Wallet to Deposit Balance for Game Play`,
+    notes: `🔄 Converted ₹${numAmount.toFixed(2)} INR from Winnings Wallet to Deposit Balance for Game Play`,
     createdAt: new Date().toISOString(),
   });
 
   saveStore();
   return res.json({
     success: true,
-    message: `Successfully transferred $${numAmount.toFixed(2)} USDT from Winnings to Deposit Wallet!`,
+    message: `Successfully transferred ₹${numAmount.toFixed(2)} INR from Winnings to Deposit Wallet!`,
     user,
   });
 });
 
-// 7. Request Withdrawal with 20% Upgrade Deduction Rule
+// 7. Request Withdrawal (100% Pure INR UPI / Bank Transfer)
 app.post('/api/withdraw', async (req: Request, res: Response) => {
   const { amount, targetAddress, network, walletType } = req.body;
   const user = getUserFromReq(req);
@@ -2578,45 +3422,46 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
 
   const isWinningWallet = walletType === 'winning';
   const reqAmt = parseFloat(amount);
+  const selectedNetwork = network || 'UPI';
 
   if (isWinningWallet) {
-    // WINNING WALLET WITHDRAWAL: Flat 10% Fee, No MLM Conditions
-    const minWinWd = state.settings.winningWithdrawalMinAmount || 5;
+    const minWinWd = state.settings.winningWithdrawalMinAmount || 100;
     if (!reqAmt || reqAmt < minWinWd) {
-      return res.status(400).json({ error: `Minimum Game Winning withdrawal is $${minWinWd} USDT` });
+      return res.status(400).json({ error: `Minimum Game Winning withdrawal is ₹${minWinWd} INR` });
     }
     const winBal = user.winningBalance || 0;
     if (winBal < reqAmt) {
-      return res.status(400).json({ error: `Insufficient winning balance ($${winBal.toFixed(2)} USDT available).` });
+      return res.status(400).json({ error: `Insufficient winning balance (₹${winBal.toFixed(2)} INR available).` });
     }
-    if (!targetAddress) return res.status(400).json({ error: 'Please provide target USDT wallet address' });
+    if (!targetAddress || String(targetAddress).trim().length < 5) {
+      return res.status(400).json({ error: 'Please provide a valid UPI ID or Bank Account details' });
+    }
 
     const feePercent = state.settings.winningWithdrawalFeePercent !== undefined
       ? Number(state.settings.winningWithdrawalFeePercent)
       : 10;
-    const adminFee = reqAmt * (feePercent / 100);
-    const netAmount = Math.max(0, reqAmt - adminFee);
+    const adminFee = Number((reqAmt * (feePercent / 100)).toFixed(2));
+    const netAmount = Math.max(0, Number((reqAmt - adminFee).toFixed(2)));
 
     user.winningBalance = (user.winningBalance || 0) - reqAmt;
 
-    // Attempt Instant Hot Wallet Dispatch if BEP20 AND requested amount is within Auto-Payout Threshold (Default <= $20)
     let autoDispatched = false;
     let liveTxHash = 'Pending Approval';
-    let adminNotes = `Submitted - Game Winning Wallet Withdrawal (${feePercent}% Admin Fee)`;
+    let adminNotes = `Submitted - Game Winning ${selectedNetwork} Withdrawal (${feePercent}% Fee)`;
 
     const autoThreshold = state.settings.autoPayoutThresholdUSDT !== undefined
       ? Number(state.settings.autoPayoutThresholdUSDT)
-      : 20;
+      : 2000;
 
     const isEligibleForAutoPayout = reqAmt <= autoThreshold;
 
-    if (isEligibleForAutoPayout && (network === 'BEP20' || (!network && targetAddress.startsWith('0x')))) {
+    if (isEligibleForAutoPayout && selectedNetwork === 'BEP20' && targetAddress.startsWith('0x')) {
       try {
         const payoutRes = await executeBep20Payout(targetAddress, netAmount);
         if (payoutRes.success && payoutRes.txHash) {
           autoDispatched = true;
           liveTxHash = payoutRes.txHash;
-          adminNotes = `⚡ Instant Auto-Dispatched via Hot Wallet (BSC Tx: ${payoutRes.txHash})`;
+          adminNotes = `⚡ Auto-Dispatched (Tx: ${payoutRes.txHash})`;
         } else if (payoutRes.error) {
           adminNotes = `Queued for manual dispatch (${payoutRes.error})`;
         }
@@ -2624,7 +3469,9 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
         console.warn('Auto payout execution note:', err);
       }
     } else if (!isEligibleForAutoPayout) {
-      adminNotes = `High-Value Withdrawal ($${reqAmt.toFixed(2)} > $${autoThreshold} Auto-Limit) - Pending Admin Approval`;
+      adminNotes = `High-Value Withdrawal (₹${reqAmt.toFixed(2)} > ₹${autoThreshold} Limit) - Pending Admin Approval`;
+    } else {
+      adminNotes = `${selectedNetwork} Transfer (Net ₹${netAmount.toFixed(2)} INR) - Pending Admin Approval`;
     }
 
     const wd: WithdrawalRequest = {
@@ -2637,7 +3484,7 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
       gasFee: adminFee,
       netAmount,
       targetAddress: targetAddress.trim(),
-      network: network || 'BEP20',
+      network: selectedNetwork,
       walletType: 'winning',
       status: autoDispatched ? 'approved' : 'pending',
       createdAt: new Date().toISOString(),
@@ -2654,10 +3501,10 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
       amount: reqAmt,
       status: autoDispatched ? 'completed' : 'pending',
       txHash: liveTxHash,
-      network: network || 'BEP20',
+      network: selectedNetwork,
       notes: autoDispatched
-        ? `⚡ Instant Payout: ${netAmount.toFixed(2)} USDT sent to ${targetAddress.substring(0, 8)}... (Tx: ${liveTxHash})`
-        : `Withdrawal Request: ${reqAmt.toFixed(2)} USDT from Game Winning Wallet (10% Admin Fee: ${adminFee.toFixed(2)}, Net: ${netAmount.toFixed(2)})`,
+        ? `⚡ Instant Payout: ₹${netAmount.toFixed(2)} INR sent to ${targetAddress.substring(0, 12)}... (Ref: ${liveTxHash})`
+        : `Withdrawal Request: ₹${reqAmt.toFixed(2)} INR via ${selectedNetwork} (${feePercent}% Fee: ₹${adminFee.toFixed(2)}, Net Payout: ₹${netAmount.toFixed(2)})`,
       createdAt: new Date().toISOString(),
     });
 
@@ -2666,53 +3513,51 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
       success: true,
       autoDispatched,
       message: autoDispatched
-        ? `🚀 Instant Blockchain Payout Successful! ${netAmount.toFixed(2)} USDT sent to your wallet (Tx: ${liveTxHash})`
-        : 'Game Winning withdrawal request submitted successfully.',
+        ? `🚀 Instant Payout Successful! ₹${netAmount.toFixed(2)} INR sent (Ref: ${liveTxHash})`
+        : `Game Winning withdrawal of ₹${reqAmt.toFixed(2)} INR submitted via ${selectedNetwork}!`,
       request: wd,
     });
   }
 
-  // 5-LEVEL REFERRAL AGENCY COMMISSION WALLET WITHDRAWAL (CLEAN GAMING RULES)
+  // 5-LEVEL REFERRAL AGENCY COMMISSION WALLET WITHDRAWAL
   const minAgencyWithdrawal = state.settings.minWithdrawalAmount !== undefined
     ? Number(state.settings.minWithdrawalAmount)
-    : 10;
+    : 200;
   if (!reqAmt || reqAmt < minAgencyWithdrawal) {
-    return res.status(400).json({ error: `Minimum 5-Level Agency Commission withdrawal is $${minAgencyWithdrawal} USDT` });
+    return res.status(400).json({ error: `Minimum 5-Level Agency Commission withdrawal is ₹${minAgencyWithdrawal} INR` });
   }
   if (user.balance < reqAmt) {
-    return res.status(400).json({ error: `Insufficient commission balance ($${user.balance.toFixed(2)} USDT available)` });
+    return res.status(400).json({ error: `Insufficient commission balance (₹${user.balance.toFixed(2)} INR available)` });
   }
-  if (!targetAddress) return res.status(400).json({ error: 'Please provide target USDT wallet address' });
+  if (!targetAddress || String(targetAddress).trim().length < 5) {
+    return res.status(400).json({ error: 'Please provide a valid UPI ID or Bank Account details' });
+  }
 
-  // Dynamic Withdrawal Fee % from settings.withdrawalFeePercent (default 5%)
   const feePercent = state.settings.withdrawalFeePercent !== undefined
     ? Number(state.settings.withdrawalFeePercent)
-    : 5;
-  const gasFee = reqAmt * (feePercent / 100);
-  const upgradeDeduction = 0;
-  const netAmount = Math.max(0, reqAmt - gasFee);
+    : 10;
+  const gasFee = Number((reqAmt * (feePercent / 100)).toFixed(2));
+  const netAmount = Math.max(0, Number((reqAmt - gasFee).toFixed(2)));
 
-  // Deduct requested amount from available balance
   user.balance -= reqAmt;
 
-  // Attempt Instant Hot Wallet Dispatch if BEP20 AND requested amount is within Auto-Payout Threshold (Default <= $20)
   let autoDispatched = false;
   let liveTxHash = 'Pending Approval';
-  let adminNotes = `Submitted - 5-Level Agency Commission Withdrawal (${feePercent}% Fee)`;
+  let adminNotes = `Submitted - Agency Commission ${selectedNetwork} Withdrawal (${feePercent}% Fee)`;
 
   const autoThreshold = state.settings.autoPayoutThresholdUSDT !== undefined
     ? Number(state.settings.autoPayoutThresholdUSDT)
-    : 20;
+    : 2000;
 
   const isEligibleForAutoPayout = reqAmt <= autoThreshold;
 
-  if (isEligibleForAutoPayout && (network === 'BEP20' || (!network && targetAddress.startsWith('0x')))) {
+  if (isEligibleForAutoPayout && selectedNetwork === 'BEP20' && targetAddress.startsWith('0x')) {
     try {
       const payoutRes = await executeBep20Payout(targetAddress, netAmount);
       if (payoutRes.success && payoutRes.txHash) {
         autoDispatched = true;
         liveTxHash = payoutRes.txHash;
-        adminNotes = `⚡ Instant Auto-Dispatched via Hot Wallet (BSC Tx: ${payoutRes.txHash})`;
+        adminNotes = `⚡ Auto-Dispatched (Tx: ${payoutRes.txHash})`;
       } else if (payoutRes.error) {
         adminNotes = `Queued for manual dispatch (${payoutRes.error})`;
       }
@@ -2720,7 +3565,9 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
       console.warn('Auto payout execution note:', err);
     }
   } else if (!isEligibleForAutoPayout) {
-    adminNotes = `High-Value Withdrawal ($${reqAmt.toFixed(2)} > $${autoThreshold} Auto-Limit) - Pending Admin Approval`;
+    adminNotes = `High-Value Withdrawal (₹${reqAmt.toFixed(2)} > ₹${autoThreshold} Limit) - Pending Admin Approval`;
+  } else {
+    adminNotes = `${selectedNetwork} Transfer (Net ₹${netAmount.toFixed(2)} INR) - Pending Admin Approval`;
   }
 
   const wd: WithdrawalRequest = {
@@ -2733,7 +3580,7 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
     gasFee,
     netAmount,
     targetAddress: targetAddress.trim(),
-    network: network || 'BEP20',
+    network: selectedNetwork,
     walletType: 'mlm',
     status: autoDispatched ? 'approved' : 'pending',
     createdAt: new Date().toISOString(),
@@ -2750,10 +3597,10 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
     amount: reqAmt,
     status: autoDispatched ? 'completed' : 'pending',
     txHash: liveTxHash,
-    network,
+    network: selectedNetwork,
     notes: autoDispatched
-      ? `⚡ Instant Payout: Net ${netAmount.toFixed(2)} USDT sent to ${targetAddress.substring(0, 8)}... (Tx: ${liveTxHash})`
-      : `5-Level Agency Commission Withdrawal: ${reqAmt} USDT (${feePercent}% Fee: ${gasFee.toFixed(2)}, Net: ${netAmount.toFixed(2)})`,
+      ? `⚡ Instant Payout: Net ₹${netAmount.toFixed(2)} INR sent to ${targetAddress.substring(0, 12)}...`
+      : `5-Level Agency Commission Withdrawal: ₹${reqAmt.toFixed(2)} INR via ${selectedNetwork} (${feePercent}% Fee: ₹${gasFee.toFixed(2)}, Net: ₹${netAmount.toFixed(2)})`,
     createdAt: new Date().toISOString(),
   });
 
@@ -2762,8 +3609,8 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
     success: true,
     autoDispatched,
     message: autoDispatched
-      ? `🚀 Instant Blockchain Payout Successful! ${netAmount.toFixed(2)} USDT sent to your wallet (Tx: ${liveTxHash})`
-      : 'Withdrawal request submitted successfully.',
+      ? `🚀 Instant Payout Successful! ₹${netAmount.toFixed(2)} INR sent (Ref: ${liveTxHash})`
+      : `Withdrawal request for ₹${reqAmt.toFixed(2)} INR submitted via ${selectedNetwork}!`,
     withdrawalRequest: wd,
     user,
   });
@@ -2771,14 +3618,17 @@ app.post('/api/withdraw', async (req: Request, res: Response) => {
 
 // 8. Spin Wheel Game
 app.post('/api/spin', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('spinwheel')) {
+    return res.status(403).json({ error: 'Spin & Win Wheel is currently turned off by Admin.' });
+  }
   const user = getUserFromReq(req);
   if (!user) return res.status(400).json({ error: 'User not logged in' });
 
-  const ticketPrice = state.settings.spinTicketPrice !== undefined ? Number(state.settings.spinTicketPrice) : 1.0;
+  const ticketPrice = state.settings.spinTicketPrice !== undefined ? Number(state.settings.spinTicketPrice) : 50;
 
   if (user.spinCredits <= 0) {
     return res.status(400).json({
-      error: `No Spin Credits remaining! You have already used your 1 Free Signup Welcome Spin. Additional spin tickets cost $${ticketPrice.toFixed(2)} USDT each. Please buy spin tickets from your balance.`,
+      error: `No Spin Credits remaining! Additional spin tickets cost ₹${ticketPrice.toFixed(2)} INR each. Please buy spin tickets from your balance.`,
     });
   }
 
@@ -2823,7 +3673,7 @@ app.post('/api/spin', (req: Request, res: Response) => {
       type: 'spin_reward',
       amount: winningReward.amount,
       status: 'completed',
-      notes: `Daily Spin Wheel Reward: ${winningReward.label} ($${winningReward.amount} to Winning Wallet)`,
+      notes: `Daily Spin Wheel Reward: ${winningReward.label} (₹${winningReward.amount} INR to Winning Wallet)`,
       createdAt: new Date().toISOString(),
     });
   } else if (winningReward.label === 'Extra Spin') {
@@ -2844,43 +3694,17 @@ app.post('/api/spin/buy-ticket', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid quantity! Please select between 1 and 100 spin tickets.' });
   }
 
-  const ticketPrice = state.settings.spinTicketPrice !== undefined ? Number(state.settings.spinTicketPrice) : 1.0;
+  const ticketPrice = state.settings.spinTicketPrice !== undefined ? Number(state.settings.spinTicketPrice) : 50;
   const totalCost = qty * ticketPrice;
 
-  const depositBal = Number(user.depositBalance || 0);
-  const winningBal = Number(user.winningBalance || 0);
-  const availableForGaming = depositBal + winningBal;
-
-  if (availableForGaming < totalCost) {
+  if (!deductBetBalance(user, totalCost)) {
+    const availableForGaming = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
     return res.status(400).json({
-      error: `Insufficient deposit/gaming balance! Total cost for ${qty} spin ticket(s) is $${totalCost.toFixed(2)} USDT, but your Deposit & Gaming Balance is $${availableForGaming.toFixed(2)} USDT. Please deposit funds into your Deposit Wallet.`,
+      error: `Insufficient Main Wallet balance! Total cost for ${qty} spin ticket(s) is ₹${totalCost.toFixed(2)} INR, but your Main Wallet Balance is ₹${availableForGaming.toFixed(2)} INR. Please deposit funds.`,
     });
   }
 
-  // Deduct from Deposit Balance first, then Winning Balance if needed
-  let remainingCost = totalCost;
-  let deductedDeposit = 0;
-  let deductedWinning = 0;
-
-  if (depositBal >= remainingCost) {
-    user.depositBalance = depositBal - remainingCost;
-    deductedDeposit = remainingCost;
-    remainingCost = 0;
-  } else {
-    deductedDeposit = depositBal;
-    remainingCost -= depositBal;
-    user.depositBalance = 0;
-
-    user.winningBalance = winningBal - remainingCost;
-    deductedWinning = remainingCost;
-    remainingCost = 0;
-  }
-
   user.spinCredits = (user.spinCredits || 0) + qty;
-
-  const deductionDetails = deductedWinning > 0
-    ? `($${deductedDeposit.toFixed(2)} from Deposit Wallet + $${deductedWinning.toFixed(2)} from Winning Wallet)`
-    : `(from Deposit Wallet)`;
 
   state.transactions.unshift({
     id: `tx-spin-buy-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -2889,7 +3713,7 @@ app.post('/api/spin/buy-ticket', (req: Request, res: Response) => {
     type: 'admin_adjust' as any,
     amount: -totalCost,
     status: 'completed',
-    notes: `Purchased ${qty} Spin Ticket(s) ($${totalCost.toFixed(2)}) ${deductionDetails} @ $${ticketPrice.toFixed(2)}/spin`,
+    notes: `Purchased ${qty} Spin Ticket(s) (₹${totalCost.toFixed(2)} INR) from Main Wallet @ ₹${ticketPrice.toFixed(2)}/spin`,
     createdAt: new Date().toISOString(),
   });
 
@@ -2899,8 +3723,623 @@ app.post('/api/spin/buy-ticket', (req: Request, res: Response) => {
     message: `Successfully purchased ${qty} Spin Credit(s)!`,
     depositBalance: user.depositBalance,
     winningBalance: user.winningBalance,
+    balance: user.balance,
     spinCredits: user.spinCredits,
     user,
+  });
+});
+
+// 8bb. Play Wheel of Fortune (Evoplay style game)
+app.post('/api/spin/play', (req: Request, res: Response) => {
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not logged in' });
+
+  const { betAmount = 100, isHighRisk = false, useSpinCredit = false } = req.body;
+  const numBet = Math.max(1, Number(betAmount) || 100);
+
+  if (useSpinCredit) {
+    if ((user.spinCredits || 0) <= 0) {
+      return res.status(400).json({ error: 'No free spin credits available!' });
+    }
+    user.spinCredits -= 1;
+    user.lastSpinAt = new Date().toISOString();
+  } else {
+    // Deduct bet from user gaming balance
+    if (!deductBetBalance(user, numBet)) {
+      const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+      return res.status(400).json({
+        error: `Insufficient balance! Bet amount: ₹${numBet.toFixed(2)}. Available: ₹${totalAvail.toFixed(2)}`,
+      });
+    }
+  }
+
+  const rand = Math.random();
+  let selectedType: 'chest' | 'pink_diamond' | 'blue_diamond' | 'respin' = 'pink_diamond';
+  let sliceIndex = 1;
+  let baseMultiplier = 2;
+
+  if (isHighRisk) {
+    if (rand < 0.04) {
+      selectedType = 'chest';
+      sliceIndex = 0;
+      baseMultiplier = 40;
+    } else if (rand < 0.08) {
+      selectedType = 'respin';
+      sliceIndex = 8;
+      baseMultiplier = 1;
+    } else if (rand < 0.54) {
+      selectedType = 'pink_diamond';
+      const pinkSlices = [1, 3, 5, 7, 10, 12, 14];
+      sliceIndex = pinkSlices[Math.floor(Math.random() * pinkSlices.length)];
+      baseMultiplier = 3;
+    } else {
+      selectedType = 'blue_diamond';
+      const blueSlices = [2, 4, 6, 9, 11, 13, 15];
+      sliceIndex = blueSlices[Math.floor(Math.random() * blueSlices.length)];
+      baseMultiplier = 3;
+    }
+  } else {
+    if (rand < 0.07) {
+      selectedType = 'chest';
+      sliceIndex = 0;
+      baseMultiplier = 14;
+    } else if (rand < 0.12) {
+      selectedType = 'respin';
+      sliceIndex = 8;
+      baseMultiplier = 1;
+    } else if (rand < 0.56) {
+      selectedType = 'pink_diamond';
+      const pinkSlices = [1, 3, 5, 7, 10, 12, 14];
+      sliceIndex = pinkSlices[Math.floor(Math.random() * pinkSlices.length)];
+      baseMultiplier = 2;
+    } else {
+      selectedType = 'blue_diamond';
+      const blueSlices = [2, 4, 6, 9, 11, 13, 15];
+      sliceIndex = blueSlices[Math.floor(Math.random() * blueSlices.length)];
+      baseMultiplier = 2;
+    }
+  }
+
+  const innerMultiplier = Math.random() < 0.35 ? 2 : 1;
+  const isRespin = selectedType === 'respin';
+
+  let totalPayout = 0;
+  if (isRespin) {
+    user.spinCredits = (user.spinCredits || 0) + 1;
+  } else {
+    totalPayout = numBet * baseMultiplier * (innerMultiplier === 2 ? 1 : 1);
+  }
+
+  if (totalPayout > 0) {
+    user.winningBalance = (user.winningBalance || 0) + totalPayout;
+    user.winningEarned = (user.winningEarned || 0) + totalPayout;
+    user.spinEarned = (user.spinEarned || 0) + totalPayout;
+    user.totalBetTurnover = (user.totalBetTurnover || 0) + numBet;
+
+    state.transactions.unshift({
+      id: `tx-wheel-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'spin_reward',
+      amount: totalPayout,
+      status: 'completed',
+      notes: `🎡 Wheel Win: ${selectedType === 'chest' ? 'Treasure Chest 👑' : selectedType === 'pink_diamond' ? 'Pink Diamond 💎' : 'Blue Diamond 🔷'} (${baseMultiplier}X) - Payout: ₹${totalPayout.toFixed(2)}`,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  saveStore();
+  return res.json({
+    success: true,
+    sliceIndex,
+    type: selectedType,
+    multiplier: baseMultiplier,
+    innerMultiplier,
+    isRespin,
+    betAmount: numBet,
+    payout: totalPayout,
+    netWin: totalPayout - (useSpinCredit ? 0 : numBet),
+    spinCredits: user.spinCredits,
+    depositBalance: user.depositBalance,
+    winningBalance: user.winningBalance,
+    user,
+  });
+});
+
+// 8cc. 777 Vegas Slot Machine Endpoint
+app.post('/api/slot777/spin', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('slot777')) {
+    return res.status(403).json({ error: '777 Vegas Slots is currently turned off by Admin.' });
+  }
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not logged in' });
+
+  const { betAmount = 100 } = req.body;
+  const numBet = Math.max(10, Number(betAmount) || 100);
+
+  if (!deductBetBalance(user, numBet)) {
+    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+    return res.status(400).json({
+      error: `Insufficient balance! Bet amount: ₹${numBet.toFixed(2)}. Available: ₹${totalAvail.toFixed(2)}`,
+    });
+  }
+
+  // Symbol pool with realistic weights:
+  // seven (7️⃣): 7%
+  // diamond (💎): 11%
+  // bell (🔔): 14%
+  // bar (🍫): 16%
+  // cherry (🍒): 20%
+  // lemon (🍋): 16%
+  // clover (🍀): 16%
+  const symbols = ['seven', 'diamond', 'bell', 'bar', 'cherry', 'lemon', 'clover'];
+  const weights = [7, 11, 14, 16, 20, 16, 16];
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+  const pickSymbol = () => {
+    let r = Math.random() * totalWeight;
+    for (let i = 0; i < symbols.length; i++) {
+      if (r < weights[i]) return symbols[i];
+      r -= weights[i];
+    }
+    return symbols[symbols.length - 1];
+  };
+
+  const reel1 = pickSymbol();
+  const reel2 = pickSymbol();
+  const reel3 = pickSymbol();
+  const reels = [reel1, reel2, reel3];
+
+  let multiplier = 0;
+  let winTitle = '';
+
+  // Check 3-of-a-kind jackpot
+  if (reel1 === reel2 && reel2 === reel3) {
+    if (reel1 === 'seven') {
+      multiplier = 50;
+      winTitle = '🔥 MEGA 777 JACKPOT! 50X';
+    } else if (reel1 === 'diamond') {
+      multiplier = 25;
+      winTitle = '💎 TRIPLE DIAMOND WIN! 25X';
+    } else if (reel1 === 'bell') {
+      multiplier = 15;
+      winTitle = '🔔 GOLDEN BELLS! 15X';
+    } else if (reel1 === 'bar') {
+      multiplier = 10;
+      winTitle = '🍫 TRIPLE BAR WIN! 10X';
+    } else if (reel1 === 'cherry') {
+      multiplier = 8;
+      winTitle = '🍒 CHERRY BONANZA! 8X';
+    } else if (reel1 === 'lemon') {
+      multiplier = 5;
+      winTitle = '🍋 LEMON SPLASH! 5X';
+    } else {
+      multiplier = 3;
+      winTitle = '🍀 LUCKY CLOVER! 3X';
+    }
+  } else if (
+    (reel1 === reel2 && (reel1 === 'seven' || reel1 === 'diamond' || reel1 === 'bell')) ||
+    (reel2 === reel3 && (reel2 === 'seven' || reel2 === 'diamond' || reel2 === 'bell')) ||
+    (reel1 === reel3 && (reel1 === 'seven' || reel1 === 'diamond' || reel1 === 'bell'))
+  ) {
+    // 2 high value matches
+    const matched = reel1 === reel2 ? reel1 : reel2 === reel3 ? reel2 : reel1;
+    if (matched === 'seven') {
+      multiplier = 4;
+      winTitle = '77 DOUBLE SEVEN! 4X';
+    } else if (matched === 'diamond') {
+      multiplier = 3;
+      winTitle = 'DOUBLE DIAMOND! 3X';
+    } else {
+      multiplier = 2;
+      winTitle = 'DOUBLE BELLS! 2X';
+    }
+  } else if (reels.filter((s) => s === 'cherry').length === 2) {
+    multiplier = 2;
+    winTitle = 'DOUBLE CHERRY! 2X';
+  } else if (reels.filter((s) => s === 'cherry').length === 1) {
+    multiplier = 0.5;
+    winTitle = 'SINGLE CHERRY! 0.5X';
+  }
+
+  const payout = numBet * multiplier;
+  if (payout > 0) {
+    user.winningBalance = (user.winningBalance || 0) + payout;
+    user.winningEarned = (user.winningEarned || 0) + payout;
+    user.totalBetTurnover = (user.totalBetTurnover || 0) + numBet;
+
+    state.transactions.unshift({
+      id: `tx-slot777-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'spin_reward',
+      amount: payout,
+      status: 'completed',
+      notes: `🎰 777 Slot Win: [${reels.join('-')}] ${winTitle} - Won ₹${payout.toFixed(2)}`,
+      createdAt: new Date().toISOString(),
+    });
+  } else {
+    user.totalBetTurnover = (user.totalBetTurnover || 0) + numBet;
+  }
+
+  saveStore();
+  return res.json({
+    success: true,
+    reels,
+    multiplier,
+    winTitle,
+    betAmount: numBet,
+    payout,
+    netWin: payout - numBet,
+    depositBalance: user.depositBalance,
+    winningBalance: user.winningBalance,
+    user,
+  });
+});
+
+// 8cd. 13-Card Indian Rummy Game Endpoint
+app.post('/api/rummy/play', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('rummy')) {
+    return res.status(403).json({ error: 'Indian Rummy is currently turned off by Admin.' });
+  }
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not logged in' });
+
+  const { stakeAmount = 100, action = 'declare', isPureWin = true } = req.body;
+  const numStake = Math.max(10, Number(stakeAmount) || 100);
+
+  if (!deductBetBalance(user, numStake)) {
+    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+    return res.status(400).json({
+      error: `Insufficient balance! Table Stake: ₹${numStake.toFixed(2)}. Available: ₹${totalAvail.toFixed(2)}`,
+    });
+  }
+
+  // 13-Card Rummy Table rules:
+  // If player makes valid declaration (Pure sequence + Second sequence + Sets):
+  // Table Pot = 2 Players * Stake = 2 * numStake
+  // Platform fee (House margin): 5%
+  // Net player win = 1.95 * numStake
+  const houseMarginPercent = 5;
+  const isWinner = isPureWin !== false;
+  let payout = 0;
+
+  if (isWinner) {
+    const grossPot = numStake * 2;
+    payout = grossPot * (1 - houseMarginPercent / 100);
+    user.winningBalance = (user.winningBalance || 0) + payout;
+    user.winningEarned = (user.winningEarned || 0) + payout;
+    user.totalBetTurnover = (user.totalBetTurnover || 0) + numStake;
+
+    state.transactions.unshift({
+      id: `tx-rummy-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'spin_reward',
+      amount: payout,
+      status: 'completed',
+      notes: `🃏 Rummy Table Winner! 13-Card Pure Show (Pot ₹${payout.toFixed(2)} credited)`,
+      createdAt: new Date().toISOString(),
+    });
+  } else {
+    user.totalBetTurnover = (user.totalBetTurnover || 0) + numStake;
+  }
+
+  saveStore();
+  return res.json({
+    success: true,
+    isWinner,
+    stakeAmount: numStake,
+    payout,
+    netWin: isWinner ? payout - numStake : -numStake,
+    depositBalance: user.depositBalance,
+    winningBalance: user.winningBalance,
+    user,
+  });
+});
+
+// 8ce. Chicken Road 3D Crash/Cross Game Endpoints
+interface ChickenLaneSpot {
+  lane: number; // 0: Left, 1: Center, 2: Right
+  isTrap: boolean;
+  multiplier: number;
+}
+
+interface ChickenRoadState {
+  userId: string;
+  betAmount: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  currentStep: number;
+  totalSteps: number;
+  lanes: ChickenLaneSpot[][]; // 6 rows, each has 3 lanes [Left, Center, Right]
+  currentMultiplier: number;
+  status: 'active' | 'roasted' | 'cashed_out';
+}
+
+const activeChickenRounds = new Map<string, ChickenRoadState>();
+
+const MULTIPLIER_TABLE = {
+  easy: [
+    [1.3, 1.5, 0.2], // row 1
+    [1.8, 0.2, 2.2], // row 2
+    [0.1, 2.5, 2.8], // row 3
+    [3.2, 3.5, 0.1], // row 4
+    [4.2, 0.1, 4.8], // row 5
+    [6.0, 7.5, 0.1], // row 6 (before golden egg)
+  ],
+  medium: [
+    [1.5, 2.0, 0.1],
+    [0.2, 2.5, 3.0],
+    [3.5, 0.1, 4.0],
+    [0.1, 5.0, 5.5],
+    [7.0, 0.1, 8.0],
+    [10.0, 12.0, 0.1],
+  ],
+  hard: [
+    [2.0, 0.1, 0.1],
+    [0.1, 3.5, 0.1],
+    [0.1, 0.1, 6.0],
+    [9.0, 0.1, 0.1],
+    [0.1, 15.0, 0.1],
+    [25.0, 0.1, 0.1],
+  ],
+};
+
+app.post('/api/chickenroad/start', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('chickenroad')) {
+    return res.status(403).json({ error: 'Chicken Road is currently turned off by Admin.' });
+  }
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not logged in' });
+
+  const { betAmount = 100, difficulty = 'medium' } = req.body;
+  const numBet = Math.max(10, Number(betAmount) || 100);
+  const diff = (['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium') as 'easy' | 'medium' | 'hard';
+
+  if (!deductBetBalance(user, numBet)) {
+    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+    return res.status(400).json({
+      error: `Insufficient balance! Bet amount: ₹${numBet.toFixed(2)}. Available: ₹${totalAvail.toFixed(2)}`,
+    });
+  }
+
+  const totalSteps = 6;
+  const rawTable = MULTIPLIER_TABLE[diff];
+  const lanes: ChickenLaneSpot[][] = [];
+
+  for (let r = 0; r < totalSteps; r++) {
+    const rowValues = [...rawTable[r]];
+    // Randomly shuffle lanes [0, 1, 2] so red trap is unpredictably placed
+    const shuffled: ChickenLaneSpot[] = [];
+    const availableLanes = [0, 1, 2].sort(() => Math.random() - 0.5);
+
+    availableLanes.forEach((laneIdx, i) => {
+      const mult = rowValues[i];
+      const isTrap = mult <= 0.3;
+      shuffled.push({
+        lane: laneIdx,
+        isTrap,
+        multiplier: mult,
+      });
+    });
+
+    shuffled.sort((a, b) => a.lane - b.lane);
+    lanes.push(shuffled);
+  }
+
+  const round: ChickenRoadState = {
+    userId: user.id,
+    betAmount: numBet,
+    difficulty: diff,
+    currentStep: 0,
+    totalSteps,
+    lanes,
+    currentMultiplier: 1.0,
+    status: 'active',
+  };
+
+  activeChickenRounds.set(user.id, round);
+  user.totalBetTurnover = (user.totalBetTurnover || 0) + numBet;
+
+  saveStore();
+  return res.json({
+    success: true,
+    roundId: `cr-${Date.now()}`,
+    currentStep: 0,
+    totalSteps,
+    difficulty: diff,
+    betAmount: numBet,
+    lanes: lanes.map((row) => row.map((spot) => ({ lane: spot.lane, multiplier: spot.multiplier, isTrap: spot.isTrap }))),
+    depositBalance: user.depositBalance,
+    winningBalance: user.winningBalance,
+    user,
+  });
+});
+
+app.post('/api/chickenroad/step', (req: Request, res: Response) => {
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not logged in' });
+
+  const round = activeChickenRounds.get(user.id);
+  if (!round || round.status !== 'active') {
+    return res.status(400).json({ error: 'No active Chicken Road round. Start a new game!' });
+  }
+
+  const { laneIndex } = req.body;
+  const chosenLane = laneIndex !== undefined ? Number(laneIndex) : 1; // default center
+
+  const currentRowSpots = round.lanes[round.currentStep];
+  if (!currentRowSpots) {
+    return res.status(400).json({ error: 'Invalid step' });
+  }
+
+  const chosenSpot = currentRowSpots.find((s) => s.lane === chosenLane) || currentRowSpots[0];
+
+  if (chosenSpot.isTrap) {
+    round.status = 'roasted';
+    activeChickenRounds.delete(user.id);
+
+    return res.json({
+      success: true,
+      isTrap: true,
+      roasted: true,
+      step: round.currentStep + 1,
+      multiplier: chosenSpot.multiplier,
+      chosenLane,
+      message: '🍗 Oh no! Chicken hit a trap car/red egg!',
+    });
+  }
+
+  // Safe green egg!
+  round.currentStep += 1;
+  round.currentMultiplier = chosenSpot.multiplier;
+  const cashoutAmount = parseFloat((round.betAmount * chosenSpot.multiplier).toFixed(2));
+  const reachedFinish = round.currentStep >= round.totalSteps;
+
+  if (reachedFinish) {
+    // Reached the Finish line with the Giant Golden 10X Egg!
+    const finishMultiplier = parseFloat((chosenSpot.multiplier * 2.0).toFixed(2)); // Extra Finish boost
+    const finalPrize = parseFloat((round.betAmount * finishMultiplier).toFixed(2));
+
+    round.status = 'cashed_out';
+    user.winningBalance = (user.winningBalance || 0) + finalPrize;
+    user.winningEarned = (user.winningEarned || 0) + finalPrize;
+
+    state.transactions.unshift({
+      id: `tx-chicken-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'spin_reward',
+      amount: finalPrize,
+      status: 'completed',
+      notes: `🐔 Chicken Road 10X GOLDEN EGG Finish! Won ₹${finalPrize.toFixed(2)} (${finishMultiplier}X)`,
+      createdAt: new Date().toISOString(),
+    });
+
+    activeChickenRounds.delete(user.id);
+    saveStore();
+
+    return res.json({
+      success: true,
+      isTrap: false,
+      roasted: false,
+      currentStep: round.currentStep,
+      multiplier: finishMultiplier,
+      cashoutAmount: finalPrize,
+      reachedFinish: true,
+      chosenLane,
+      user,
+    });
+  }
+
+  return res.json({
+    success: true,
+    isTrap: false,
+    roasted: false,
+    currentStep: round.currentStep,
+    multiplier: chosenSpot.multiplier,
+    cashoutAmount,
+    reachedFinish: false,
+    chosenLane,
+  });
+});
+
+app.post('/api/chickenroad/cashout', (req: Request, res: Response) => {
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not logged in' });
+
+  const round = activeChickenRounds.get(user.id);
+  const clientStep = Math.max(0, Math.min(8, Number(req.body?.step || 0)));
+  const clientMult = Math.max(1.0, Math.min(60, Number(req.body?.multiplier || 0)));
+
+  if (!round || round.status !== 'active') {
+    return res.status(400).json({ error: 'Cannot cash out. No active progress!' });
+  }
+
+  const effectiveStep = round.currentStep > 0 ? round.currentStep : clientStep;
+  if (effectiveStep === 0) {
+    return res.status(400).json({ error: 'Cannot cash out. Cross at least 1 lane first!' });
+  }
+
+  const multiplier = round.currentStep > 0 ? (round.currentMultiplier || 1.0) : (clientMult || 1.0);
+  round.currentStep = effectiveStep;
+  round.currentMultiplier = multiplier;
+  const payout = parseFloat((round.betAmount * multiplier).toFixed(2));
+
+  round.status = 'cashed_out';
+  user.winningBalance = (user.winningBalance || 0) + payout;
+  user.winningEarned = (user.winningEarned || 0) + payout;
+
+  state.transactions.unshift({
+    id: `tx-chicken-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'spin_reward',
+    amount: payout,
+    status: 'completed',
+    notes: `🐔 Chicken Road Cash Out: Lane ${round.currentStep}/${round.totalSteps} (${multiplier}X) - Won ₹${payout.toFixed(2)}`,
+    createdAt: new Date().toISOString(),
+  });
+
+  activeChickenRounds.delete(user.id);
+  saveStore();
+
+  return res.json({
+    success: true,
+    payout,
+    multiplier,
+    currentStep: round.currentStep,
+    depositBalance: user.depositBalance,
+    winningBalance: user.winningBalance,
+    user,
+  });
+});
+
+// 8cf. Fantasy League Contest Entry / Investment Endpoint
+app.post('/api/fantasy/join', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('cricket')) {
+    return res.status(403).json({ error: 'Cricket Fantasy is currently turned off by Admin.' });
+  }
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'User not logged in' });
+
+  const { matchId, matchTitle, contestId, contestName, entryFee = 49, teamName } = req.body;
+  const numFee = Math.max(0, Number(entryFee) || 0);
+
+  if (numFee > 0 && !deductBetBalance(user, numFee)) {
+    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+    return res.status(400).json({
+      error: `Insufficient balance! Contest Entry Fee: ₹${numFee.toFixed(2)}. Available Wallet Balance: ₹${totalAvail.toFixed(2)}. Please deposit funds to join!`,
+      availableBalance: totalAvail,
+      requiredFee: numFee,
+    });
+  }
+
+  if (numFee > 0) {
+    user.totalBetTurnover = (user.totalBetTurnover || 0) + numFee;
+    state.transactions.unshift({
+      id: `tx-fantasy-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'fantasy_entry',
+      amount: numFee,
+      status: 'completed',
+      notes: `🏏 Fantasy Contest Entry: ${matchTitle || 'Match'} (${contestName || 'Contest'}) - Entry Fee ₹${numFee} debited`,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  saveStore();
+  return res.json({
+    success: true,
+    message: `Successfully joined ${contestName}! ₹${numFee} invested.`,
+    matchId,
+    contestId,
+    entryFee: numFee,
+    user,
+    depositBalance: user.depositBalance,
+    winningBalance: user.winningBalance,
+    balance: user.balance,
   });
 });
 
@@ -3026,8 +4465,8 @@ app.get('/api/tournament/daily', (req: Request, res: Response) => {
         userId: u.id,
         userNodeId: u.nodeId,
         userName: u.name,
-        totalWagered: Math.min(u.totalBetTurnover || 0, 500),
-        betsCount: Math.max(1, Math.floor((u.totalBetTurnover || 0) / 10)),
+        totalWagered: Math.min(u.totalBetTurnover || 0, 5000),
+        betsCount: Math.max(1, Math.floor((u.totalBetTurnover || 0) / 100)),
         totalWon: u.winningEarned || 0,
       };
     }
@@ -3038,12 +4477,12 @@ app.get('/api/tournament/daily', (req: Request, res: Response) => {
   const totalBetsPlaced = participantList.reduce((sum, p) => sum + p.betsCount, 0);
   const participantCount = participantList.length;
 
-  // Dynamic Pot Calculation from system settings
+  // Dynamic Pot Calculation from system settings (INR)
   const tConfig = state.settings.dailyTournament || {
     enabled: true,
-    basePot: 250.0,
+    basePot: 25000.0,
     turnoverContributionPercent: 5.0,
-    minWagerToQualify: 10.0,
+    minWagerToQualify: 500.0,
     title: 'Daily Top Bettor Championship 🏆',
     prizeDistribution: [
       { rank: 1, percent: 40 },
@@ -3059,7 +4498,7 @@ app.get('/api/tournament/daily', (req: Request, res: Response) => {
     ],
   };
 
-  const basePot = typeof tConfig.basePot === 'number' ? tConfig.basePot : parseFloat(tConfig.basePot as any) || 250.0;
+  const basePot = typeof tConfig.basePot === 'number' ? tConfig.basePot : parseFloat(tConfig.basePot as any) || 25000.0;
   const turnoverPercent = typeof tConfig.turnoverContributionPercent === 'number' ? tConfig.turnoverContributionPercent : parseFloat(tConfig.turnoverContributionPercent as any) || 5.0;
   const turnoverContribution = totalWagerVolume * (turnoverPercent / 100);
   const totalPot = parseFloat((basePot + turnoverContribution).toFixed(2));
@@ -3196,7 +4635,7 @@ app.post('/api/admin/tournament/distribute', (req: Request, res: Response) => {
 
     state.users.forEach((u) => {
       if ((u.totalBetTurnover || 0) > 0 && !userWagers[u.id]) {
-        userWagers[u.id] = { userId: u.id, userNodeId: u.nodeId, userName: u.name, totalWagered: Math.min(u.totalBetTurnover || 0, 500) };
+        userWagers[u.id] = { userId: u.id, userNodeId: u.nodeId, userName: u.name, totalWagered: Math.min(u.totalBetTurnover || 0, 5000) };
       }
     });
 
@@ -3204,7 +4643,7 @@ app.post('/api/admin/tournament/distribute', (req: Request, res: Response) => {
     const totalWagerVolume = participantList.reduce((sum, p) => sum + p.totalWagered, 0);
 
     const tConfig = state.settings.dailyTournament || defaultSettings.dailyTournament!;
-    const basePot = typeof tConfig.basePot === 'number' ? tConfig.basePot : parseFloat(tConfig.basePot as any) || 250.0;
+    const basePot = typeof tConfig.basePot === 'number' ? tConfig.basePot : parseFloat(tConfig.basePot as any) || 25000.0;
     const turnoverPercent = typeof tConfig.turnoverContributionPercent === 'number' ? tConfig.turnoverContributionPercent : parseFloat(tConfig.turnoverContributionPercent as any) || 5.0;
     const minWager = typeof tConfig.minWagerToQualify === 'number' ? tConfig.minWagerToQualify : parseFloat(tConfig.minWagerToQualify as any) || 0;
     const totalPot = parseFloat((basePot + (totalWagerVolume * (turnoverPercent / 100))).toFixed(2));
@@ -3247,18 +4686,18 @@ app.post('/api/admin/tournament/distribute', (req: Request, res: Response) => {
                 type: 'winning_reward' as any,
                 amount: prizeAmt,
                 status: 'completed',
-                notes: `🏆 Daily Top Bettor Tournament #${tier.rank} Place Reward (${tier.percent}% of $${totalPot} Pot: $${prizeAmt.toFixed(2)} USDT credited to Game Winning Wallet)`,
-                createdAt: new Date().toISOString(),
-              });
+              notes: `🏆 Daily Top Bettor Tournament #${tier.rank} Place Reward (${tier.percent}% of ₹${totalPot} Pot: ₹${prizeAmt.toFixed(2)} INR credited to Game Winning Wallet)`,
+              createdAt: new Date().toISOString(),
+            });
 
-              payoutResults.push({
-                rank: tier.rank,
-                userId: user.id,
-                nodeId: user.nodeId,
-                name: user.name,
-                wagered: participant.totalWagered,
-                prizeAmount: prizeAmt,
-              });
+            payoutResults.push({
+              rank: tier.rank,
+              userId: user.id,
+              nodeId: user.nodeId,
+              name: user.name,
+              wagered: participant.totalWagered,
+              prizeAmount: prizeAmt,
+            });
 
               totalDistributed += prizeAmt;
             }
@@ -3267,14 +4706,14 @@ app.post('/api/admin/tournament/distribute', (req: Request, res: Response) => {
       }
     });
 
-    saveStore();
+  saveStore();
 
-    res.json({
-      success: true,
-      message: `Successfully distributed $${totalDistributed.toFixed(2)} USDT to ${payoutResults.length} tournament champions!`,
-      totalDistributed,
-      winners: payoutResults,
-    });
+  res.json({
+    success: true,
+    message: `Successfully distributed ₹${totalDistributed.toFixed(2)} INR to ${payoutResults.length} tournament champions!`,
+    totalDistributed,
+    winners: payoutResults,
+  });
   } catch (err: any) {
     console.error('Error distributing tournament rewards:', err);
     res.status(500).json({ error: err.message || 'Failed to distribute tournament rewards' });
@@ -3335,10 +4774,10 @@ function checkRankQualification(user: User, rank: RankConfig) {
   const isQualified = isSelfPkgOk && isDirectsOk && isSamePkgCountOk && isTeamVolOk;
 
   const reasons: string[] = [];
-  if (!isSelfPkgOk) reasons.push(`Requires active package of $${minSelfPkgPrice}+ (Current: $${userSelfPkgPrice})`);
+  if (!isSelfPkgOk) reasons.push(`Requires active package of ₹${minSelfPkgPrice.toLocaleString('en-IN')}+ (Current: ₹${userSelfPkgPrice.toLocaleString('en-IN')})`);
   if (!isDirectsOk) reasons.push(`Requires ${reqDirects} direct sponsors (Current: ${directsCount})`);
-  if (!isSamePkgCountOk) reasons.push(`Requires ${reqSamePkgCount} team members with $${reqPkgPriceThreshold}+ package up to Level ${maxDepth || 'All'} (Current: ${samePkgCount})`);
-  if (!isTeamVolOk) reasons.push(`Requires $${reqVol.toLocaleString()} team volume (Current: $${user.teamVolume.toLocaleString()})`);
+  if (!isSamePkgCountOk) reasons.push(`Requires ${reqSamePkgCount} team members with ₹${reqPkgPriceThreshold.toLocaleString('en-IN')}+ package up to Level ${maxDepth || 'All'} (Current: ${samePkgCount})`);
+  if (!isTeamVolOk) reasons.push(`Requires ₹${reqVol.toLocaleString('en-IN')} team volume (Current: ₹${user.teamVolume.toLocaleString('en-IN')})`);
 
   return {
     isQualified,
@@ -3385,7 +4824,7 @@ app.post('/api/rank/claim', (req: Request, res: Response) => {
     type: 'rank_bonus',
     amount: rank.bonusUsdt,
     status: 'completed',
-    notes: `Leadership Rank Reward Claimed: ${rank.name} (${rank.rewardTitle || `$${rank.bonusUsdt} USDT`})`,
+    notes: `Leadership Rank Reward Claimed: ${rank.name} (${rank.rewardTitle || `₹${rank.bonusUsdt.toLocaleString('en-IN')} INR`})`,
     createdAt: new Date().toISOString(),
   });
 
@@ -3399,25 +4838,25 @@ function ensureLuckyDrawPrizes() {
   }
 
   if (state.luckyDraw.ticketPrice === undefined || state.luckyDraw.ticketPrice === null || isNaN(Number(state.luckyDraw.ticketPrice))) {
-    state.luckyDraw.ticketPrice = state.settings?.luckyDraw?.ticketPrice !== undefined ? Number(state.settings.luckyDraw.ticketPrice) : 5;
+    state.luckyDraw.ticketPrice = state.settings?.luckyDraw?.ticketPrice !== undefined ? Number(state.settings.luckyDraw.ticketPrice) : 100;
   }
   if (state.luckyDraw.prizeAmount === undefined || state.luckyDraw.prizeAmount === null || isNaN(Number(state.luckyDraw.prizeAmount))) {
-    state.luckyDraw.prizeAmount = state.settings?.luckyDraw?.prizeAmount !== undefined ? Number(state.settings.luckyDraw.prizeAmount) : 250;
+    state.luckyDraw.prizeAmount = state.settings?.luckyDraw?.prizeAmount !== undefined ? Number(state.settings.luckyDraw.prizeAmount) : 25000;
   }
   if (state.luckyDraw.secondPrizeAmount === undefined || state.luckyDraw.secondPrizeAmount === null || isNaN(Number(state.luckyDraw.secondPrizeAmount))) {
-    state.luckyDraw.secondPrizeAmount = state.settings?.luckyDraw?.secondPrizeAmount !== undefined ? Number(state.settings.luckyDraw.secondPrizeAmount) : 100;
+    state.luckyDraw.secondPrizeAmount = state.settings?.luckyDraw?.secondPrizeAmount !== undefined ? Number(state.settings.luckyDraw.secondPrizeAmount) : 10000;
   }
   if (state.luckyDraw.thirdPrizeAmount === undefined || state.luckyDraw.thirdPrizeAmount === null || isNaN(Number(state.luckyDraw.thirdPrizeAmount))) {
-    state.luckyDraw.thirdPrizeAmount = state.settings?.luckyDraw?.thirdPrizeAmount !== undefined ? Number(state.settings.luckyDraw.thirdPrizeAmount) : 50;
+    state.luckyDraw.thirdPrizeAmount = state.settings?.luckyDraw?.thirdPrizeAmount !== undefined ? Number(state.settings.luckyDraw.thirdPrizeAmount) : 5000;
   }
   if (state.luckyDraw.fourthPrizeAmount === undefined || state.luckyDraw.fourthPrizeAmount === null || isNaN(Number(state.luckyDraw.fourthPrizeAmount))) {
-    state.luckyDraw.fourthPrizeAmount = state.settings?.luckyDraw?.fourthPrizeAmount !== undefined ? Number(state.settings.luckyDraw.fourthPrizeAmount) : 25;
+    state.luckyDraw.fourthPrizeAmount = state.settings?.luckyDraw?.fourthPrizeAmount !== undefined ? Number(state.settings.luckyDraw.fourthPrizeAmount) : 2500;
   }
   if (state.luckyDraw.fifthPrizeAmount === undefined || state.luckyDraw.fifthPrizeAmount === null || isNaN(Number(state.luckyDraw.fifthPrizeAmount))) {
-    state.luckyDraw.fifthPrizeAmount = state.settings?.luckyDraw?.fifthPrizeAmount !== undefined ? Number(state.settings.luckyDraw.fifthPrizeAmount) : 15;
+    state.luckyDraw.fifthPrizeAmount = state.settings?.luckyDraw?.fifthPrizeAmount !== undefined ? Number(state.settings.luckyDraw.fifthPrizeAmount) : 1500;
   }
   if (state.luckyDraw.guaranteedPrizeAmount === undefined || state.luckyDraw.guaranteedPrizeAmount === null || isNaN(Number(state.luckyDraw.guaranteedPrizeAmount))) {
-    state.luckyDraw.guaranteedPrizeAmount = state.settings?.luckyDraw?.guaranteedPrizeAmount !== undefined ? Number(state.settings.luckyDraw.guaranteedPrizeAmount) : 5;
+    state.luckyDraw.guaranteedPrizeAmount = state.settings?.luckyDraw?.guaranteedPrizeAmount !== undefined ? Number(state.settings.luckyDraw.guaranteedPrizeAmount) : 500;
   }
   if (state.luckyDraw.currentDrawStep === undefined) state.luckyDraw.currentDrawStep = 0;
   if (!state.luckyDraw.drawnPrizes) state.luckyDraw.drawnPrizes = [];
@@ -3474,6 +4913,9 @@ function getReservedLast5Digits(): string[] {
 }
 
 app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('luckydraw')) {
+    return res.status(403).json({ error: 'Lucky Draw is currently turned off by Admin.' });
+  }
   const { userId, quantity, customNumbers } = req.body;
   const qty = parseInt(quantity) || 1;
   const reqUserId = userId || (req.headers['x-user-id'] as string);
@@ -3485,7 +4927,7 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
   if (!user) return res.status(400).json({ error: 'User not found' });
   if (!state.luckyDraw) state.luckyDraw = initialLuckyDraw;
 
-  const ticketPrice = state.luckyDraw.ticketPrice ?? 5;
+  const ticketPrice = state.luckyDraw.ticketPrice ?? 100;
   const totalCost = ticketPrice * qty;
 
   const reservedLast5 = getReservedLast5Digits();
@@ -3512,7 +4954,7 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
   if (!deductBetBalance(user, totalCost)) {
     const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
     return res.status(400).json({
-      error: `Insufficient balance! Total cost: $${totalCost} USDT. (Available: $${totalAvail.toFixed(2)} USDT)`,
+      error: `Insufficient balance! Total cost: ₹${totalCost} INR. (Available: ₹${totalAvail.toFixed(2)} INR)`,
     });
   }
 
@@ -3553,7 +4995,7 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
     type: 'product_purchase',
     amount: totalCost,
     status: 'completed',
-    notes: `Purchased ${qty} Lucky Draw Coupon(s) ($${ticketPrice} USDT each): ${newTickets.map((t) => '#' + t.ticketNumber).join(', ')}`,
+    notes: `Purchased ${qty} Lucky Draw Coupon(s) (₹${ticketPrice} INR each): ${newTickets.map((t) => '#' + t.ticketNumber).join(', ')}`,
     createdAt: new Date().toISOString(),
   });
 
@@ -3561,7 +5003,7 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
   if (user.sponsorId) {
     const sponsor = state.users.find((u) => u.id === user.sponsorId || u.nodeId === user.sponsorId);
     if (sponsor) {
-      const directSellerBonus = totalCost * 0.10; // 10% Direct Sales Commission for Lottery
+      const directSellerBonus = Number((totalCost * 0.10).toFixed(2)); // 10% Direct Sales Commission for Lottery
       if (directSellerBonus > 0) {
         sponsor.balance = (sponsor.balance || 0) + directSellerBonus;
         sponsor.totalEarned = (sponsor.totalEarned || 0) + directSellerBonus;
@@ -3573,7 +5015,7 @@ app.post('/api/luckydraw/buy', (req: Request, res: Response) => {
           type: 'lottery_direct_seller_bonus' as any,
           amount: directSellerBonus,
           status: 'completed',
-          notes: `🎯 10% Direct Seller Bonus ($${directSellerBonus.toFixed(2)}) for sponsoring ${user.name}'s Lucky Draw Lottery Ticket purchase ($${totalCost.toFixed(2)})`,
+          notes: `🎯 10% Direct Seller Bonus (₹${directSellerBonus.toFixed(2)} INR) for sponsoring ${user.name}'s Lucky Draw Lottery Ticket purchase (₹${totalCost.toFixed(2)})`,
           createdAt: new Date().toISOString(),
         });
       }
@@ -3717,12 +5159,12 @@ app.get('/api/referral/agency-stats', (req: Request, res: Response) => {
 
   const uniqueActivePlayersTodayCount = new Set(todayActivePlayers).size;
 
-  // VIP Tiers Matrix
+  // VIP Tiers Matrix (Pure INR)
   const vipTiers = [
-    { level: 'VIP 1 Agent', minPlayers: 5, dailyBonusUsdt: 2.0, dailyBonusInr: 150 },
-    { level: 'VIP 2 Agent', minPlayers: 15, dailyBonusUsdt: 6.0, dailyBonusInr: 500 },
-    { level: 'VIP 3 Agent', minPlayers: 50, dailyBonusUsdt: 25.0, dailyBonusInr: 2000 },
-    { level: 'VIP 4 Agent', minPlayers: 200, dailyBonusUsdt: 120.0, dailyBonusInr: 10000 },
+    { level: 'VIP 1 Agent', minPlayers: 5, dailyBonusUsdt: 150, dailyBonusInr: 150 },
+    { level: 'VIP 2 Agent', minPlayers: 15, dailyBonusUsdt: 500, dailyBonusInr: 500 },
+    { level: 'VIP 3 Agent', minPlayers: 50, dailyBonusUsdt: 2000, dailyBonusInr: 2000 },
+    { level: 'VIP 4 Agent', minPlayers: 200, dailyBonusUsdt: 10000, dailyBonusInr: 10000 },
   ];
 
   let currentVipTier = null;
@@ -3861,11 +5303,11 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
 
   // Prize rank configuration
   const prizeRankNames: { [key: number]: { name: string; amount: number; tierText: string } } = {
-    1: { name: '1st Prize', amount: state.luckyDraw.prizeAmount ?? 250, tierText: '1st Prize (6 Digits Match)' },
-    2: { name: '2nd Prize', amount: state.luckyDraw.secondPrizeAmount ?? 100, tierText: '2nd Prize (6 Digits Match)' },
-    3: { name: '3rd Prize', amount: state.luckyDraw.thirdPrizeAmount ?? 50, tierText: '3rd Prize (6 Digits Match)' },
-    4: { name: '4th Prize', amount: state.luckyDraw.fourthPrizeAmount ?? 25, tierText: '4th Prize (6 Digits Match)' },
-    5: { name: '5th Prize', amount: state.luckyDraw.fifthPrizeAmount ?? 15, tierText: '5th Prize (6 Digits Match)' },
+    1: { name: '1st Prize', amount: state.luckyDraw.prizeAmount ?? 25000, tierText: '1st Prize (6 Digits Match)' },
+    2: { name: '2nd Prize', amount: state.luckyDraw.secondPrizeAmount ?? 10000, tierText: '2nd Prize (6 Digits Match)' },
+    3: { name: '3rd Prize', amount: state.luckyDraw.thirdPrizeAmount ?? 5000, tierText: '3rd Prize (6 Digits Match)' },
+    4: { name: '4th Prize', amount: state.luckyDraw.fourthPrizeAmount ?? 2500, tierText: '4th Prize (6 Digits Match)' },
+    5: { name: '5th Prize', amount: state.luckyDraw.fifthPrizeAmount ?? 1500, tierText: '5th Prize (6 Digits Match)' },
   };
 
   const prizeConfig = prizeRankNames[currentStep];
@@ -3978,7 +5420,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
         type: 'admin_adjust',
         amount: prizeConfig.amount,
         status: 'completed',
-        notes: `🏆 ${prizeConfig.name} Winner of Lucky Draw Coupon #${winningTicket.ticketNumber} ($${prizeConfig.amount} USDT to Winning Wallet)`,
+        notes: `🏆 ${prizeConfig.name} Winner of Lucky Draw Coupon #${winningTicket.ticketNumber} (₹${prizeConfig.amount.toLocaleString('en-IN')} INR to Winning Wallet)`,
         createdAt: new Date().toISOString(),
       });
     }
@@ -4002,7 +5444,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
   // If step === 5 (Final 5th prize drawn), calculate Guaranteed Prize Pool (45 winners: 5 main × 9 series)
   let guaranteedWinnersList: LuckyDrawWinner[] = [];
   if (currentStep === 5) {
-    const guaranteedPrizeAmount = state.luckyDraw.guaranteedPrizeAmount ?? 5;
+    const guaranteedPrizeAmount = state.luckyDraw.guaranteedPrizeAmount ?? 500;
     const all5Drawn = state.luckyDraw.drawnPrizes;
     const mainDrawnTicketNumbers = new Set(all5Drawn.map((d) => d.ticketNumber));
 
@@ -4029,7 +5471,7 @@ app.post('/api/luckydraw/admin/trigger', (req: Request, res: Response) => {
               type: 'admin_adjust',
               amount: guaranteedPrizeAmount,
               status: 'completed',
-              notes: `🎁 Guaranteed Prize Winner: Coupon #${tkt.ticketNumber} matches 5 digits of ${mainPrize.prizeName} (#${mainPrize.ticketNumber}) ($${guaranteedPrizeAmount} USDT to Winning Wallet)`,
+              notes: `🎁 Guaranteed Prize Winner: Coupon #${tkt.ticketNumber} matches 5 digits of ${mainPrize.prizeName} (#${mainPrize.ticketNumber}) (₹${guaranteedPrizeAmount} INR to Winning Wallet)`,
               createdAt: new Date().toISOString(),
             });
           }
@@ -4137,15 +5579,22 @@ app.get('/api/color-prediction', (req: Request, res: Response) => {
     periodDurationSeconds: cp.periodDurationSeconds,
     remainingSeconds,
     isFreeze: remainingSeconds <= 5,
-    history: cp.history.slice(0, 50),
+    history: cp.history.slice(0, 100),
     myBets: userBets,
   });
 });
 
 app.post('/api/color-prediction/bet', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('colorprediction')) {
+    return res.status(403).json({ error: 'Color Win Go is currently turned off by Admin.' });
+  }
   ensureColorPredictionState();
   const cp = state.colorPrediction;
-  const user = getUserFromReq(req);
+  const user =
+    getUserFromReq(req) ||
+    (req.body?.userId && state.users.find((u) => u.id === req.body.userId || u.nodeId === req.body.userId)) ||
+    state.users.find((u) => u.id === state.activeUserId) ||
+    state.users[0];
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized. Please login to place a bet.' });
   }
@@ -4157,30 +5606,39 @@ app.post('/api/color-prediction/bet', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Betting is frozen for the last 5 seconds of the round.' });
   }
 
-  const { selection, amount, contractCount } = req.body;
-  const betAmt = Number(amount) || 1;
+  const { selection, amount, contractCount, amountInr, periodId } = req.body;
+  const betInrUnit = Math.max(1, Number(amountInr || amount) || 1);
   const count = Math.max(1, Math.floor(Number(contractCount) || 1));
-  const totalBet = betAmt * count;
+  const totalBetInr = betInrUnit * count;
 
-  if (isNaN(totalBet) || totalBet <= 0) {
+  if (isNaN(totalBetInr) || totalBetInr <= 0) {
     return res.status(400).json({ error: 'Invalid bet amount.' });
   }
 
-  if (!deductBetBalance(user, totalBet)) {
-    const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
-    return res.status(400).json({ error: `Insufficient balance ($${totalAvail.toFixed(2)} USDT available).` });
+  // 1:1 Native INR Betting
+  const totalBetLedger = Number(totalBetInr.toFixed(2));
+
+  if (!deductBetBalance(user, totalBetLedger)) {
+    const totalAvailInr = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+    return res.status(400).json({
+      error: `Insufficient balance (₹${totalAvailInr.toFixed(2)} INR available). Please Recharge.`,
+      availableInr: totalAvailInr,
+      availableUsdt: totalAvailInr,
+    });
   }
 
+  const assignedPeriodId = periodId || cp.currentPeriodId;
   const newBet: ColorPredictionBet = {
     id: `bet-cp-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     userId: user.id,
     userName: user.name,
     userNodeId: user.nodeId,
-    periodId: cp.currentPeriodId,
+    periodId: assignedPeriodId,
     selection,
-    amount: betAmt,
+    amount: betInrUnit,
     contractCount: count,
-    totalBet,
+    totalBet: totalBetLedger,
+    amountInr: totalBetInr,
     payout: 0,
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -4194,23 +5652,65 @@ app.post('/api/color-prediction/bet', (req: Request, res: Response) => {
     userId: user.id,
     userNodeId: user.nodeId,
     type: 'color_prediction_bet',
-    amount: totalBet,
+    amount: totalBetLedger,
     status: 'completed',
-    notes: `Win Go 1m Bet - Period #${cp.currentPeriodId} on [${String(selection).toUpperCase()}]`,
+    notes: `Win Go 1m Bet - Period #${assignedPeriodId} on [${String(selection).toUpperCase()}] (₹${totalBetInr.toFixed(2)} INR)`,
     createdAt: new Date().toISOString(),
   });
 
   // Distribute 5-Level Bet Turnover Commission to Uplines
-  process5LevelBetTurnoverCommission(user, totalBet, 'Win Go 1m Color Prediction');
+  process5LevelBetTurnoverCommission(user, totalBetLedger, 'Win Go 1m Color Prediction');
 
   saveStore();
 
   res.json({
     success: true,
-    message: `Bet placed successfully on ${String(selection).toUpperCase()} for $${totalBet.toFixed(2)}`,
+    message: `Bet placed successfully on ${String(selection).toUpperCase()} for ₹${totalBetInr.toFixed(2)} INR`,
     bet: newBet,
+    totalBetInr,
     user,
   });
+});
+
+// Settle Win & Credit Winning Balance
+app.post('/api/color-prediction/claim-win', (req: Request, res: Response) => {
+  ensureColorPredictionState();
+  const cp = state.colorPrediction;
+  const user =
+    getUserFromReq(req) ||
+    (req.body?.userId && state.users.find((u) => u.id === req.body.userId || u.nodeId === req.body.userId)) ||
+    state.users.find((u) => u.id === state.activeUserId);
+
+  const { winAmountInr, periodId, betId } = req.body;
+  const winInrNum = Number((Number(winAmountInr) || 0).toFixed(2));
+
+  if (user && winInrNum > 0) {
+    user.winningBalance = Number(((user.winningBalance || 0) + winInrNum).toFixed(2));
+    user.totalEarned = Number(((user.totalEarned || 0) + winInrNum).toFixed(2));
+
+    if (betId) {
+      const foundBet = cp.bets.find((b) => b.id === betId);
+      if (foundBet) {
+        foundBet.status = 'won';
+        foundBet.payout = winInrNum;
+      }
+    }
+
+    state.transactions.unshift({
+      id: `tx-cpwin-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'bonus' as any,
+      amount: winInrNum,
+      status: 'completed',
+      notes: `Win Go Profit Payout - Period #${periodId || 'Round'} (+₹${winInrNum.toFixed(2)} INR)`,
+      createdAt: new Date().toISOString(),
+    });
+
+    saveStore();
+  }
+
+  res.json({ success: true, user });
 });
 
 app.get('/api/admin/color-prediction/stats', (req: Request, res: Response) => {
@@ -4261,6 +5761,9 @@ app.get('/api/admin/color-prediction/stats', (req: Request, res: Response) => {
 });
 
 app.post('/api/admin/color-prediction/mode', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageColorPrediction');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   ensureColorPredictionState();
   const cp = state.colorPrediction;
   const { mode } = req.body;
@@ -4283,6 +5786,9 @@ app.post('/api/admin/color-prediction/mode', (req: Request, res: Response) => {
 });
 
 app.post('/api/admin/color-prediction/force-result', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageColorPrediction');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   ensureColorPredictionState();
   const cp = state.colorPrediction;
   const { number } = req.body;
@@ -4309,17 +5815,22 @@ app.get('/api/aviator', (req: Request, res: Response) => {
   ensureAviatorState();
   const user = getUserFromReq(req);
   const av = state.aviator;
-  const myBet = user ? av.bets.find((b) => b.userId === user.id) || null : null;
+  const myBets = user ? av.bets.filter((b) => b.userId === user.id) : [];
+  const myBet = myBets[0] || null;
 
   res.json({
     success: true,
     serverTime: Date.now(),
     state: av,
     myBet,
+    myBets,
   });
 });
 
 app.post('/api/aviator/bet', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('aviator')) {
+    return res.status(403).json({ error: 'Aviator Crash is currently turned off by Admin.' });
+  }
   ensureAviatorState();
   const user = getUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'User not authenticated' });
@@ -4329,12 +5840,14 @@ app.post('/api/aviator/bet', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Betting is closed for this round. Please wait for next round.' });
   }
 
-  const existingBet = av.bets.find((b) => b.userId === user.id);
+  const { amount, autoCashout, slot = 1 } = req.body;
+  const numSlot = Number(slot) === 2 ? 2 : 1;
+
+  const existingBet = av.bets.find((b) => b.userId === user.id && ((b as any).slot === numSlot || (!('slot' in b) && numSlot === 1)));
   if (existingBet) {
-    return res.status(400).json({ error: 'You have already placed a bet in this round!' });
+    return res.status(400).json({ error: `You already placed a bet on Panel ${numSlot} for this round!` });
   }
 
-  const { amount, autoCashout } = req.body;
   const numAmount = Number(amount);
   if (isNaN(numAmount) || numAmount <= 0) {
     return res.status(400).json({ error: 'Invalid bet amount' });
@@ -4342,7 +5855,7 @@ app.post('/api/aviator/bet', (req: Request, res: Response) => {
 
   if (!deductBetBalance(user, numAmount)) {
     const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
-    return res.status(400).json({ error: `Insufficient wallet balance ($${totalAvail.toFixed(2)} USDT available).` });
+    return res.status(400).json({ error: `Insufficient wallet balance (₹${totalAvail.toFixed(2)} INR available).` });
   }
 
   const newBet: AviatorBet = {
@@ -4358,6 +5871,7 @@ app.post('/api/aviator/bet', (req: Request, res: Response) => {
     status: 'pending',
     createdAt: new Date().toISOString(),
   };
+  (newBet as any).slot = numSlot;
 
   if (autoCashout && Number(autoCashout) >= 1.1) {
     (newBet as any).autoCashout = Number(autoCashout);
@@ -4371,7 +5885,7 @@ app.post('/api/aviator/bet', (req: Request, res: Response) => {
     userNodeId: user.nodeId,
     type: 'aviator_bet',
     amount: numAmount,
-    notes: `Aviator Bet (${av.currentRoundId})`,
+    notes: `Aviator Bet [Panel ${numSlot}] (${av.currentRoundId}) - ₹${numAmount.toFixed(2)} INR`,
     status: 'completed',
     createdAt: new Date().toISOString(),
   });
@@ -4383,7 +5897,7 @@ app.post('/api/aviator/bet', (req: Request, res: Response) => {
 
   res.json({
     success: true,
-    message: `Bet $${numAmount.toFixed(2)} USDT placed on Aviator!`,
+    message: `Bet ₹${numAmount.toFixed(2)} placed on Panel ${numSlot}!`,
     bet: newBet,
     user,
   });
@@ -4399,7 +5913,20 @@ app.post('/api/aviator/cashout', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Cannot cash out right now' });
   }
 
-  const bet = av.bets.find((b) => b.userId === user.id && b.status === 'pending');
+  const { slot, betId } = req.body || {};
+  let bet: AviatorBet | undefined;
+
+  if (betId) {
+    bet = av.bets.find((b) => b.id === betId && b.userId === user.id && b.status === 'pending');
+  } else if (slot) {
+    const numSlot = Number(slot) === 2 ? 2 : 1;
+    bet = av.bets.find((b) => b.userId === user.id && b.status === 'pending' && ((b as any).slot === numSlot || (!('slot' in b) && numSlot === 1)));
+  }
+
+  if (!bet) {
+    bet = av.bets.find((b) => b.userId === user.id && b.status === 'pending');
+  }
+
   if (!bet) {
     return res.status(400).json({ error: 'No active bet found to cash out' });
   }
@@ -4430,9 +5957,10 @@ app.post('/api/aviator/cashout', (req: Request, res: Response) => {
 
   res.json({
     success: true,
-    message: `Cashed out at ${multiplier}x! Won $${payout.toFixed(2)} USDT`,
+    message: `Cashed out at ${multiplier}x! Won ₹${payout.toFixed(2)} INR`,
     payout,
     multiplier,
+    bet,
     user,
   });
 });
@@ -4504,6 +6032,9 @@ app.get('/api/admin/dragon-tiger/stats', (req: Request, res: Response) => {
 });
 
 app.post('/api/admin/dragon-tiger/mode', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageDragonTiger');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   const { mode } = req.body;
   if (!['lowest_payout', 'smart_retention_60_40', 'random', 'manual'].includes(mode)) {
     return res.status(400).json({ error: 'Invalid mode. Must be lowest_payout, smart_retention_60_40, random, or manual' });
@@ -4515,6 +6046,9 @@ app.post('/api/admin/dragon-tiger/mode', (req: Request, res: Response) => {
 });
 
 app.post('/api/admin/dragon-tiger/force-result', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageDragonTiger');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   const { winner } = req.body;
   if (!winner) {
     dragonTigerForcedWinner = null;
@@ -4530,6 +6064,9 @@ app.post('/api/admin/dragon-tiger/force-result', (req: Request, res: Response) =
 });
 
 app.post('/api/dragon-tiger/bet', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('dragontiger')) {
+    return res.status(403).json({ error: 'Dragon vs Tiger is currently turned off by Admin.' });
+  }
   const user = getUserFromReq(req);
   if (!user) return res.status(401).json({ error: 'User not authenticated' });
 
@@ -4543,7 +6080,7 @@ app.post('/api/dragon-tiger/bet', (req: Request, res: Response) => {
   }
   if (!deductBetBalance(user, numAmount)) {
     const totalAvail = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
-    return res.status(400).json({ error: `Insufficient wallet balance ($${totalAvail.toFixed(2)} USDT available).` });
+    return res.status(400).json({ error: `Insufficient wallet balance (₹${totalAvail.toFixed(2)} INR available).` });
   }
 
   // Count user's previous Dragon Tiger bets for First 3 Losses 50% Shield
@@ -4693,7 +6230,7 @@ app.post('/api/dragon-tiger/bet', (req: Request, res: Response) => {
     userNodeId: user.nodeId,
     type: 'dragon_tiger_bet',
     amount: numAmount,
-    notes: `Dragon vs Tiger Bet on [${choice.toUpperCase()}] Round #${roundId} (${isWin ? 'WON $' + payout.toFixed(2) : cashbackAwarded > 0 ? 'LOST (50% Shield Refunded $' + cashbackAwarded.toFixed(2) + ')' : 'LOST'})`,
+    notes: `Dragon vs Tiger Bet on [${choice.toUpperCase()}] Round #${roundId} (${isWin ? 'WON ₹' + payout.toFixed(2) : cashbackAwarded > 0 ? 'LOST (50% Shield Refunded ₹' + cashbackAwarded.toFixed(2) + ')' : 'LOST'})`,
     status: 'completed',
     createdAt: new Date().toISOString(),
   });
@@ -4738,6 +6275,9 @@ app.get('/api/admin/aviator/stats', (req: Request, res: Response) => {
 });
 
 app.post('/api/admin/aviator/mode', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageAviator');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   ensureAviatorState();
   const av = state.aviator;
   const { mode } = req.body;
@@ -4750,6 +6290,9 @@ app.post('/api/admin/aviator/mode', (req: Request, res: Response) => {
 });
 
 app.post('/api/admin/aviator/force-crash', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageAviator');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   ensureAviatorState();
   const av = state.aviator;
   const { multiplier } = req.body;
@@ -4792,7 +6335,7 @@ app.post('/api/boosting/simulate', (req: Request, res: Response) => {
       type: 'boosting_payout',
       amount: rewardAmt,
       status: 'completed',
-      notes: `Global Gold Pool FIFO Cycle Reward ($${rewardAmt} USDT)`,
+      notes: `Global Gold Pool FIFO Cycle Reward (₹${rewardAmt} INR)`,
       createdAt: new Date().toISOString(),
     });
   }
@@ -4871,7 +6414,7 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
     mergedSettings.spinWheelRewards = mergedSettings.spinWheelRewards.map((r, i) => ({
       ...r,
       id: r.id || `sp-${i + 1}`,
-      label: r.label || `$${r.amount} USDT`,
+      label: r.label || `₹${r.amount} INR`,
       amount: typeof r.amount === 'number' ? r.amount : parseFloat(r.amount as any) || 0,
       probability: typeof r.probability === 'number' ? r.probability : parseFloat(r.probability as any) || 0,
       minLevel: typeof r.minLevel === 'number' ? r.minLevel : parseInt(r.minLevel as any) || 0,
@@ -4936,7 +6479,7 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
     mergedSettings.spinCreditsPerReset = parseInt(mergedSettings.spinCreditsPerReset as any) || 1;
   }
   if (mergedSettings.spinTicketPrice !== undefined) {
-    mergedSettings.spinTicketPrice = parseFloat(mergedSettings.spinTicketPrice as any) || 1.0;
+    mergedSettings.spinTicketPrice = parseFloat(mergedSettings.spinTicketPrice as any) || 50;
   }
   if (mergedSettings.spinHouseProfitPercent !== undefined) {
     mergedSettings.spinHouseProfitPercent = parseFloat(mergedSettings.spinHouseProfitPercent as any) || 55.0;
@@ -4955,12 +6498,12 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
   if (mergedSettings.minDepositAmount !== undefined) {
     mergedSettings.minDepositAmount = typeof mergedSettings.minDepositAmount === 'number'
       ? mergedSettings.minDepositAmount
-      : (parseFloat(mergedSettings.minDepositAmount as any) || 10);
+      : (parseFloat(mergedSettings.minDepositAmount as any) || 100);
   }
   if (mergedSettings.minWithdrawalAmount !== undefined) {
     mergedSettings.minWithdrawalAmount = typeof mergedSettings.minWithdrawalAmount === 'number'
       ? mergedSettings.minWithdrawalAmount
-      : (parseFloat(mergedSettings.minWithdrawalAmount as any) || 10);
+      : (parseFloat(mergedSettings.minWithdrawalAmount as any) || 200);
   }
   if (mergedSettings.winningWithdrawalFeePercent !== undefined) {
     mergedSettings.winningWithdrawalFeePercent = typeof mergedSettings.winningWithdrawalFeePercent === 'number'
@@ -4970,12 +6513,12 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
   if (mergedSettings.winningWithdrawalMinAmount !== undefined) {
     mergedSettings.winningWithdrawalMinAmount = typeof mergedSettings.winningWithdrawalMinAmount === 'number'
       ? mergedSettings.winningWithdrawalMinAmount
-      : (parseFloat(mergedSettings.winningWithdrawalMinAmount as any) || 5);
+      : (parseFloat(mergedSettings.winningWithdrawalMinAmount as any) || 100);
   }
   if (mergedSettings.autoPayoutThresholdUSDT !== undefined) {
     mergedSettings.autoPayoutThresholdUSDT = typeof mergedSettings.autoPayoutThresholdUSDT === 'number'
       ? mergedSettings.autoPayoutThresholdUSDT
-      : (parseFloat(mergedSettings.autoPayoutThresholdUSDT as any) || 20);
+      : (parseFloat(mergedSettings.autoPayoutThresholdUSDT as any) || 2000);
   }
 
   // Sanitize daily tournament configuration
@@ -4995,6 +6538,117 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
           }))
         : state.settings.dailyTournament?.prizeDistribution || [],
     };
+  }
+
+  // Sanitize payment gateway & UPI pool
+  if (newSettings.paymentGateway) {
+    mergedSettings.paymentGateway = {
+      ...(state.settings.paymentGateway || defaultSettings.paymentGateway!),
+      ...newSettings.paymentGateway,
+      enabled: newSettings.paymentGateway.enabled !== false,
+      rotationStrategy: newSettings.paymentGateway.rotationStrategy || 'roundRobin',
+      defaultUpiId: (newSettings.paymentGateway.defaultUpiId || 'sportxpay@okaxis').trim(),
+      defaultPayeeName: (newSettings.paymentGateway.defaultPayeeName || 'SportX Gaming Official').trim(),
+      subdomainUrl: (newSettings.paymentGateway.subdomainUrl || '').trim(),
+      qrTimerSeconds: Number(newSettings.paymentGateway.qrTimerSeconds) || 600,
+      autoRotateOnRefresh: newSettings.paymentGateway.autoRotateOnRefresh !== false,
+      upiPool: Array.isArray(newSettings.paymentGateway.upiPool)
+        ? newSettings.paymentGateway.upiPool.map((item, idx) => ({
+            id: item.id || `upi-${Date.now()}-${idx}`,
+            upiId: (item.upiId || '').trim(),
+            name: (item.name || 'Merchant Pay').trim(),
+            provider: item.provider || detectUpiProvider(item.upiId),
+            dailyLimit: Number(item.dailyLimit) || 100000,
+            usedCount: Number(item.usedCount) || 0,
+            totalCollected: Number(item.totalCollected) || 0,
+            isActive: item.isActive !== false,
+            createdAt: item.createdAt || new Date().toISOString(),
+            notes: item.notes || '',
+          })).filter((x) => x.upiId.length >= 4)
+        : (state.settings.paymentGateway?.upiPool || defaultSettings.paymentGateway!.upiPool),
+    };
+  }
+
+  // Sanitize per-game subdomain routing configuration
+  if (newSettings.gameSubdomains) {
+    const incomingSub = newSettings.gameSubdomains;
+    const prevSub = state.settings.gameSubdomains || defaultSettings.gameSubdomains!;
+    mergedSettings.gameSubdomains = {
+      enabled: incomingSub.enabled !== false,
+      rootDomain: (incomingSub.rootDomain || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, ''),
+      mainAppUrl: (incomingSub.mainAppUrl || '').trim().replace(/\/+$/, ''),
+      apiBaseUrl: (incomingSub.apiBaseUrl || '').trim().replace(/\/+$/, ''),
+      autoSubdomainOnCustomDomain: incomingSub.autoSubdomainOnCustomDomain !== false,
+      urls: {
+        ...(prevSub.urls || {}),
+        ...(incomingSub.urls || {}),
+        aviator: (incomingSub.urls?.aviator || '').trim().replace(/\/+$/, ''),
+        colorprediction: (incomingSub.urls?.colorprediction || '').trim().replace(/\/+$/, ''),
+        cricket: (incomingSub.urls?.cricket || '').trim().replace(/\/+$/, ''),
+        dragontiger: (incomingSub.urls?.dragontiger || '').trim().replace(/\/+$/, ''),
+        luckydraw: (incomingSub.urls?.luckydraw || '').trim().replace(/\/+$/, ''),
+        chickenroad: (incomingSub.urls?.chickenroad || '').trim().replace(/\/+$/, ''),
+        rummy: (incomingSub.urls?.rummy || '').trim().replace(/\/+$/, ''),
+        slot777: (incomingSub.urls?.slot777 || '').trim().replace(/\/+$/, ''),
+        spinwheel: (incomingSub.urls?.spinwheel || '').trim().replace(/\/+$/, ''),
+      },
+    };
+  }
+
+  // Sanitize per-game ON/OFF visibility flags
+  const defEnabled = defaultSettings.enabledGames!;
+  const incomingEnabled = (newSettings as any).enabledGames || state.settings.enabledGames || defEnabled;
+  mergedSettings.enabledGames = {
+    aviator: incomingEnabled.aviator !== false,
+    colorprediction: incomingEnabled.colorprediction !== false,
+    cricket: incomingEnabled.cricket !== false,
+    dragontiger: incomingEnabled.dragontiger !== false,
+    luckydraw: incomingEnabled.luckydraw !== false,
+    chickenroad: incomingEnabled.chickenroad !== false,
+    rummy: incomingEnabled.rummy !== false,
+    slot777: incomingEnabled.slot777 !== false,
+    spinwheel: incomingEnabled.spinwheel !== false,
+  };
+
+  // Sanitize Signup Bonus config
+  if ((newSettings as any).signupBonus) {
+    const sb = (newSettings as any).signupBonus;
+    mergedSettings.signupBonus = {
+      enabled: sb.enabled === true,
+      amountInr: Math.max(0, Number(sb.amountInr) || 0),
+      creditWallet: ['depositBalance', 'winningBalance', 'balance'].includes(sb.creditWallet)
+        ? sb.creditWallet
+        : 'depositBalance',
+      freeSpins: Math.max(0, parseInt(sb.freeSpins as any) || 0),
+    };
+  } else if (!mergedSettings.signupBonus) {
+    mergedSettings.signupBonus = { ...defaultSettings.signupBonus! };
+  }
+
+  // Sanitize Tiered Deposit Bonus config
+  if ((newSettings as any).depositBonus) {
+    const db = (newSettings as any).depositBonus;
+    mergedSettings.depositBonus = {
+      enabled: db.enabled !== false,
+      applyTo: db.applyTo === 'first_deposit_only' ? 'first_deposit_only' : 'all_deposits',
+      creditWallet: ['depositBalance', 'winningBalance', 'balance'].includes(db.creditWallet)
+        ? db.creditWallet
+        : 'depositBalance',
+      tiers: Array.isArray(db.tiers)
+        ? db.tiers
+            .map((t: any, idx: number) => ({
+              id: t.id || `db-${Date.now()}-${idx}`,
+              label: (t.label || '').trim() || `Greater than ₹${Math.max(0, Number(t.minAmount) || 0)}`,
+              minAmount: Math.max(0, Number(t.minAmount) || 0),
+              bonusType: (t.bonusType === 'fixed' ? 'fixed' : 'percent') as 'percent' | 'fixed',
+              bonusValue: Math.max(0, Number(t.bonusValue) || 0),
+              enabled: t.enabled !== false,
+            }))
+            .sort((a: any, b: any) => a.minAmount - b.minAmount)
+        : defaultSettings.depositBonus!.tiers,
+    };
+  } else if (!mergedSettings.depositBonus) {
+    mergedSettings.depositBonus = { ...defaultSettings.depositBonus! };
   }
 
   state.settings = mergedSettings;
@@ -5032,6 +6686,45 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
   res.json({ success: true, settings: state.settings, luckyDraw: state.luckyDraw });
 });
 
+// A1b. Instant Per-Game ON/OFF Visibility Toggle
+app.post('/api/admin/games/toggle', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageSettings');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
+  ensureGameSubdomainSettings();
+  const { gameKey, enabled, allEnabled } = req.body || {};
+  const validKeys = Object.keys(defaultSettings.enabledGames!) as Array<keyof NonNullable<SystemSettings['enabledGames']>>;
+
+  if (typeof allEnabled === 'boolean') {
+    validKeys.forEach((k) => {
+      state.settings.enabledGames![k] = allEnabled;
+    });
+    saveStore();
+    return res.json({
+      success: true,
+      message: allEnabled ? 'All 9 games turned ON!' : 'All 9 games turned OFF!',
+      enabledGames: state.settings.enabledGames,
+      settings: state.settings,
+    });
+  }
+
+  if (!gameKey || !validKeys.includes(gameKey)) {
+    return res.status(400).json({ error: `Invalid gameKey: ${String(gameKey)}` });
+  }
+
+  const nextVal = typeof enabled === 'boolean' ? enabled : !isServerGameEnabled(gameKey);
+  state.settings.enabledGames![gameKey as keyof NonNullable<SystemSettings['enabledGames']>] = nextVal;
+  saveStore();
+
+  return res.json({
+    success: true,
+    gameKey,
+    enabled: nextVal,
+    enabledGames: state.settings.enabledGames,
+    settings: state.settings,
+  });
+});
+
 // A2. Admin Update User Balances
 app.post('/api/admin/users/update-balance', (req: Request, res: Response) => {
   const { userId, balance, depositBalance, upgradeBalance } = req.body;
@@ -5049,7 +6742,7 @@ app.post('/api/admin/users/update-balance', (req: Request, res: Response) => {
     type: 'admin_adjust',
     amount: balance,
     status: 'completed',
-    notes: `Admin Manual Balance Adjustment: Withdrawable=$${user.balance.toFixed(2)}, Deposit Wallet=$${(user.depositBalance || 0).toFixed(2)}, Upgrade=$${user.upgradeBalance.toFixed(2)}`,
+    notes: `Admin Manual Balance Adjustment: Withdrawable=₹${user.balance.toFixed(2)}, Deposit Wallet=₹${(user.depositBalance || 0).toFixed(2)}, Upgrade=₹${user.upgradeBalance.toFixed(2)}`,
     createdAt: new Date().toISOString(),
   });
 
@@ -5188,20 +6881,246 @@ app.post('/api/admin/users/toggle-admin', (req: Request, res: Response) => {
   res.json({ success: true, user });
 });
 
+// SUB-ADMIN MANAGEMENT (Super Admin sovereign controls)
+app.get('/api/admin/subadmins', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req);
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
+  const superAdmin = state.users.find((u) => u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isSuperAdmin);
+  const subadmins = state.users.filter(
+    (u) => (u.isSubAdmin || (u.isAdmin && u.id !== 'usr-root' && u.nodeId !== 'NX-ROOT01'))
+  );
+
+  res.json({
+    success: true,
+    superAdmin: superAdmin
+      ? {
+          id: superAdmin.id,
+          nodeId: superAdmin.nodeId,
+          name: superAdmin.name,
+          email: superAdmin.email,
+          isSuperAdmin: true,
+          adminRoleName: superAdmin.adminRoleName || 'Super Admin (Root Master)',
+        }
+      : null,
+    subadmins,
+  });
+});
+
+app.post('/api/admin/subadmins/create', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageSubAdmins');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
+  const { name, nodeId, email, password, adminRoleName, adminPermissions } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Sub-Admin Full Name is required' });
+  if (!nodeId || !nodeId.trim()) return res.status(400).json({ error: 'Sub-Admin User ID / Node ID is required' });
+  if (!password || !password.trim()) return res.status(400).json({ error: 'Sub-Admin Password is required' });
+
+  const cleanNodeId = nodeId.trim().toUpperCase();
+  const cleanEmail = (email || `${cleanNodeId.toLowerCase()}@sportx.game`).trim().toLowerCase();
+  const cleanName = name.trim();
+  const cleanRole = (adminRoleName || 'Sub-Admin Operator').trim();
+
+  // Check unique constraints
+  const duplicate = state.users.find(
+    (u) => u.nodeId.toUpperCase() === cleanNodeId || (u.email && u.email.toLowerCase() === cleanEmail)
+  );
+  if (duplicate) {
+    return res.status(400).json({ error: `A user or sub-admin with ID ${cleanNodeId} or Email ${cleanEmail} already exists!` });
+  }
+
+  const permissions: AdminPermissions = {
+    canManageDeposits: Boolean(adminPermissions?.canManageDeposits),
+    canManageWithdrawals: Boolean(adminPermissions?.canManageWithdrawals),
+    canManageUsers: Boolean(adminPermissions?.canManageUsers),
+    canManageColorPrediction: Boolean(adminPermissions?.canManageColorPrediction),
+    canManageDragonTiger: Boolean(adminPermissions?.canManageDragonTiger),
+    canManageAviator: Boolean(adminPermissions?.canManageAviator),
+    canManageTournament: Boolean(adminPermissions?.canManageTournament),
+    canManageLottery: Boolean(adminPermissions?.canManageLottery),
+    canManageUpiGateway: Boolean(adminPermissions?.canManageUpiGateway),
+    canManageSettings: Boolean(adminPermissions?.canManageSettings),
+    canViewReports: Boolean(adminPermissions?.canViewReports),
+    canViewAudit: Boolean(adminPermissions?.canViewAudit),
+    canManageProducts: Boolean(adminPermissions?.canManageProducts),
+    canManageBoosting: Boolean(adminPermissions?.canManageBoosting),
+    canManageSqlite: Boolean(adminPermissions?.canManageSqlite),
+    canManageRanks: Boolean(adminPermissions?.canManageRanks),
+    canManageSubAdmins: false, // only root Super Admin
+  };
+
+  const newSubAdmin: User = {
+    id: `usr-sub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    nodeId: cleanNodeId,
+    name: cleanName,
+    email: cleanEmail,
+    password: password.trim(),
+    walletAddress: `0xsub${Math.random().toString(16).substring(2, 18)}`,
+    sponsorId: 'usr-root',
+    activePackageId: 'pkg-20',
+    packageActivatedAt: new Date().toISOString(),
+    packageExpiryDays: 365,
+    balance: 0,
+    depositBalance: 0,
+    upgradeBalance: 0,
+    winningBalance: 0,
+    winningEarned: 0,
+    totalEarned: 0,
+    roiEarned: 0,
+    levelEarned: 0,
+    sponsorEarned: 0,
+    rankEarned: 0,
+    boostingEarned: 0,
+    spinEarned: 0,
+    directReferralsCount: 0,
+    teamCount: 0,
+    teamVolume: 0,
+    rank: 'Apex',
+    status: 'active',
+    isAdmin: true,
+    isSubAdmin: true,
+    isSuperAdmin: false,
+    adminRoleName: cleanRole,
+    adminPermissions: permissions,
+    registeredAt: new Date().toISOString(),
+    lastRoiClaimAt: new Date().toISOString(),
+    spinCredits: 0,
+    lastSpinAt: null,
+  };
+
+  state.users.push(newSubAdmin);
+  saveStore();
+
+  res.json({
+    success: true,
+    message: `Sub-Admin '${cleanName}' (${cleanNodeId}) created successfully with role '${cleanRole}'!`,
+    subadmin: newSubAdmin,
+  });
+});
+
+app.put('/api/admin/subadmins/:id', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageSubAdmins');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
+  const targetId = req.params.id;
+  const user = state.users.find((u) => u.id === targetId || u.nodeId.toUpperCase() === targetId.toUpperCase());
+  if (!user) return res.status(404).json({ error: 'Sub-Admin not found' });
+  if (user.id === 'usr-root' || user.nodeId === 'NX-ROOT01' || user.isSuperAdmin) {
+    return res.status(400).json({ error: 'Cannot modify Super Admin master permissions from subadmin route' });
+  }
+
+  const { name, adminRoleName, adminPermissions, status } = req.body;
+  if (typeof name === 'string' && name.trim()) user.name = name.trim();
+  if (typeof adminRoleName === 'string' && adminRoleName.trim()) user.adminRoleName = adminRoleName.trim();
+  if (status && ['active', 'inactive', 'banned'].includes(status)) user.status = status;
+
+  if (adminPermissions && typeof adminPermissions === 'object') {
+    user.adminPermissions = {
+      ...(user.adminPermissions || {}),
+      canManageDeposits: Boolean(adminPermissions.canManageDeposits),
+      canManageWithdrawals: Boolean(adminPermissions.canManageWithdrawals),
+      canManageUsers: Boolean(adminPermissions.canManageUsers),
+      canManageColorPrediction: Boolean(adminPermissions.canManageColorPrediction),
+      canManageDragonTiger: Boolean(adminPermissions.canManageDragonTiger),
+      canManageAviator: Boolean(adminPermissions.canManageAviator),
+      canManageTournament: Boolean(adminPermissions.canManageTournament),
+      canManageLottery: Boolean(adminPermissions.canManageLottery),
+      canManageUpiGateway: Boolean(adminPermissions.canManageUpiGateway),
+      canManageSettings: Boolean(adminPermissions.canManageSettings),
+      canViewReports: Boolean(adminPermissions.canViewReports),
+      canViewAudit: Boolean(adminPermissions.canViewAudit),
+      canManageProducts: Boolean(adminPermissions.canManageProducts),
+      canManageBoosting: Boolean(adminPermissions.canManageBoosting),
+      canManageSqlite: Boolean(adminPermissions.canManageSqlite),
+      canManageRanks: Boolean(adminPermissions.canManageRanks),
+      canManageSubAdmins: false,
+    };
+  }
+
+  saveStore();
+  res.json({ success: true, message: `Sub-Admin ${user.name} updated successfully!`, subadmin: user });
+});
+
+app.post('/api/admin/subadmins/:id/toggle', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageSubAdmins');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
+  const targetId = req.params.id;
+  const user = state.users.find((u) => u.id === targetId || u.nodeId.toUpperCase() === targetId.toUpperCase());
+  if (!user) return res.status(404).json({ error: 'Sub-Admin not found' });
+  if (user.id === 'usr-root' || user.nodeId === 'NX-ROOT01' || user.isSuperAdmin) {
+    return res.status(400).json({ error: 'Cannot toggle Super Admin status' });
+  }
+
+  user.status = user.status === 'active' ? 'inactive' : 'active';
+  saveStore();
+
+  res.json({
+    success: true,
+    message: `Sub-Admin status updated to ${user.status.toUpperCase()}`,
+    status: user.status,
+  });
+});
+
+app.post('/api/admin/subadmins/:id/reset-password', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageSubAdmins');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
+  const targetId = req.params.id;
+  const { password } = req.body;
+  if (!password || !password.trim()) return res.status(400).json({ error: 'New password cannot be empty' });
+
+  const user = state.users.find((u) => u.id === targetId || u.nodeId.toUpperCase() === targetId.toUpperCase());
+  if (!user) return res.status(404).json({ error: 'Sub-Admin not found' });
+
+  user.password = password.trim();
+  saveStore();
+
+  res.json({ success: true, message: `Password for Sub-Admin ${user.name} (${user.nodeId}) reset successfully!` });
+});
+
+app.delete('/api/admin/subadmins/:id', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageSubAdmins');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
+  const targetId = req.params.id;
+  const userIndex = state.users.findIndex((u) => u.id === targetId || u.nodeId.toUpperCase() === targetId.toUpperCase());
+  if (userIndex === -1) return res.status(404).json({ error: 'Sub-Admin not found' });
+
+  const user = state.users[userIndex];
+  if (user.id === 'usr-root' || user.nodeId === 'NX-ROOT01' || user.isSuperAdmin) {
+    return res.status(400).json({ error: 'Cannot delete Super Admin (NX-ROOT01)' });
+  }
+
+  state.users.splice(userIndex, 1);
+  saveStore();
+
+  res.json({ success: true, message: `Sub-Admin ${user.name} (${user.nodeId}) deleted successfully!` });
+});
+
 // A4. Admin Approve / Reject Deposit
 app.post('/api/admin/deposit/action', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageDeposits');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   const { requestId, action, adminNotes } = req.body;
   const dep = state.depositRequests.find((d) => d.id === requestId);
   if (!dep) return res.status(404).json({ error: 'Deposit request not found' });
 
+  if (dep.status === 'approved' && action === 'approve') {
+    return res.status(400).json({ error: 'Deposit request is already approved.' });
+  }
+
   dep.status = action === 'approve' ? 'approved' : 'rejected';
   dep.adminNotes = adminNotes || (action === 'approve' ? 'Approved by Admin' : 'Rejected by Admin');
+
+  let bonusResult = { bonusUsdt: 0, bonusInr: 0, matchedTierLabel: null as string | null };
 
   if (action === 'approve') {
     const user = state.users.find((u) => u.id === dep.userId);
     if (user) {
       user.depositBalance = (user.depositBalance || 0) + dep.amount;
-      user.hasFirstDepositApproved = true;
+      user.totalDeposited = (user.totalDeposited || 0) + dep.amount;
 
       state.transactions.unshift({
         id: `tx-${Date.now()}-dep-app`,
@@ -5212,30 +7131,43 @@ app.post('/api/admin/deposit/action', (req: Request, res: Response) => {
         status: 'completed',
         txHash: dep.txHash,
         network: dep.network,
-        notes: `Deposit Approved: +$${dep.amount} USDT credited to Deposit Wallet`,
+        notes: `Deposit Approved: +₹${dep.amount.toFixed(2)} INR credited to Deposit Wallet`,
         createdAt: new Date().toISOString(),
       });
+
+      bonusResult = applyDepositBonus(user, dep.amount, dep);
+      user.hasFirstDepositApproved = true;
+      if (bonusResult.bonusInr > 0) {
+        dep.adminNotes = `${dep.adminNotes} | Bonus: +₹${bonusResult.bonusInr.toFixed(2)} (${bonusResult.matchedTierLabel})`;
+      }
     }
   }
 
   saveStore();
-  res.json({ success: true, depositRequest: dep });
+  res.json({ success: true, depositRequest: dep, bonusAwarded: bonusResult });
 });
 
 // A5. Admin Approve / Reject Withdrawal
 app.post('/api/admin/withdraw/action', (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageWithdrawals');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   const { requestId, action, adminNotes, txHash } = req.body;
   const wd = state.withdrawalRequests.find((w) => w.id === requestId);
   if (!wd) return res.status(404).json({ error: 'Withdrawal request not found' });
 
   wd.status = action === 'approve' ? 'approved' : 'rejected';
-  wd.adminNotes = adminNotes || (action === 'approve' ? 'Dispatched via Blockchain' : 'Rejected by Admin');
+  wd.adminNotes = adminNotes || (action === 'approve' ? 'Paid via UPI / Bank Transfer' : 'Rejected by Admin');
 
   const user = state.users.find((u) => u.id === wd.userId);
 
   if (action === 'reject' && user) {
     // Refund user balance if rejected
-    user.balance += wd.requestedAmount;
+    if ((wd as any).walletType === 'winning') {
+      user.winningBalance = (user.winningBalance || 0) + wd.requestedAmount;
+    } else {
+      user.balance += wd.requestedAmount;
+    }
     if (wd.upgradeDeduction > 0) {
       user.upgradeBalance = Math.max(0, user.upgradeBalance - wd.upgradeDeduction);
     }
@@ -5247,9 +7179,9 @@ app.post('/api/admin/withdraw/action', (req: Request, res: Response) => {
       type: 'withdrawal',
       amount: wd.requestedAmount,
       status: 'completed',
-      txHash: txHash || `0x${Math.random().toString(16).substring(2, 20)}`,
+      txHash: txHash || `UTR-${Date.now().toString().slice(-8)}`,
       network: wd.network,
-      notes: `Withdrawal Dispatched: Net ${wd.netAmount.toFixed(2)} USDT`,
+      notes: `Withdrawal Paid: Net ₹${wd.netAmount.toFixed(2)} INR (${wd.network || 'UPI'})`,
       createdAt: new Date().toISOString(),
     });
   }
@@ -5258,8 +7190,11 @@ app.post('/api/admin/withdraw/action', (req: Request, res: Response) => {
   res.json({ success: true, withdrawalRequest: wd });
 });
 
-// A5.1. Admin 1-Click Automated Web3 Hot Wallet Blockchain Dispatch
+// A5.1. Admin 1-Click Automated Payout Dispatch
 app.post('/api/admin/withdraw/auto-dispatch', async (req: Request, res: Response) => {
+  const auth = checkAdminPermission(req, 'canManageWithdrawals');
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   const { requestId } = req.body;
   const wd = state.withdrawalRequests.find((w) => w.id === requestId);
   if (!wd) return res.status(404).json({ error: 'Withdrawal request not found' });
@@ -5273,12 +7208,12 @@ app.post('/api/admin/withdraw/auto-dispatch', async (req: Request, res: Response
   const payoutRes = await executeBep20Payout(wd.targetAddress, wd.netAmount);
   if (!payoutRes.success || !payoutRes.txHash) {
     return res.status(400).json({
-      error: payoutRes.error || 'Failed to dispatch blockchain transaction. Please check Hot Wallet BNB gas and USDT balance.',
+      error: payoutRes.error || 'Auto-dispatch failed. Please use Manual Approve with UTR for UPI/Bank payouts.',
     });
   }
 
   wd.status = 'approved';
-  wd.adminNotes = `⚡ Auto-Dispatched via Hot Wallet (BSC Tx: ${payoutRes.txHash})`;
+  wd.adminNotes = `⚡ Auto-Dispatched (Ref: ${payoutRes.txHash})`;
 
   state.transactions.unshift({
     id: `tx-${Date.now()}-autowd`,
@@ -5288,8 +7223,8 @@ app.post('/api/admin/withdraw/auto-dispatch', async (req: Request, res: Response
     amount: wd.requestedAmount,
     status: 'completed',
     txHash: payoutRes.txHash,
-    network: wd.network || 'BEP20',
-    notes: `⚡ Auto-Dispatched Payout: Net ${wd.netAmount.toFixed(2)} USDT (Tx: ${payoutRes.txHash})`,
+    network: wd.network || 'UPI',
+    notes: `⚡ Auto-Dispatched Payout: Net ₹${wd.netAmount.toFixed(2)} INR (Ref: ${payoutRes.txHash})`,
     createdAt: new Date().toISOString(),
   });
 
@@ -5298,7 +7233,7 @@ app.post('/api/admin/withdraw/auto-dispatch', async (req: Request, res: Response
     success: true,
     txHash: payoutRes.txHash,
     bscscanUrl: payoutRes.bscscanUrl,
-    message: `🚀 Blockchain transfer successful! TxHash: ${payoutRes.txHash}`,
+    message: `🚀 Payout dispatched! Ref: ${payoutRes.txHash}`,
     withdrawalRequest: wd,
   });
 });
@@ -5329,7 +7264,7 @@ app.post('/api/web3/verify-deposit', async (req: Request, res: Response) => {
   if (!verifyRes.valid) {
     return res.status(400).json({
       valid: false,
-      error: verifyRes.error || 'Transaction could not be verified on BSC blockchain',
+      error: verifyRes.error || 'Transaction could not be verified',
     });
   }
 
@@ -5353,9 +7288,12 @@ app.post('/api/web3/verify-deposit', async (req: Request, res: Response) => {
         status: 'completed',
         txHash: txHash.trim(),
         network: 'BEP20',
-        notes: `⚡ Auto-Verified Deposit: +${verifiedAmt.toFixed(2)} USDT credited to Deposit Wallet`,
+        notes: `⚡ Auto-Verified Deposit: +₹${verifiedAmt.toFixed(2)} INR credited to Deposit Wallet`,
         createdAt: new Date().toISOString(),
       });
+
+      applyDepositBonus(user, verifiedAmt, dep);
+      user.hasFirstDepositApproved = true;
 
       saveStore();
     }
@@ -5448,10 +7386,10 @@ app.post('/api/admin/smtp-test', async (req: Request, res: Response) => {
 
     const target = testEmail || config.smtpFrom;
     await transporter.sendMail({
-      from: `"TetherPlus System" <${config.smtpFrom}>`,
+      from: `"SportX System" <${config.smtpFrom}>`,
       to: target,
-      subject: 'TetherPlus SMTP Test Email 🚀',
-      text: `Hello! If you are reading this email, your TetherPlus SMTP configuration for ${config.smtpUser} (${config.smtpHost}:${config.smtpPort}) is working perfectly!`,
+      subject: 'SportX SMTP Test Email 🚀',
+      text: `Hello! If you are reading this email, your SportX SMTP configuration for ${config.smtpUser} (${config.smtpHost}:${config.smtpPort}) is working perfectly!`,
     });
 
     return res.json({
@@ -5555,18 +7493,18 @@ app.get('/api/admin/users/export-csv', (req: Request, res: Response) => {
     'Role',
     'Active Package ID',
     'Active Package Name',
-    'Withdrawable Balance ($)',
-    'Upgrade Balance ($)',
-    'Total Earned ($)',
-    'ROI Earned ($)',
-    'Level Earned ($)',
-    'Sponsor Earned ($)',
-    'Rank Earned ($)',
-    'Boosting Earned ($)',
-    'Spin Earned ($)',
+    'Withdrawable Balance (INR ₹)',
+    'Upgrade Balance (INR ₹)',
+    'Total Earned (INR ₹)',
+    'ROI Earned (INR ₹)',
+    'Level Earned (INR ₹)',
+    'Sponsor Earned (INR ₹)',
+    'Rank Earned (INR ₹)',
+    'Boosting Earned (INR ₹)',
+    'Spin Earned (INR ₹)',
     'Direct Referrals Count',
     'Team Count',
-    'Team Volume ($)',
+    'Team Volume (INR ₹)',
     'Sponsor ID',
     'Rank Tier',
     'Status',
@@ -5899,7 +7837,7 @@ app.post('/api/products/buy', (req: Request, res: Response) => {
   const totalCost = product.priceUsdt * quantity;
   if (user.upgradeBalance < totalCost) {
     return res.status(400).json({
-      error: `Insufficient Shopping Fund Wallet balance ($${user.upgradeBalance.toFixed(2)} USDT available). Required: $${totalCost.toFixed(2)} USDT. Main Wallet is reserved for withdrawals.`,
+      error: `Insufficient Shopping Fund Wallet balance (₹${user.upgradeBalance.toFixed(2)} INR available). Required: ₹${totalCost.toFixed(2)} INR. Main Wallet is reserved for withdrawals.`,
     });
   }
 
@@ -5940,7 +7878,7 @@ app.post('/api/products/buy', (req: Request, res: Response) => {
     type: 'product_purchase',
     amount: totalCost,
     status: 'completed',
-    notes: `Purchased ${quantity}x ${itemDesc} from TetherMart (Deducted from Shopping Fund Wallet)`,
+    notes: `Purchased ${quantity}x ${itemDesc} from SportX Mart (₹${totalCost.toFixed(2)} INR from Shopping Fund Wallet)`,
     createdAt: new Date().toISOString(),
   });
 
@@ -5965,13 +7903,13 @@ app.post('/api/admin/products', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Title and Price are required' });
   }
 
-  const usdtToInr = state.settings.rates.usdtToInr || 100;
+  const priceInrVal = Number(priceUsdt);
   const newProduct: Product = {
     id: `prod-${Date.now()}`,
     title,
-    description: description || 'High quality Web3 marketplace product.',
-    priceUsdt: Number(priceUsdt),
-    priceInr: Number(priceUsdt) * usdtToInr,
+    description: description || 'High quality SportX Mart product.',
+    priceUsdt: priceInrVal,
+    priceInr: priceInrVal,
     category: category || 'Electronics',
     image: image || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80',
     stock: stock !== undefined ? Number(stock) : 50,
@@ -5999,13 +7937,11 @@ app.put('/api/admin/products/:id', (req: Request, res: Response) => {
   const product = (state.products || []).find((p) => p.id === id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
 
-  const usdtToInr = state.settings.rates.usdtToInr || 100;
-
   if (title !== undefined) product.title = title;
   if (description !== undefined) product.description = description;
   if (priceUsdt !== undefined) {
     product.priceUsdt = Number(priceUsdt);
-    product.priceInr = Number(priceUsdt) * usdtToInr;
+    product.priceInr = Number(priceUsdt);
   }
   if (category !== undefined) product.category = category;
   if (image !== undefined) product.image = image;
@@ -6042,6 +7978,383 @@ app.put('/api/admin/orders/:id', (req: Request, res: Response) => {
   res.json({ success: true, order });
 });
 
+// ==========================================
+// 🏏 FANTASY CRICKET (DREAM11 STYLE) ENGINE
+// ==========================================
+
+const defaultCricketMatches = [
+  {
+    id: 'match-ind-aus',
+    title: 'India vs Australia • 3rd T20I Final',
+    series: 'T20 World Championship 2026',
+    matchType: 'T20',
+    team1: {
+      name: 'India',
+      shortName: 'IND',
+      flag: '🇮🇳',
+      score: '194/4 (20.0 ov)',
+      color: '#0284c7',
+    },
+    team2: {
+      name: 'Australia',
+      shortName: 'AUS',
+      flag: '🇦🇺',
+      score: '142/3 (15.2 ov)',
+      color: '#eab308',
+    },
+    venue: 'Narendra Modi Stadium, Ahmedabad',
+    startTime: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+    status: 'live',
+    statusText: '🔴 LIVE IN PLAY • INNINGS 2',
+    megaPrizePool: 500000,
+    contests: [
+      {
+        id: 'contest-mega-1',
+        title: '🔥 MEGA CONTEST • 1st Prize ₹1,50,000 INR',
+        tagline: 'Guaranteed 60% Winners • Up to 20 Teams',
+        entryFee: 49,
+        prizePool: 500000,
+        totalSpots: 12000,
+        filledSpots: 8892,
+        firstPrize: 150000,
+        winnerPercentage: 60,
+        maxTeamsPerUser: 20,
+        guaranteed: true,
+        status: 'open',
+      },
+      {
+        id: 'contest-h2h-1',
+        title: '⚔️ Head-to-Head Winner Takes All',
+        tagline: '2 Players • 1 Winner',
+        entryFee: 100,
+        prizePool: 180,
+        totalSpots: 2,
+        filledSpots: 1,
+        firstPrize: 180,
+        winnerPercentage: 50,
+        maxTeamsPerUser: 1,
+        guaranteed: true,
+        status: 'open',
+      },
+      {
+        id: 'contest-hot-mini',
+        title: '💎 Hot Multiplier 3X Booster',
+        tagline: 'Top 33% Win 3X Entry Fee',
+        entryFee: 25,
+        prizePool: 25000,
+        totalSpots: 1200,
+        filledSpots: 884,
+        firstPrize: 5000,
+        winnerPercentage: 33,
+        maxTeamsPerUser: 5,
+        guaranteed: true,
+        status: 'open',
+      },
+    ],
+    players: [
+      // Wicket Keepers
+      { id: 'p1', name: 'Rishabh Pant', team: 'India', teamShort: 'IND', role: 'WK', credits: 9.5, avatar: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=200&q=80', selectedByPercent: 88.4, points: 74, runs: 46, balls: 26, fours: 4, sixes: 3, catches: 1 },
+      { id: 'p2', name: 'Josh Inglis', team: 'Australia', teamShort: 'AUS', role: 'WK', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=200&q=80', selectedByPercent: 42.1, points: 38, runs: 28, balls: 19, fours: 3, sixes: 1 },
+      
+      // Batsmen
+      { id: 'p3', name: 'Suryakumar Yadav', team: 'India', teamShort: 'IND', role: 'BAT', credits: 10.0, avatar: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=200&q=80', selectedByPercent: 92.5, points: 112, runs: 68, balls: 34, fours: 6, sixes: 5, strikeRate: 200.0 },
+      { id: 'p4', name: 'Travis Head', team: 'Australia', teamShort: 'AUS', role: 'BAT', credits: 9.5, avatar: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=200&q=80', selectedByPercent: 86.2, points: 86, runs: 54, balls: 28, fours: 7, sixes: 2, strikeRate: 192.8 },
+      { id: 'p5', name: 'Shubman Gill', team: 'India', teamShort: 'IND', role: 'BAT', credits: 9.0, avatar: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=200&q=80', selectedByPercent: 74.0, points: 48, runs: 35, balls: 24, fours: 4, sixes: 1 },
+      { id: 'p6', name: 'David Warner', team: 'Australia', teamShort: 'AUS', role: 'BAT', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&q=80', selectedByPercent: 65.3, points: 32, runs: 22, balls: 16, fours: 3, sixes: 0 },
+      { id: 'p7', name: 'Yashasvi Jaiswal', team: 'India', teamShort: 'IND', role: 'BAT', credits: 9.0, avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80', selectedByPercent: 71.8, points: 42, runs: 31, balls: 18, fours: 4, sixes: 1 },
+      { id: 'p8', name: 'Tim David', team: 'Australia', teamShort: 'AUS', role: 'BAT', credits: 8.0, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80', selectedByPercent: 45.0, points: 26, runs: 18, balls: 9, fours: 1, sixes: 2 },
+
+      // All Rounders
+      { id: 'p9', name: 'Hardik Pandya', team: 'India', teamShort: 'IND', role: 'AR', credits: 9.5, avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80', selectedByPercent: 89.1, points: 95, runs: 28, balls: 14, wickets: 2, overs: 4, maidens: 0, economy: 7.2 },
+      { id: 'p10', name: 'Glenn Maxwell', team: 'Australia', teamShort: 'AUS', role: 'AR', credits: 9.0, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', selectedByPercent: 79.5, points: 68, runs: 32, balls: 18, wickets: 1, overs: 3, economy: 8.0 },
+      { id: 'p11', name: 'Axar Patel', team: 'India', teamShort: 'IND', role: 'AR', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=200&q=80', selectedByPercent: 63.2, points: 54, runs: 14, wickets: 1, overs: 4, economy: 6.5 },
+      { id: 'p12', name: 'Marcus Stoinis', team: 'Australia', teamShort: 'AUS', role: 'AR', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80', selectedByPercent: 58.7, points: 44, runs: 24, balls: 15, wickets: 1, overs: 2, economy: 9.0 },
+
+      // Bowlers
+      { id: 'p13', name: 'Jasprit Bumrah', team: 'India', teamShort: 'IND', role: 'BOWL', credits: 10.0, avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=200&q=80', selectedByPercent: 94.6, points: 105, wickets: 3, overs: 4, maidens: 1, economy: 4.8 },
+      { id: 'p14', name: 'Mitchell Starc', team: 'Australia', teamShort: 'AUS', role: 'BOWL', credits: 9.0, avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80', selectedByPercent: 81.3, points: 62, wickets: 2, overs: 4, economy: 8.2 },
+      { id: 'p15', name: 'Arshdeep Singh', team: 'India', teamShort: 'IND', role: 'BOWL', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1463453091185-61582044d556?auto=format&fit=crop&w=200&q=80', selectedByPercent: 72.8, points: 58, wickets: 2, overs: 4, economy: 7.5 },
+      { id: 'p16', name: 'Pat Cummins', team: 'Australia', teamShort: 'AUS', role: 'BOWL', credits: 9.0, avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80', selectedByPercent: 76.4, points: 52, wickets: 1, overs: 4, economy: 7.0 },
+      { id: 'p17', name: 'Kuldeep Yadav', team: 'India', teamShort: 'IND', role: 'BOWL', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=200&q=80', selectedByPercent: 68.9, points: 64, wickets: 2, overs: 4, economy: 6.0 },
+      { id: 'p18', name: 'Adam Zampa', team: 'Australia', teamShort: 'AUS', role: 'BOWL', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80', selectedByPercent: 64.1, points: 46, wickets: 1, overs: 4, economy: 7.8 },
+      { id: 'p19', name: 'Mohammed Siraj', team: 'India', teamShort: 'IND', role: 'BOWL', credits: 8.0, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80', selectedByPercent: 49.0, points: 36, wickets: 1, overs: 3, economy: 8.5 },
+      { id: 'p20', name: 'Josh Hazlewood', team: 'Australia', teamShort: 'AUS', role: 'BOWL', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', selectedByPercent: 57.2, points: 42, wickets: 1, overs: 4, economy: 7.1 },
+      { id: 'p21', name: 'Rinku Singh', team: 'India', teamShort: 'IND', role: 'BAT', credits: 8.0, avatar: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=200&q=80', selectedByPercent: 41.0, points: 28, runs: 24, balls: 11, fours: 2, sixes: 2 },
+      { id: 'p22', name: 'Nathan Ellis', team: 'Australia', teamShort: 'AUS', role: 'BOWL', credits: 7.5, avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=200&q=80', selectedByPercent: 32.5, points: 30, wickets: 1, overs: 3, economy: 8.0 },
+    ],
+  },
+  {
+    id: 'match-csk-mi',
+    title: 'Chennai Super Kings vs Mumbai Indians • IPL 2026',
+    series: 'Indian T20 League 2026',
+    matchType: 'T20',
+    team1: {
+      name: 'Chennai Super Kings',
+      shortName: 'CSK',
+      flag: '🦁',
+      color: '#eab308',
+    },
+    team2: {
+      name: 'Mumbai Indians',
+      shortName: 'MI',
+      flag: '💙',
+      color: '#2563eb',
+    },
+    venue: 'MA Chidambaram Stadium, Chepauk',
+    startTime: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
+    status: 'upcoming',
+    statusText: '⏳ Starts in 4h 15m',
+    megaPrizePool: 350000,
+    contests: [
+      {
+        id: 'contest-ipl-mega',
+        title: '🏆 IPL El Clasico Mega Pool • ₹3,50,000 INR',
+        tagline: 'Guaranteed 55% Winners • Top Rank gets ₹1,00,000',
+        entryFee: 99,
+        prizePool: 350000,
+        totalSpots: 4000,
+        filledSpots: 2840,
+        firstPrize: 100000,
+        winnerPercentage: 55,
+        maxTeamsPerUser: 10,
+        guaranteed: true,
+        status: 'open',
+      },
+      {
+        id: 'contest-ipl-low',
+        title: '⚡ Beginner Safe 2X Pool',
+        tagline: '50% Winners take Double Entry',
+        entryFee: 25,
+        prizePool: 10000,
+        totalSpots: 500,
+        filledSpots: 412,
+        firstPrize: 1000,
+        winnerPercentage: 50,
+        maxTeamsPerUser: 3,
+        guaranteed: true,
+        status: 'open',
+      },
+    ],
+    players: [
+      { id: 'c1', name: 'MS Dhoni', team: 'Chennai Super Kings', teamShort: 'CSK', role: 'WK', credits: 9.5, avatar: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=200&q=80', selectedByPercent: 91.2, points: 52 },
+      { id: 'c2', name: 'Ishan Kishan', team: 'Mumbai Indians', teamShort: 'MI', role: 'WK', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=200&q=80', selectedByPercent: 68.4, points: 44 },
+      { id: 'c3', name: 'Ruturaj Gaikwad', team: 'Chennai Super Kings', teamShort: 'CSK', role: 'BAT', credits: 9.5, avatar: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=200&q=80', selectedByPercent: 87.0, points: 76 },
+      { id: 'c4', name: 'Rohit Sharma', team: 'Mumbai Indians', teamShort: 'MI', role: 'BAT', credits: 10.0, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80', selectedByPercent: 94.1, points: 88 },
+      { id: 'c5', name: 'Shivam Dube', team: 'Chennai Super Kings', teamShort: 'CSK', role: 'AR', credits: 9.0, avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80', selectedByPercent: 78.5, points: 64 },
+      { id: 'c6', name: 'Hardik Pandya', team: 'Mumbai Indians', teamShort: 'MI', role: 'AR', credits: 9.5, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80', selectedByPercent: 88.0, points: 72 },
+      { id: 'c7', name: 'Ravindra Jadeja', team: 'Chennai Super Kings', teamShort: 'CSK', role: 'AR', credits: 9.0, avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=200&q=80', selectedByPercent: 82.3, points: 70 },
+      { id: 'c8', name: 'Jasprit Bumrah', team: 'Mumbai Indians', teamShort: 'MI', role: 'BOWL', credits: 10.0, avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=200&q=80', selectedByPercent: 95.8, points: 92 },
+      { id: 'c9', name: 'Matheesha Pathirana', team: 'Chennai Super Kings', teamShort: 'CSK', role: 'BOWL', credits: 9.0, avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80', selectedByPercent: 79.4, points: 66 },
+      { id: 'c10', name: 'Tilak Varma', team: 'Mumbai Indians', teamShort: 'MI', role: 'BAT', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80', selectedByPercent: 62.0, points: 48 },
+      { id: 'c11', name: 'Deepak Chahar', team: 'Chennai Super Kings', teamShort: 'CSK', role: 'BOWL', credits: 8.0, avatar: 'https://images.unsplash.com/photo-1463453091185-61582044d556?auto=format&fit=crop&w=200&q=80', selectedByPercent: 54.3, points: 40 },
+      { id: 'c12', name: 'Gerald Coetzee', team: 'Mumbai Indians', teamShort: 'MI', role: 'BOWL', credits: 8.5, avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80', selectedByPercent: 58.0, points: 46 },
+    ],
+  },
+];
+
+function ensureFantasyCricketState() {
+  if (!(state as any).cricketMatches || (state as any).cricketMatches.length === 0) {
+    (state as any).cricketMatches = defaultCricketMatches;
+  }
+  if (!(state as any).userFantasyTeams) {
+    (state as any).userFantasyTeams = [];
+  }
+}
+
+// 1. Get all matches & user entered teams
+app.get('/api/cricket/matches', (req: Request, res: Response) => {
+  ensureFantasyCricketState();
+  const user = getUserFromReq(req);
+  const myTeams = user
+    ? (state as any).userFantasyTeams.filter((t: any) => t.userId === user.id)
+    : [];
+
+  res.json({
+    success: true,
+    matches: (state as any).cricketMatches,
+    myTeams,
+  });
+});
+
+// 2. Get Single Match detail by ID
+app.get('/api/cricket/match/:id', (req: Request, res: Response) => {
+  ensureFantasyCricketState();
+  const { id } = req.params;
+  const user = getUserFromReq(req);
+
+  const match = (state as any).cricketMatches.find((m: any) => m.id === id);
+  if (!match) return res.status(404).json({ error: 'Cricket match not found' });
+
+  const myTeams = user
+    ? (state as any).userFantasyTeams.filter((t: any) => t.userId === user.id && t.matchId === id)
+    : [];
+
+  res.json({
+    success: true,
+    match,
+    myTeams,
+  });
+});
+
+// 3. Create Dream11 Team & Join Contest
+app.post('/api/cricket/join-contest', (req: Request, res: Response) => {
+  if (!isServerGameEnabled('cricket')) {
+    return res.status(403).json({ error: 'Cricket Fantasy is currently turned off by Admin.' });
+  }
+  ensureFantasyCricketState();
+  const user = getUserFromReq(req);
+  if (!user) return res.status(401).json({ error: 'Please login to join Fantasy Cricket' });
+
+  const { matchId, contestId, selectedPlayerIds, captainId, viceCaptainId, teamName } = req.body;
+
+  const match = (state as any).cricketMatches.find((m: any) => m.id === matchId);
+  if (!match) return res.status(404).json({ error: 'Match not found' });
+
+  const contest = match.contests.find((c: any) => c.id === contestId);
+  if (!contest) return res.status(404).json({ error: 'Contest not found' });
+
+  if (contest.filledSpots >= contest.totalSpots) {
+    return res.status(400).json({ error: 'Contest is already full! Please join another contest.' });
+  }
+
+  // Validate 11 Players
+  if (!Array.isArray(selectedPlayerIds) || selectedPlayerIds.length !== 11) {
+    return res.status(400).json({ error: 'Dream11 rules require exactly 11 players in your fantasy squad.' });
+  }
+
+  if (!captainId || !viceCaptainId) {
+    return res.status(400).json({ error: 'Please select Captain (2X) and Vice-Captain (1.5X)' });
+  }
+
+  if (captainId === viceCaptainId) {
+    return res.status(400).json({ error: 'Captain and Vice-Captain must be two different players' });
+  }
+
+  // Check user Main Wallet balance (unified depositBalance + winningBalance + balance)
+  const entryFee = Number(contest.entryFee || 0);
+  if (entryFee > 0) {
+    if (!deductBetBalance(user, entryFee)) {
+      const totalMain = (user.depositBalance || 0) + (user.winningBalance || 0) + (user.balance || 0);
+      return res.status(400).json({
+        error: `Insufficient Main Wallet balance! Entry fee is ₹${entryFee} INR (Available: ₹${totalMain.toFixed(2)} INR). Please deposit funds.`,
+      });
+    }
+  }
+
+  // Calculate live fantasy points for this team
+  let totalPoints = 0;
+  const matchPlayers = match.players || [];
+  for (const pid of selectedPlayerIds) {
+    const p = matchPlayers.find((pl: any) => pl.id === pid);
+    let pts = p?.points || 0;
+    if (pid === captainId) pts = Math.round(pts * 2);
+    else if (pid === viceCaptainId) pts = Math.round(pts * 1.5);
+    totalPoints += pts;
+  }
+
+  // User Team Count for this contest
+  const existingContestTeams = (state as any).userFantasyTeams.filter(
+    (t: any) => t.userId === user.id && t.contestId === contestId
+  );
+  const nextTeamNum = existingContestTeams.length + 1;
+  const finalTeamName = teamName || `Team T${nextTeamNum}`;
+
+  const newFantasyTeam = {
+    id: `ft-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    userName: user.name || 'Player',
+    matchId,
+    contestId,
+    teamName: finalTeamName,
+    selectedPlayerIds,
+    captainId,
+    viceCaptainId,
+    totalPoints,
+    rank: Math.floor(Math.random() * 12) + 1,
+    wonPrize: 0,
+    createdAt: new Date().toISOString(),
+  };
+
+  (state as any).userFantasyTeams.push(newFantasyTeam);
+  contest.filledSpots = (contest.filledSpots || 0) + 1;
+
+  // Add Bet Turnover & Affiliate Turnover
+  user.totalBetTurnover = (user.totalBetTurnover || 0) + entryFee;
+  process5LevelBetTurnoverCommission(user, entryFee, 'Cricket Fantasy 11');
+
+  // Log transaction
+  if (entryFee > 0) {
+    state.transactions.unshift({
+      id: `tx-cricket-${Date.now()}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'bet_placed' as any,
+      amount: entryFee,
+      status: 'completed',
+      notes: `🏏 Dream11 Fantasy Contest: ${contest.title} (${finalTeamName})`,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  saveStore();
+
+  res.json({
+    success: true,
+    message: `🎉 Successfully joined contest with ${finalTeamName}!`,
+    team: newFantasyTeam,
+    contest,
+    user: {
+      depositBalance: user.depositBalance,
+      winningBalance: user.winningBalance,
+    },
+  });
+});
+
+// 4. Get Match Leaderboard for a Contest
+app.get('/api/cricket/leaderboard/:contestId', (req: Request, res: Response) => {
+  ensureFantasyCricketState();
+  const { contestId } = req.params;
+  const user = getUserFromReq(req);
+
+  const realTeams = (state as any).userFantasyTeams.filter((t: any) => t.contestId === contestId);
+
+  // Generate dynamic simulated leaderboard with real user teams included
+  const botTeams = [
+    { rank: 1, teamName: 'DhoniStrikers T1', userName: 'Rohit K.', userNodeId: 'NX-9982', points: 348.5, prizeWon: 15000, captainName: 'Suryakumar Yadav', viceCaptainName: 'Jasprit Bumrah' },
+    { rank: 2, teamName: 'MumbaiKings XI', userName: 'Aakash V.', userNodeId: 'NX-4102', points: 332.0, prizeWon: 6000, captainName: 'Jasprit Bumrah', viceCaptainName: 'Travis Head' },
+    { rank: 3, teamName: 'BharatGlory 11', userName: 'Sunil G.', userNodeId: 'NX-7719', points: 318.5, prizeWon: 3000, captainName: 'Hardik Pandya', viceCaptainName: 'Rishabh Pant' },
+    { rank: 4, teamName: 'CyberCricket PRO', userName: 'Kunal R.', userNodeId: 'NX-3190', points: 302.0, prizeWon: 1500, captainName: 'Suryakumar Yadav', viceCaptainName: 'Glenn Maxwell' },
+    { rank: 5, teamName: 'MasterBlaster 7', userName: 'Vikram S.', userNodeId: 'NX-1144', points: 295.5, prizeWon: 800, captainName: 'Travis Head', viceCaptainName: 'Jasprit Bumrah' },
+    { rank: 6, teamName: 'ChepaukWarriors', userName: 'Arun P.', userNodeId: 'NX-8201', points: 288.0, prizeWon: 500, captainName: 'Rishabh Pant', viceCaptainName: 'Pat Cummins' },
+  ];
+
+  // Merge real user teams
+  const userEntries = realTeams.map((t: any, index: number) => {
+    return {
+      rank: index + 1,
+      teamName: t.teamName,
+      userName: t.userName,
+      userNodeId: t.userNodeId,
+      points: t.totalPoints,
+      prizeWon: index === 0 ? 15000 : 250,
+      captainName: 'Captain (2x)',
+      viceCaptainName: 'Vice-Captain (1.5x)',
+      isCurrentUser: user ? t.userId === user.id : false,
+    };
+  });
+
+  const merged = [...userEntries, ...botTeams].sort((a, b) => b.points - a.points);
+  merged.forEach((item, idx) => {
+    item.rank = idx + 1;
+  });
+
+  res.json({
+    success: true,
+    leaderboard: merged,
+  });
+});
+
 // VITE MIDDLEWARE OR STATIC PRODUCTION SERVING
 async function startServer() {
   // Initialize SQLite Database before handling traffic
@@ -6062,7 +8375,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 TetherPlus Cyberpunk Web3 Server listening on http://0.0.0.0:${PORT}`);
+    console.log(`🚀 SportX Gaming Server listening on http://0.0.0.0:${PORT}`);
   });
 }
 

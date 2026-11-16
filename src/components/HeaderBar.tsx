@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TetherPlusLogo } from './TetherPlusLogo';
+import { JalwaLogo } from './JalwaLogo';
 import {
   Wallet,
   Shield,
@@ -15,19 +16,17 @@ import {
   LogIn,
   UserPlus,
   Key,
-  Disc,
-  Ticket,
   Eye,
   EyeOff,
   Menu,
   PlusCircle,
   ArrowUpRight,
-  MoreVertical,
 } from 'lucide-react';
 import { User, SystemSettings } from '../types';
+import { getMainWalletUsdt } from '../utils/subdomainRouter';
 
 interface HeaderBarProps {
-  user: User;
+  user?: User | null;
   users: User[];
   settings: SystemSettings;
   isAdminView: boolean;
@@ -56,7 +55,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onToggleMobileDrawer,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [showThreeDotMenu, setShowThreeDotMenu] = useState(false);
 
   // Change Password Modal State
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -68,6 +66,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   const [passSuccess, setPassSuccess] = useState('');
 
   const handleCopyNodeId = () => {
+    if (!user?.nodeId) return;
     navigator.clipboard.writeText(user.nodeId);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -75,6 +74,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setPassError('');
     setPassSuccess('');
     try {
@@ -106,79 +106,53 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0b1320]/95 backdrop-blur-md border-b border-cyan-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+    <header className="sticky top-0 z-40 bg-[#090e17]/95 backdrop-blur-md border-b border-amber-500/20 shadow-[0_4px_25px_rgba(0,0,0,0.6)]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 md:h-16 flex items-center justify-between gap-2">
         {/* Mobile Menu Button & Brand Logo */}
         <div className="flex items-center gap-2 sm:gap-3">
           {onToggleMobileDrawer && (
             <button
               onClick={onToggleMobileDrawer}
-              className="md:hidden p-2 rounded-xl bg-slate-800/80 border border-slate-700 text-cyan-400 hover:bg-slate-700 transition"
+              className="md:hidden p-2 rounded-xl bg-slate-800/80 border border-slate-700 text-amber-400 hover:bg-slate-700 transition"
               title="Open Navigation Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
           )}
 
-          <TetherPlusLogo size="md" showTagline={true} />
-          <span className="hidden xl:inline-flex items-center gap-1 text-[10px] bg-gradient-to-r from-amber-500/20 to-rose-500/20 border border-amber-500/40 text-amber-300 px-2.5 py-0.5 rounded-full font-mono font-black self-center shadow-[0_0_10px_rgba(245,158,11,0.2)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            CASINO ARENA
-          </span>
+          <div className="cursor-pointer" onClick={() => onSelectTab?.('dashboard')}>
+            <JalwaLogo size="md" />
+          </div>
         </div>
 
-        {/* Desktop Network & Wallet Quick Status */}
-        <div className="hidden lg:flex items-center gap-2 bg-[#0d1726] border border-cyan-500/20 px-3 py-1.5 rounded-xl font-mono text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" />
-            <span className="text-slate-300">BSC</span>
-          </div>
-          <span className="text-slate-600">|</span>
-          <div className="text-cyan-300 font-semibold flex items-center gap-1" title="Deposit Wallet for gaming bets">
-            <Wallet className="w-3.5 h-3.5 text-[#0ef]" />
-            <span className="text-[10px] text-slate-400 uppercase">Deposit:</span>
-            <span className="text-[#0ef] font-bold">${(user?.depositBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-          </div>
-          <span className="text-slate-600">|</span>
-          <div className="text-amber-300 font-semibold flex items-center gap-1" title="Game Winning Wallet">
-            <span className="text-[10px] text-amber-400 uppercase font-bold">🎮 Winning:</span>
-            <span className="text-amber-300 font-bold">${(user?.winningBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-          </div>
-        </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
-          {/* Quick Lucky Draw Nav Button */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Quick Back to Shared Front Page Button */}
           {onSelectTab && (
             <button
-              onClick={() => onSelectTab('luckydraw')}
-              className="flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)] transition transform hover:scale-[1.02] active:scale-[0.98]"
-              title="Open Lucky Draw Jackpot"
+              onClick={() => onSelectTab('dashboard')}
+              className="hidden sm:flex items-center gap-1 bg-[#0b1430] border border-slate-700 hover:border-cyan-500/50 rounded-xl px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:text-cyan-300 transition active:scale-95"
+              title="Return to Shared Front Page Lobby"
             >
-              <Ticket className="w-3.5 h-3.5 text-amber-400" />
-              <span className="inline">Draw</span>
-              <span className="text-[8px] bg-amber-400 text-black px-1 rounded font-extrabold uppercase leading-none py-0.5">
-                Jackpot
-              </span>
+              <span>🏠 Front Page</span>
             </button>
           )}
 
-          {/* Quick Deposit & Cashout Buttons (Desktop) */}
-          <button
-            onClick={onOpenDeposit}
-            className="hidden sm:flex items-center gap-1 text-xs font-black px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.35)] transition transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <span>+ Deposit</span>
-          </button>
-          <button
-            onClick={onOpenWithdraw}
-            className="hidden sm:flex items-center gap-1 text-xs font-black px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.2)] transition transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <span>Cash Out</span>
-          </button>
+          {/* Unified Main Wallet Balance Pill */}
+          {user && onOpenDeposit && (
+            <div
+              onClick={onOpenDeposit}
+              className="bg-[#0b1430] border border-cyan-500/40 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-cyan-300 flex items-center gap-1.5 cursor-pointer hover:border-cyan-400 transition active:scale-95 shadow-sm"
+              title="Unified Main Wallet Balance (Deposit + Winning + Bonus)"
+            >
+              <Wallet className="w-3.5 h-3.5 text-cyan-400" />
+              <span>₹{getMainWalletUsdt(user).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          )}
 
-          {/* Admin Switcher Toggle (Only visible for Admin Nodes) */}
-          {(user?.isAdmin || user?.nodeId === 'NX-ROOT01') && (
+          {/* Admin Switcher Toggle (Visible for Admin and Sub-Admin Nodes) */}
+          {(user?.isAdmin || user?.isSubAdmin || user?.nodeId === 'NX-ROOT01') && (
             <button
               onClick={() => setIsAdminView(!isAdminView)}
               className={`flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition border font-mono ${
@@ -192,149 +166,31 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             </button>
           )}
 
-          {/* Account Security & 3-Dot Options Menu */}
-          <div className="flex items-center gap-1.5 font-mono text-xs relative">
+          {/* Account Security Key Button */}
+          {user && (
             <button
               onClick={() => setShowPasswordModal(true)}
-              className="p-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 transition flex items-center justify-center"
+              className="p-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-amber-300 hover:border-amber-500/40 transition flex items-center justify-center"
               title="Change Account Password"
             >
-              <Key className="w-4 h-4 text-cyan-400" />
+              <Key className="w-4 h-4 text-amber-400" />
             </button>
+          )}
 
-            {/* 3-Dot Overflow Menu */}
-            <div className="relative">
-              <button
-                onClick={() => setShowThreeDotMenu(!showThreeDotMenu)}
-                className={`p-1.5 rounded-xl border transition flex items-center justify-center ${
-                  showThreeDotMenu
-                    ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                    : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:border-slate-600'
-                }`}
-                title="Account & Session Menu"
-              >
-                <MoreVertical className="w-4 h-4 text-cyan-400" />
-              </button>
-
-              {/* 3-Dot Dropdown Overlay & Popup */}
-              {showThreeDotMenu && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowThreeDotMenu(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-56 bg-[#080e18] border border-cyan-500/40 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] py-2 z-50 font-mono text-xs backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3 py-2 border-b border-slate-800/80 mb-1">
-                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Node Account</span>
-                      <span className="text-cyan-400 font-bold truncate block">{user.nodeId}</span>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setShowThreeDotMenu(false);
-                        onSelectTab?.('luckydraw');
-                      }}
-                      className="w-full text-left px-3.5 py-2.5 hover:bg-amber-500/10 hover:text-amber-300 text-slate-300 flex items-center gap-2.5 transition"
-                    >
-                      <Ticket className="w-4 h-4 text-amber-400" />
-                      <span>Lucky Draw Jackpot</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowThreeDotMenu(false);
-                        onOpenDeposit();
-                      }}
-                      className="w-full text-left px-3.5 py-2.5 hover:bg-emerald-500/10 hover:text-emerald-300 text-slate-300 flex items-center gap-2.5 transition"
-                    >
-                      <Wallet className="w-4 h-4 text-emerald-400" />
-                      <span>Deposit Funds</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowThreeDotMenu(false);
-                        onOpenWithdraw();
-                      }}
-                      className="w-full text-left px-3.5 py-2.5 hover:bg-cyan-500/10 hover:text-cyan-300 text-slate-300 flex items-center gap-2.5 transition"
-                    >
-                      <ArrowUpRight className="w-4 h-4 text-cyan-400" />
-                      <span>Withdraw Funds</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowThreeDotMenu(false);
-                        setShowPasswordModal(true);
-                      }}
-                      className="w-full text-left px-3.5 py-2.5 hover:bg-slate-800 hover:text-cyan-300 text-slate-300 flex items-center gap-2.5 transition"
-                    >
-                      <Key className="w-4 h-4 text-amber-400" />
-                      <span>Change Password</span>
-                    </button>
-
-                    {onLogout && (
-                      <div className="pt-1 mt-1 border-t border-slate-800/80">
-                        <button
-                          onClick={() => {
-                            setShowThreeDotMenu(false);
-                            onLogout();
-                          }}
-                          className="w-full text-left px-3.5 py-2.5 hover:bg-red-500/20 text-red-400 font-bold flex items-center gap-2.5 transition"
-                        >
-                          <LogOut className="w-4 h-4 text-red-400" />
-                          <span>Logout Account</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {onLogout && (
-              <button
-                onClick={onLogout}
-                className="hidden sm:flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/40 transition shadow-[0_0_10px_rgba(239,68,68,0.15)]"
-                title="Logout"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            )}
-          </div>
+          {/* Logout Button */}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/40 transition shadow-[0_0_10px_rgba(239,68,68,0.15)] active:scale-95"
+              title="Logout"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile Wallet Balance Bar (Visible on Mobile Screens < 1024px) */}
-      <div className="lg:hidden bg-[#070e1b] border-t border-cyan-500/10 px-2 py-1.5 flex items-center justify-between text-[11px] font-mono overflow-x-auto">
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1 text-cyan-300">
-            <span className="text-[9px] text-slate-400">Dep:</span>
-            <strong className="text-cyan-400 font-bold">${(user?.depositBalance || 0).toFixed(2)}</strong>
-          </div>
-          <div className="h-3 w-[1px] bg-slate-800" />
-          <div className="flex items-center gap-1 text-amber-300">
-            <span className="text-[9px] text-amber-400 font-bold">🎮 Win:</span>
-            <strong className="text-amber-300 font-bold">${(user?.winningBalance || 0).toFixed(2)}</strong>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={onOpenDeposit}
-            className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-black shadow-[0_0_8px_rgba(16,185,129,0.3)] transition"
-          >
-            + Deposit
-          </button>
-          <button
-            onClick={onOpenWithdraw}
-            className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/50 hover:bg-amber-500/30 text-amber-300 text-[10px] font-black shadow-[0_0_8px_rgba(245,158,11,0.2)] transition"
-          >
-            Cash Out
-          </button>
-        </div>
-      </div>
 
       {/* Change Password Modal */}
       {showPasswordModal && (
