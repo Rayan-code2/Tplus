@@ -2581,13 +2581,22 @@ function setSessionCookie(res: Response, req: Request, userId: string) {
 
 function clearSessionCookie(res: Response, req: Request) {
   const domain = getCookieRootDomain(req);
-  const parts = ['tp_user_id=', 'Path=/', 'Max-Age=0', 'SameSite=Lax'];
-  if (domain) parts.push(`Domain=${domain}`);
-  res.setHeader('Set-Cookie', parts.join('; '));
+  const cookiesToClear = [
+    'tp_user_id=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax',
+  ];
+  if (domain) {
+    cookiesToClear.push(
+      `tp_user_id=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Domain=${domain}`
+    );
+  }
+  res.setHeader('Set-Cookie', cookiesToClear);
 }
 
 // Helper to get active user for request (supports header 'x-user-id', query/body userId, and cross-subdomain cookie 'tp_user_id')
 function getUserFromReq(req: Request): User | undefined {
+  if (req.headers['x-logged-out'] === 'true' || req.headers['x-user-id'] === 'NONE') {
+    return undefined;
+  }
   const cookies = parseCookieHeader(req.headers.cookie);
   const reqUserId =
     (req.headers['x-user-id'] as string) ||
@@ -2738,6 +2747,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 
 // Logout endpoint
 app.post('/api/auth/logout', (req: Request, res: Response) => {
+  state.activeUserId = '';
   clearSessionCookie(res, req);
   res.json({ success: true });
 });

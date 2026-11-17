@@ -24,7 +24,9 @@ import {
   ExternalLink,
   Coins,
   Send,
-  MessageSquare
+  MessageSquare,
+  LogOut,
+  User as UserIcon,
 } from 'lucide-react';
 import { User, DepositRequest, WithdrawalRequest, SystemSettings, Transaction } from '../types';
 import { DepositModal } from './DepositModal';
@@ -36,11 +38,14 @@ interface FinanceViewProps {
   depositRequests: DepositRequest[];
   withdrawalRequests: WithdrawalRequest[];
   transactions?: Transaction[];
+  viewMode?: 'account' | 'wallet';
   onDepositSubmit: (amount: number, network: string, txHash: string) => Promise<void>;
   onWithdrawSubmit: (amount: number, targetAddress: string, network: string, walletType?: 'mlm' | 'winning') => Promise<void>;
+  onConvertWinnings?: (amount: number) => Promise<void>;
   onNavigateToPackages?: () => void;
   onSelectTab?: (tab: string) => void;
   onRefreshUser?: () => Promise<void>;
+  onLogout?: () => void;
 }
 
 export const FinanceView: React.FC<FinanceViewProps> = ({
@@ -49,11 +54,14 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   depositRequests,
   withdrawalRequests,
   transactions = [],
+  viewMode = 'account',
   onDepositSubmit,
   onWithdrawSubmit,
+  onConvertWinnings,
   onNavigateToPackages,
   onSelectTab,
   onRefreshUser,
+  onLogout,
 }) => {
   // Active Modal States
   const [activeModal, setActiveModal] = useState<
@@ -153,9 +161,19 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="text-center font-bold tracking-wide text-white text-base">
-            Wallet Center
+            {viewMode === 'wallet' ? 'Wallet Center' : 'My Account'}
           </div>
           <div className="flex items-center gap-2">
+            {viewMode === 'wallet' && onSelectTab && (
+              <button
+                onClick={() => onSelectTab('account')}
+                className="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 text-[11px] font-bold flex items-center gap-1 transition"
+                title="Go to My Account"
+              >
+                <UserIcon className="w-3.5 h-3.5" />
+                <span>Account</span>
+              </button>
+            )}
             <button
               onClick={() => setActiveModal('support')}
               className="p-1.5 rounded-full hover:bg-slate-800/60 text-slate-400 hover:text-cyan-400 transition"
@@ -166,6 +184,151 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           </div>
         </div>
 
+        {viewMode === 'wallet' ? (
+          <div className="space-y-4">
+            {/* DEDICATED WALLET CENTER VIEW */}
+            <div className="rounded-2xl bg-gradient-to-br from-[#0e1d44] via-[#0c183a] to-[#09122c] border border-cyan-500/30 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.6)] space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="text-xs text-cyan-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <Wallet className="w-4 h-4 text-cyan-400" />
+                    <span>Total Unified Balance</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-3xl font-extrabold text-white tracking-tight">
+                      ₹{totalBalanceInr}
+                    </span>
+                    <button
+                      onClick={() => {
+                        handleRefreshBalance();
+                        onRefreshUser?.();
+                      }}
+                      className="text-slate-400 hover:text-cyan-300 p-1 transition"
+                      title="Refresh Balance"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-cyan-400' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold">
+                    UID: {numericUid}
+                  </span>
+                </div>
+              </div>
+
+              {/* 3 Sub-Wallet Breakdown Cards */}
+              <div className="grid grid-cols-3 gap-2.5 pt-2 border-t border-slate-700/50">
+                <div className="bg-[#060c1f]/80 border border-cyan-500/20 rounded-xl p-2.5 text-center">
+                  <div className="text-[10px] text-slate-400 font-medium">Deposit Wallet</div>
+                  <div className="text-xs sm:text-sm font-black text-cyan-300 font-mono mt-0.5">
+                    ₹{(user?.depositBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-[#060c1f]/80 border border-emerald-500/20 rounded-xl p-2.5 text-center">
+                  <div className="text-[10px] text-slate-400 font-medium">Winning Wallet</div>
+                  <div className="text-xs sm:text-sm font-black text-emerald-400 font-mono mt-0.5">
+                    ₹{(user?.winningBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-[#060c1f]/80 border border-amber-500/20 rounded-xl p-2.5 text-center">
+                  <div className="text-[10px] text-slate-400 font-medium">Agency / ROI</div>
+                  <div className="text-xs sm:text-sm font-black text-amber-300 font-mono mt-0.5">
+                    ₹{(user?.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Deposit & Withdraw CTA Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <button
+                  onClick={() => setActiveModal('deposit')}
+                  className="py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(16,185,129,0.35)] active:scale-95 transition"
+                >
+                  <ArrowDownLeft className="w-4 h-4 stroke-[2.5]" />
+                  <span>Deposit Cash</span>
+                </button>
+                <button
+                  onClick={() => setActiveModal('withdraw')}
+                  className="py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(245,158,11,0.35)] active:scale-95 transition"
+                >
+                  <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                  <span>Withdraw</span>
+                </button>
+              </div>
+
+              {/* 1-Click Winning to Deposit Transfer if user has winning balance */}
+              {(user?.winningBalance || 0) >= 1 && onConvertWinnings && (
+                <button
+                  type="button"
+                  onClick={() => onConvertWinnings(Math.floor(user.winningBalance || 0))}
+                  className="w-full py-2.5 px-3 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 text-xs font-bold flex items-center justify-center gap-2 transition"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>
+                    Transfer Winning ₹{Math.floor(user.winningBalance || 0).toLocaleString('en-IN')} → Deposit Wallet
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Quick Wallet History Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <div
+                onClick={() => setActiveModal('depositHistory')}
+                className="cursor-pointer bg-[#0c1630] hover:bg-[#101d3f] border border-cyan-500/15 rounded-2xl p-3.5 flex items-center gap-3 transition active:scale-98 shadow-sm group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                  <ArrowDownLeft className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white leading-tight">Deposit History</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 truncate">{userDeposits.length} records</div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setActiveModal('withdrawHistory')}
+                className="cursor-pointer bg-[#0c1630] hover:bg-[#101d3f] border border-cyan-500/15 rounded-2xl p-3.5 flex items-center gap-3 transition active:scale-98 shadow-sm group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-yellow-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                  <Check className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white leading-tight">Withdraw History</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 truncate">{userWithdrawals.length} records</div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setActiveModal('transactionHistory')}
+                className="cursor-pointer bg-[#0c1630] hover:bg-[#101d3f] border border-cyan-500/15 rounded-2xl p-3.5 flex items-center gap-3 transition active:scale-98 shadow-sm group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                  <History className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white leading-tight">Transactions</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 truncate">Full ledger</div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => (onSelectTab ? onSelectTab('account') : setActiveModal('arWallet'))}
+                className="cursor-pointer bg-[#0c1630] hover:bg-[#101d3f] border border-cyan-500/15 rounded-2xl p-3.5 flex items-center gap-3 transition active:scale-98 shadow-sm group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                  <UserIcon className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white leading-tight">My Account</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 truncate">Profile & settings</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* USER PROFILE SECTION (Matches Reference Image) */}
         <div className="flex items-center gap-3.5 pt-1">
           {/* Avatar with subtle glow ring */}
@@ -449,6 +612,20 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* LOGOUT BUTTON AT BOTTOM OF ACCOUNT PAGE */}
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500/20 via-red-500/20 to-rose-500/20 hover:from-rose-500/30 hover:to-red-500/30 border border-rose-500/40 text-rose-300 font-extrabold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition active:scale-98 shadow-lg"
+          >
+            <LogOut className="w-4 h-4 text-rose-400" />
+            <span>Log Out</span>
+          </button>
+        )}
+          </>
+        )}
 
       </div>
 

@@ -1,8 +1,16 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import {registerSW} from 'virtual:pwa-register';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
+
+// Register SportX PWA Service Worker
+try {
+  registerSW({ immediate: true });
+} catch {
+  // Ignore SW registration errors in unsupported contexts
+}
 
 // Cross-subdomain SSO bootstrap: extract ?uid= and ?api= params if redirected from another subdomain
 try {
@@ -13,6 +21,7 @@ try {
 
   if (ssoUid && ssoUid.trim()) {
     localStorage.setItem('tp_user_id', ssoUid.trim());
+    localStorage.removeItem('tp_logged_out');
     params.delete('uid');
     params.delete('sso_uid');
     urlChanged = true;
@@ -48,10 +57,14 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
     }
 
     const userId = localStorage.getItem('tp_user_id') || '';
+    const isLoggedOut = localStorage.getItem('tp_logged_out') === 'true' || !userId;
     init = { ...(init || {}), credentials: 'include' };
     const headers = new Headers(init.headers || {});
     if (!headers.has('x-user-id')) {
-      headers.set('x-user-id', userId);
+      headers.set('x-user-id', userId || 'NONE');
+    }
+    if (isLoggedOut && !url.includes('/api/auth/login') && !url.includes('/api/auth/register')) {
+      headers.set('x-logged-out', 'true');
     }
     init.headers = headers;
   }

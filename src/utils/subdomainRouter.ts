@@ -62,6 +62,8 @@ const ALIAS_TO_TAB: Record<string, string> = {
   gateway: 'payment_gateway',
   finance: 'finance',
   wallet: 'finance',
+  account: 'account',
+  profile: 'account',
   vip: 'vip',
   privileges: 'vip',
   agency: 'agency',

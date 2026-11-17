@@ -83,6 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
 
       if (data.user?.id) {
+        localStorage.removeItem('tp_logged_out');
         localStorage.setItem('tp_user_id', data.user.id);
       }
 
@@ -127,6 +128,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
 
       if (data.user?.id) {
+        localStorage.removeItem('tp_logged_out');
         localStorage.setItem('tp_user_id', data.user.id);
       }
 

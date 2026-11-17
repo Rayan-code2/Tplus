@@ -81,6 +81,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
       }
 
       if (data.user?.id) {
+        localStorage.removeItem('tp_logged_out');
         localStorage.setItem('tp_user_id', data.user.id);
       }
 
@@ -124,6 +125,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
       }
 
       if (data.user?.id) {
+        localStorage.removeItem('tp_logged_out');
         localStorage.setItem('tp_user_id', data.user.id);
       }
 

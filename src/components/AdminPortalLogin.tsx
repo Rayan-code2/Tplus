@@ -56,6 +56,7 @@ export const AdminPortalLogin: React.FC<AdminPortalLoginProps> = ({
         throw new Error('Access Denied: This account does not have Admin privileges.');
       }
 
+      localStorage.removeItem('tp_logged_out');
       localStorage.setItem('tp_user_id', loggedUser.id);
       sessionStorage.setItem('sportx_admin_verified', loggedUser.id);
       onSuccess(loggedUser);

@@ -21,9 +21,13 @@ import {
   Menu,
   PlusCircle,
   ArrowUpRight,
+  Download,
+  CheckCircle2,
+  X,
 } from 'lucide-react';
 import { User, SystemSettings } from '../types';
 import { getMainWalletUsdt } from '../utils/subdomainRouter';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface HeaderBarProps {
   user?: User | null;
@@ -55,6 +59,15 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onToggleMobileDrawer,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+
+  const handleDownloadPwaClick = async () => {
+    const outcome = await install();
+    if (outcome !== 'accepted') {
+      setShowInstallModal(true);
+    }
+  };
 
   // Change Password Modal State
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -128,6 +141,17 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {!isInstalled && (
+            <button
+              type="button"
+              onClick={handleDownloadPwaClick}
+              className="h-7 px-2 rounded-lg bg-[#08182b] border border-emerald-500/40 text-emerald-400 flex items-center justify-center gap-1 hover:bg-emerald-500/15 active:scale-95 transition shadow-sm"
+              title="Download & Install SportX App"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-extrabold tracking-tight hidden sm:inline">APP</span>
+            </button>
+          )}
           {/* Quick Back to Shared Front Page Button */}
           {onSelectTab && (
             <button
@@ -270,6 +294,77 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showInstallModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0b1430] border border-cyan-500/40 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative text-center">
+            <button
+              onClick={() => setShowInstallModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-[#082046] to-[#0e3b6d] border border-cyan-400 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(34,211,238,0.4)]">
+              <JalwaLogo size="sm" />
+            </div>
+
+            <h3 className="text-lg font-black text-white mb-1">Download SportX App</h3>
+            <p className="text-xs text-slate-300 mb-4">
+              Install the official SportX PWA App directly to your phone or desktop for 1-tap instant launch!
+            </p>
+
+            {isInstallable && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await install();
+                  if (res === 'accepted') {
+                    setShowInstallModal(false);
+                  }
+                }}
+                className="w-full mb-4 py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:brightness-110 active:scale-95 transition"
+              >
+                <Download className="w-4 h-4 stroke-[2.5]" />
+                <span>Install SportX App Now</span>
+              </button>
+            )}
+
+            <div className="text-left bg-[#080e22] p-3.5 rounded-2xl border border-blue-900/40 text-xs text-slate-300 space-y-2 mb-4">
+              {isIOS ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>1. Tap the <strong>Share (⎙)</strong> button in Safari toolbar.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>2. Tap <strong>"Add to Home Screen"</strong> to install SportX App.</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>On Chrome/Android: Tap menu <strong>(⋮)</strong> &amp; select <strong>"Install App"</strong>.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>On Safari/iOS: Tap <strong>Share (⎙)</strong> &amp; select <strong>"Add to Home Screen"</strong>.</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowInstallModal(false)}
+              className="w-full py-2.5 rounded-xl bg-slate-800 text-slate-200 font-bold text-xs hover:bg-slate-700 transition"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

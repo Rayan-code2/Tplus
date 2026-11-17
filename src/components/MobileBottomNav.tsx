@@ -34,8 +34,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const isHomeActive = activeTab === 'dashboard' || activeTab === 'home';
   const isPromoActive = activeTab === 'agency' || activeTab === 'matrix';
   const isActivityActive = activeTab === 'tournament' || activeTab === 'rewards' || activeTab === 'spinwheel';
-  const isWalletActive = activeTab === 'finance';
-  const isAccountActive = activeTab === 'profile' || activeTab === 'admin';
+  const isWalletActive = activeTab === 'finance' || activeTab === 'wallet';
+  const isAccountActive = activeTab === 'account' || activeTab === 'profile';
   const spinWheelOn = isGameEnabled('spinwheel', settings);
 
   return (
@@ -147,7 +147,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         {/* 5. Account (User) */}
         <button
           onClick={() => {
-            setActiveTab('finance');
+            setActiveTab('account');
             setIsAdminView(false);
           }}
           className={`flex-1 flex flex-col items-center justify-center py-1 transition-all duration-200 group ${

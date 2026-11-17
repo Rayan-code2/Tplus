@@ -84,42 +84,45 @@ export default function App() {
       const storedId = getStoredUserId();
       const res = await fetch('/api/state?admin=true', {
         headers: {
-          'x-user-id': storedId,
+          'x-user-id': storedId || 'NONE',
         },
       });
       if (res.ok) {
         const data = await res.json();
         const routeNow = detectRouteFromLocation();
+        // Re-check storage after async fetch so an in-flight request never overwrites an explicit logout
+        const latestStoredId = getStoredUserId();
+        const isExplicitlyLoggedOut = localStorage.getItem('tp_logged_out') === 'true';
 
         if (routeNow.isAdminSubdomain) {
           const verifiedAdminId = sessionStorage.getItem('sportx_admin_verified');
-          const matchedAdmin = (data.users || []).find(
-            (u: any) =>
-              u.id === verifiedAdminId &&
-              (u.isAdmin || u.isSuperAdmin || u.isSubAdmin || u.nodeId === 'NX-ROOT01')
-          );
+          const matchedAdmin =
+            !isExplicitlyLoggedOut && verifiedAdminId
+              ? (data.users || []).find(
+                  (u: any) =>
+                    u.id === verifiedAdminId &&
+                    (u.isAdmin || u.isSuperAdmin || u.isSubAdmin || u.nodeId === 'NX-ROOT01')
+                )
+              : null;
           if (matchedAdmin) {
             setCurrentUser(matchedAdmin);
             localStorage.setItem('tp_user_id', matchedAdmin.id);
             setIsAdminPortalAuthed(true);
             setIsAuthPage(false);
           } else {
+            setCurrentUser(null);
             setIsAdminPortalAuthed(false);
           }
-        } else if (storedId && data.currentUser) {
+        } else if (!isExplicitlyLoggedOut && latestStoredId && data.currentUser) {
           setCurrentUser(data.currentUser);
           setIsAuthPage(false);
-        } else if (!storedId) {
-          const demoUser =
-            (data.users || []).find((u: any) => u.nodeId === 'NX-8821' || u.id === 'usr-demo') ||
-            data.users?.[0];
-          if (demoUser) {
-            setCurrentUser(demoUser);
-            localStorage.setItem('tp_user_id', demoUser.id);
-            setIsAuthPage(false);
-          } else {
-            setCurrentUser(null);
+        } else {
+          // User is logged out or has no active session — keep them on Login / Register screen
+          if (!data.currentUser && latestStoredId) {
+            localStorage.removeItem('tp_user_id');
           }
+          setCurrentUser(null);
+          setIsAuthPage(true);
         }
         setUsers(data.users || []);
         setSettings(data.settings || null);
@@ -167,6 +170,7 @@ export default function App() {
     const u = users.find((x) => x.id === userId);
     if (u) {
       try {
+        localStorage.removeItem('tp_logged_out');
         localStorage.setItem('tp_user_id', u.id);
         await fetch('/api/auth/login', {
           method: 'POST',
@@ -613,20 +617,28 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    localStorage.setItem('tp_logged_out', 'true');
+    localStorage.removeItem('tp_user_id');
+    sessionStorage.removeItem('sportx_admin_verified');
     try {
-      localStorage.removeItem('tp_user_id');
-      sessionStorage.removeItem('sportx_admin_verified');
-      setIsAdminPortalAuthed(false);
-      await fetch('/api/auth/logout', { method: 'POST' });
-      setCurrentUser(null);
-      setIsAuthPage(true);
-      showToast('Logged out of Node Session', 'success');
-    } catch (err) {
-      localStorage.removeItem('tp_user_id');
-      sessionStorage.removeItem('sportx_admin_verified');
-      setIsAdminPortalAuthed(false);
-      setIsAuthPage(true);
+      document.cookie = 'tp_user_id=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      const hostParts = window.location.hostname.split('.');
+      if (hostParts.length >= 2) {
+        const rootDom = `.${hostParts.slice(-2).join('.')}`;
+        document.cookie = `tp_user_id=; Path=/; Domain=${rootDom}; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+    } catch {
+      // Ignore cookie write errors
     }
+    setIsAdminPortalAuthed(false);
+    setCurrentUser(null);
+    setIsAuthPage(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore network errors during logout
+    }
+    showToast('Logged out successfully', 'success');
   };
 
   // Check Subdomain / Route Context
@@ -996,6 +1008,7 @@ export default function App() {
               onOpenTournament={() => setIsTournamentOpen(true)}
               onOpenDeposit={() => setIsDepositOpen(true)}
               onOpenWithdraw={() => setIsWithdrawOpen(true)}
+              onLogout={handleLogout}
               onRefreshUser={fetchState}
             />
           ) : activeTab === 'vip' ? (
@@ -1007,9 +1020,10 @@ export default function App() {
               onOpenDeposit={() => setIsDepositOpen(true)}
               onSelectTab={handleNavigateTab}
             />
-          ) : activeTab === 'finance' ? (
+          ) : activeTab === 'account' || activeTab === 'profile' ? (
             <FinanceView
-              key="view-finance"
+              key="view-account"
+              viewMode="account"
               user={currentUser}
               settings={settings}
               depositRequests={depositRequests}
@@ -1017,9 +1031,28 @@ export default function App() {
               transactions={transactions}
               onDepositSubmit={handleDepositSubmit}
               onWithdrawSubmit={handleWithdrawSubmit}
+              onConvertWinnings={handleConvertWinnings}
               onNavigateToPackages={() => handleNavigateTab('dashboard')}
               onSelectTab={handleNavigateTab}
               onRefreshUser={fetchState}
+              onLogout={handleLogout}
+            />
+          ) : activeTab === 'finance' || activeTab === 'wallet' ? (
+            <FinanceView
+              key="view-finance"
+              viewMode="wallet"
+              user={currentUser}
+              settings={settings}
+              depositRequests={depositRequests}
+              withdrawalRequests={withdrawalRequests}
+              transactions={transactions}
+              onDepositSubmit={handleDepositSubmit}
+              onWithdrawSubmit={handleWithdrawSubmit}
+              onConvertWinnings={handleConvertWinnings}
+              onNavigateToPackages={() => handleNavigateTab('dashboard')}
+              onSelectTab={handleNavigateTab}
+              onRefreshUser={fetchState}
+              onLogout={handleLogout}
             />
           ) : activeTab === 'spinwheel' || activeTab === 'rewards' ? (
             <GamificationView
@@ -1047,6 +1080,7 @@ export default function App() {
               onDailyCheckin={handleDailyCheckin}
               onOpenTournament={() => setIsTournamentOpen(true)}
               onOpenAuthModal={() => setIsAuthOpen(true)}
+              onLogout={handleLogout}
               onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
               onRefreshUser={fetchState}
               onSelectTab={handleNavigateTab}

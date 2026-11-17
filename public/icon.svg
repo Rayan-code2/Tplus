@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#0b172a" />
+      <stop offset="50%" stopColor="#080d14" />
+      <stop offset="100%" stopColor="#050911" />
+    </linearGradient>
+    <linearGradient id="cyanGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#22d3ee" />
+      <stop offset="50%" stopColor="#06b6d4" />
+      <stop offset="100%" stopColor="#10b981" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="url(#cyanGlow)" strokeWidth="8" opacity="0.55" />
+  <text x="256" y="295" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" fontStyle="italic" fontSize="148" fill="#ffffff">
+    S<tspan fill="url(#cyanGlow)">X</tspan>
+  </text>
+  <text x="256" y="380" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="800" fontSize="42" letterSpacing="8" fill="#22d3ee">
+    SPORTX
+  </text>
+</svg>

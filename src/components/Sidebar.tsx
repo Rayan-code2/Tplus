@@ -132,8 +132,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const financialNavItems = [
     {
+      id: 'account',
+      label: 'My Account',
+      icon: Users,
+      badge: 'PROFILE',
+      highlight: true,
+    },
+    {
       id: 'finance',
-      label: 'Wallet & Account',
+      label: 'Wallet & Cashier',
       icon: ArrowLeftRight,
       badge: 'INSTANT',
     },
@@ -220,7 +227,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="bg-gradient-to-br from-[#121927] to-[#0a101a] border border-amber-500/30 rounded-2xl p-3.5 relative overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)]">
           <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
           
-          <div className="flex items-center gap-2.5 mb-2.5">
+          <div
+            onClick={() => handleSelect('account')}
+            className="flex items-center gap-2.5 mb-2.5 cursor-pointer hover:opacity-90 transition"
+            title="Open My Account"
+          >
             <div className="relative">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-600 p-[1.5px] shadow-[0_0_10px_rgba(245,158,11,0.4)]">
                 <div className="w-full h-full bg-[#0d1420] rounded-[10px] flex items-center justify-center text-amber-300 font-black text-xs">
@@ -247,7 +258,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div>
               <span className="text-[9px] text-slate-400 uppercase block font-semibold">Main Wallet</span>
               <span className="text-sm font-black text-amber-300 font-mono">
-                ${getMainWalletUsdt(user).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ₹{getMainWalletUsdt(user).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <button
