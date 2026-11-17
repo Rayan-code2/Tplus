@@ -13,8 +13,9 @@ import {
   Smartphone,
   CreditCard,
   Lock,
+  Building2,
 } from 'lucide-react';
-import { SystemSettings, User } from '../types';
+import { SystemSettings, User, BankAccountConfig } from '../types';
 
 interface PaymentGatewayViewProps {
   initialAmount?: number;
@@ -56,6 +57,10 @@ export const PaymentGatewayView: React.FC<PaymentGatewayViewProps> = ({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<'upi' | 'bank'>('upi');
+  const [liveBankAccount, setLiveBankAccount] = useState<BankAccountConfig | null>(
+    settings?.paymentGateway?.bankAccount || null
+  );
 
   // Fetch rotating UPI on mount or refresh
   const fetchRotatingUpi = async () => {
@@ -76,6 +81,9 @@ export const PaymentGatewayView: React.FC<PaymentGatewayViewProps> = ({
           });
           if (data.qrTimerSeconds) {
             setCountdownSeconds(data.qrTimerSeconds);
+          }
+          if (data.bankAccount) {
+            setLiveBankAccount(data.bankAccount);
           }
         }
       }
@@ -122,6 +130,9 @@ export const PaymentGatewayView: React.FC<PaymentGatewayViewProps> = ({
     upiPayUrl
   )}`;
 
+  const activeBank = liveBankAccount || settings?.paymentGateway?.bankAccount;
+  const hasBankTransfer = Boolean(activeBank?.enabled && activeBank?.accountNumber?.trim());
+
   const handleSubmitUtr = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUtr = utrNumber.trim();
@@ -143,9 +154,12 @@ export const PaymentGatewayView: React.FC<PaymentGatewayViewProps> = ({
         body: JSON.stringify({
           amount,
           inrAmount: amount,
-          network: `UPI Gateway [${activeUpi.upiId}]`,
+          network:
+            paymentMode === 'bank' && hasBankTransfer && activeBank
+              ? `Bank Transfer (${activeBank.bankName}) [${activeBank.accountNumber}]`
+              : `UPI Gateway [${activeUpi.upiId}]`,
           txHash: cleanUtr,
-          upiId: activeUpi.upiId,
+          upiId: paymentMode === 'upi' ? activeUpi.upiId : undefined,
         }),
       });
 
@@ -373,7 +387,78 @@ export const PaymentGatewayView: React.FC<PaymentGatewayViewProps> = ({
             </div>
           ) : (
             <>
-              {/* QR Code Presentation Box */}
+              {hasBankTransfer && (
+                <div className="grid grid-cols-2 gap-2 bg-[#0b1633] border border-blue-900/60 p-1.5 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('upi')}
+                    className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                      paymentMode === 'upi'
+                        ? 'bg-gradient-to-r from-[#2dd4bf] to-[#06b6d4] text-[#052822] shadow'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>UPI / QR Code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('bank')}
+                    className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                      paymentMode === 'bank'
+                        ? 'bg-gradient-to-r from-[#2dd4bf] to-[#06b6d4] text-[#052822] shadow'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>Bank Account (IMPS/NEFT)</span>
+                  </button>
+                </div>
+              )}
+
+              {paymentMode === 'bank' && hasBankTransfer && activeBank ? (
+                <div className="bg-[#0b1633] border border-cyan-500/40 rounded-2xl p-5 space-y-3 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-blue-900/60 pb-3">
+                    <div className="flex items-center gap-2 text-sm font-black text-cyan-300">
+                      <Building2 className="w-4 h-4" />
+                      <span>Direct Bank Account Deposit</span>
+                    </div>
+                    <span className="text-xs font-black text-emerald-300 bg-emerald-500/15 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg">
+                      ₹{amount.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className="space-y-2.5 text-xs">
+                    {[
+                      { key: 'bankName', label: 'Bank Name', value: activeBank.bankName },
+                      { key: 'holder', label: 'Account Holder Name', value: activeBank.accountHolderName },
+                      { key: 'accNo', label: 'Account Number', value: activeBank.accountNumber, mono: true },
+                      { key: 'ifsc', label: 'IFSC Code', value: activeBank.ifscCode, mono: true },
+                      ...(activeBank.branchName ? [{ key: 'branch', label: 'Branch', value: activeBank.branchName }] : []),
+                    ].map((row) => (
+                      <div
+                        key={row.key}
+                        className="bg-[#071126] border border-blue-900/60 rounded-xl p-3 flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">{row.label}</div>
+                          <div className={`font-bold text-white truncate mt-0.5 ${row.mono ? 'font-mono text-cyan-300 text-sm' : ''}`}>
+                            {row.value}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(row.value, row.key)}
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#2dd4bf] to-[#06b6d4] text-[#052822] font-black text-xs flex items-center gap-1 shrink-0"
+                        >
+                          {copiedKey === row.key ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedKey === row.key ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+              /* QR Code Presentation Box */
               <div className="bg-[#0b1633] border border-blue-900/60 rounded-2xl p-5 text-center space-y-4 shadow-xl">
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-slate-300 flex items-center justify-center gap-1.5">
@@ -480,6 +565,7 @@ export const PaymentGatewayView: React.FC<PaymentGatewayViewProps> = ({
                   </div>
                 </div>
               </div>
+              )}
 
               {/* 12-Digit UTR Submission Form */}
               <div className="bg-[#0b1633] border border-blue-900/60 rounded-2xl p-5 shadow-xl space-y-3">

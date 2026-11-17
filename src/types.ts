@@ -151,6 +151,15 @@ export interface Transaction {
     | 'aviator_win'
     | 'fantasy_entry'
     | 'fantasy_win'
+    | 'wheel_bet'
+    | 'slot777_bet'
+    | 'slot777_win'
+    | 'rummy_bet'
+    | 'rummy_win'
+    | 'chickenroad_bet'
+    | 'chickenroad_win'
+    | 'lottery_bet'
+    | 'lottery_win'
     | 'admin_adjust';
   amount: number;
   status: 'pending' | 'completed' | 'rejected';
@@ -401,6 +410,15 @@ export interface UpiPoolItem {
   notes?: string;
 }
 
+export interface BankAccountConfig {
+  enabled: boolean;
+  accountHolderName: string;
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  branchName?: string;
+}
+
 export interface PaymentGatewayConfig {
   enabled: boolean;
   rotationStrategy: 'roundRobin' | 'random' | 'leastUsed';
@@ -410,6 +428,7 @@ export interface PaymentGatewayConfig {
   qrTimerSeconds: number;
   autoRotateOnRefresh: boolean;
   upiPool: UpiPoolItem[];
+  bankAccount?: BankAccountConfig;
 }
 
 export interface MatrixNode {

@@ -60,6 +60,7 @@ import {
   Power,
   Gamepad2,
   Play,
+  Building2,
 } from 'lucide-react';
 import { GAME_SUBDOMAIN_LIST, isGameEnabled, GameRouteKey } from '../utils/subdomainRouter';
 import {
@@ -195,18 +196,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [subFormNodeId, setSubFormNodeId] = useState('');
   const [subFormEmail, setSubFormEmail] = useState('');
   const [subFormPassword, setSubFormPassword] = useState('');
-  const [subFormRoleName, setSubFormRoleName] = useState('Deposit Approval Desk');
-  const [subFormPreset, setSubFormPreset] = useState<'custom' | 'deposit_only' | 'withdraw_only' | 'game_master' | 'gateway_manager' | 'support_staff' | 'auditor'>('deposit_only');
+  const [subFormRoleName, setSubFormRoleName] = useState('Cashier Desk (UPI/Bank + Deposit & Withdraw)');
+  const [subFormPreset, setSubFormPreset] = useState<'custom' | 'cashier_desk' | 'deposit_only' | 'withdraw_only' | 'game_master' | 'gateway_manager' | 'support_staff' | 'auditor'>('cashier_desk');
   const [subFormPermissions, setSubFormPermissions] = useState<AdminPermissions>({
     canManageDeposits: true,
-    canManageWithdrawals: false,
+    canManageWithdrawals: true,
     canManageUsers: false,
     canManageColorPrediction: false,
     canManageDragonTiger: false,
     canManageAviator: false,
     canManageTournament: false,
     canManageLottery: false,
-    canManageUpiGateway: false,
+    canManageUpiGateway: true,
     canManageSettings: false,
     canViewReports: false,
     canViewAudit: false,
@@ -223,9 +224,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editPasswordReset, setEditPasswordReset] = useState('');
   const [isSavingSubadmin, setIsSavingSubadmin] = useState(false);
 
-  const applyPreset = (preset: 'custom' | 'deposit_only' | 'withdraw_only' | 'game_master' | 'gateway_manager' | 'support_staff' | 'auditor') => {
+  const applyPreset = (preset: 'custom' | 'cashier_desk' | 'deposit_only' | 'withdraw_only' | 'game_master' | 'gateway_manager' | 'support_staff' | 'auditor') => {
     setSubFormPreset(preset);
-    if (preset === 'deposit_only') {
+    if (preset === 'cashier_desk') {
+      setSubFormRoleName('Cashier Desk (UPI/Bank + Deposit & Withdraw)');
+      setSubFormPermissions({
+        canManageDeposits: true,
+        canManageWithdrawals: true,
+        canManageUpiGateway: true,
+      });
+    } else if (preset === 'deposit_only') {
       setSubFormRoleName('Deposit Approval Desk');
       setSubFormPermissions({ canManageDeposits: true });
     } else if (preset === 'withdraw_only') {
@@ -240,7 +248,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         canManageLottery: true,
       });
     } else if (preset === 'gateway_manager') {
-      setSubFormRoleName('Payment Gateway & UPI Desk');
+      setSubFormRoleName('Payment Gateway & UPI/Bank Desk');
       setSubFormPermissions({
         canManageUpiGateway: true,
         canManageDeposits: true,
@@ -394,9 +402,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  // UPI Gateway & Rotation Pool Admin State
+  // UPI Gateway & Rotation Pool + Bank Account Admin State
   const [upiBulkText, setUpiBulkText] = useState('');
-  const [upiDefaultName, setUpiDefaultName] = useState('SportX Gaming Official');
+  const [upiDefaultName, setUpiDefaultName] = useState(settings?.paymentGateway?.defaultPayeeName || 'SportX Gaming Official');
+  const [defaultDepositUpi, setDefaultDepositUpi] = useState(settings?.paymentGateway?.defaultUpiId || 'sportxpay@okaxis');
   const [upiDailyLimit, setUpiDailyLimit] = useState<number>(100000);
   const [upiReplaceAll, setUpiReplaceAll] = useState(false);
   const [upiBulkLoading, setUpiBulkLoading] = useState(false);
@@ -415,12 +424,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [singleUpiName, setSingleUpiName] = useState('');
   const [isAddingSingle, setIsAddingSingle] = useState(false);
 
+  // Bank Account Deposit Config State (Accessible to Master Admin & authorized Sub-Admin)
+  const [bankEnabled, setBankEnabled] = useState<boolean>(Boolean(settings?.paymentGateway?.bankAccount?.enabled));
+  const [bankName, setBankName] = useState<string>(settings?.paymentGateway?.bankAccount?.bankName || 'HDFC Bank');
+  const [bankAccountHolder, setBankAccountHolder] = useState<string>(settings?.paymentGateway?.bankAccount?.accountHolderName || 'SportX Gaming Pvt Ltd');
+  const [bankAccountNumber, setBankAccountNumber] = useState<string>(settings?.paymentGateway?.bankAccount?.accountNumber || '');
+  const [bankIfsc, setBankIfsc] = useState<string>(settings?.paymentGateway?.bankAccount?.ifscCode || '');
+  const [bankBranch, setBankBranch] = useState<string>(settings?.paymentGateway?.bankAccount?.branchName || '');
+  const [savingPaymentMethods, setSavingPaymentMethods] = useState<boolean>(false);
+  const [paymentMethodMsg, setPaymentMethodMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const getAdminFetchHeaders = () => ({
+    'Content-Type': 'application/json',
+    'x-user-id': currentUser?.id || (typeof window !== 'undefined' ? localStorage.getItem('tp_user_id') || '' : ''),
+  });
+
   // Sync settings when props update
   useEffect(() => {
     if (settings?.paymentGateway) {
       setGatewayRotationStrategy(settings.paymentGateway.rotationStrategy || 'roundRobin');
       setGatewaySubdomain(settings.paymentGateway.subdomainUrl || '');
       setGatewayTimerSeconds(settings.paymentGateway.qrTimerSeconds || 600);
+      setDefaultDepositUpi(settings.paymentGateway.defaultUpiId || 'sportxpay@okaxis');
+      setUpiDefaultName(settings.paymentGateway.defaultPayeeName || 'SportX Gaming Official');
+      if (settings.paymentGateway.bankAccount) {
+        setBankEnabled(Boolean(settings.paymentGateway.bankAccount.enabled));
+        setBankName(settings.paymentGateway.bankAccount.bankName || '');
+        setBankAccountHolder(settings.paymentGateway.bankAccount.accountHolderName || '');
+        setBankAccountNumber(settings.paymentGateway.bankAccount.accountNumber || '');
+        setBankIfsc(settings.paymentGateway.bankAccount.ifscCode || '');
+        setBankBranch(settings.paymentGateway.bankAccount.branchName || '');
+      }
     }
   }, [settings?.paymentGateway]);
 
@@ -639,7 +673,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/withdraw/auto-dispatch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({ requestId }),
       });
       const data = await res.json();
@@ -705,7 +739,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/tournament/distribute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
       });
       const data = await res.json();
       if (res.ok) {
@@ -724,7 +758,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const fetchDragonTigerStats = async () => {
     try {
-      const res = await fetch('/api/admin/dragon-tiger/stats');
+      const res = await fetch('/api/admin/dragon-tiger/stats', {
+        headers: getAdminFetchHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setDragonTigerStats(data.stats);
@@ -738,13 +774,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/dragon-tiger/mode', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({ mode }),
       });
       const data = await res.json();
       if (res.ok) {
         alert(data.message);
         fetchDragonTigerStats();
+      } else {
+        alert(data.error || 'Permission denied');
       }
     } catch (err) {
       alert('Error setting dragon tiger mode');
@@ -755,13 +793,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/dragon-tiger/force-result', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({ winner }),
       });
       const data = await res.json();
       if (res.ok) {
         alert(data.message);
         fetchDragonTigerStats();
+      } else {
+        alert(data.error || 'Permission denied');
       }
     } catch (err) {
       alert('Error setting force result');
@@ -770,7 +810,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const fetchAviatorStats = async () => {
     try {
-      const res = await fetch('/api/admin/aviator/stats');
+      const res = await fetch('/api/admin/aviator/stats', {
+        headers: getAdminFetchHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setAviatorStats(data.stats);
@@ -784,13 +826,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/aviator/mode', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({ mode }),
       });
       const data = await res.json();
       if (res.ok) {
         alert(data.message);
         fetchAviatorStats();
+      } else {
+        alert(data.error || 'Permission denied');
       }
     } catch (err) {
       alert('Error setting aviator mode');
@@ -801,7 +845,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/aviator/force-crash', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({ multiplier }),
       });
       const data = await res.json();
@@ -818,7 +862,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const fetchColorStats = async () => {
     try {
-      const res = await fetch('/api/admin/color-prediction/stats');
+      const res = await fetch('/api/admin/color-prediction/stats', {
+        headers: getAdminFetchHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setColorStats(data.stats);
@@ -832,7 +878,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/color-prediction/force-result', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({ number: num }),
       });
       const data = await res.json();
@@ -851,7 +897,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/color-prediction/mode', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({ mode }),
       });
       const data = await res.json();
@@ -878,7 +924,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/upi-pool/bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({
           bulkText: textToImport,
           defaultName: upiDefaultName,
@@ -900,12 +946,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             ...(settings.paymentGateway || ({} as any)),
             enabled: true,
             rotationStrategy: gatewayRotationStrategy,
-            defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+            defaultUpiId: defaultDepositUpi.trim() || settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
             defaultPayeeName: upiDefaultName,
             subdomainUrl: gatewaySubdomain,
             qrTimerSeconds: gatewayTimerSeconds,
             autoRotateOnRefresh: true,
             upiPool: data.pool,
+            bankAccount: {
+              enabled: bankEnabled,
+              accountHolderName: bankAccountHolder,
+              bankName,
+              accountNumber: bankAccountNumber,
+              ifscCode: bankIfsc,
+              branchName: bankBranch,
+            },
           },
         });
       } else {
@@ -922,7 +976,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/upi-pool/toggle', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminFetchHeaders(),
         body: JSON.stringify({ id }),
       });
       const data = await res.json();
@@ -933,14 +987,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             ...(settings.paymentGateway || ({} as any)),
             enabled: true,
             rotationStrategy: gatewayRotationStrategy,
-            defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
-            defaultPayeeName: settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
+            defaultUpiId: defaultDepositUpi.trim() || settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+            defaultPayeeName: upiDefaultName || settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
             subdomainUrl: gatewaySubdomain,
             qrTimerSeconds: gatewayTimerSeconds,
             autoRotateOnRefresh: true,
             upiPool: data.pool,
           },
         });
+      } else {
+        alert(data.error || 'Permission denied');
       }
     } catch (err) {
       alert('Error toggling UPI status');
@@ -950,7 +1006,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleDeleteUpi = async (id: string, upiId: string) => {
     if (!confirm(`Are you sure you want to delete ${upiId} from the active rotation pool?`)) return;
     try {
-      const res = await fetch(`/api/admin/upi-pool/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/upi-pool/${id}`, {
+        method: 'DELETE',
+        headers: getAdminFetchHeaders(),
+      });
       const data = await res.json();
       if (res.ok && data.success) {
         await onUpdateSettings({
@@ -959,14 +1018,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             ...(settings.paymentGateway || ({} as any)),
             enabled: true,
             rotationStrategy: gatewayRotationStrategy,
-            defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
-            defaultPayeeName: settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
+            defaultUpiId: defaultDepositUpi.trim() || settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+            defaultPayeeName: upiDefaultName || settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
             subdomainUrl: gatewaySubdomain,
             qrTimerSeconds: gatewayTimerSeconds,
             autoRotateOnRefresh: true,
             upiPool: data.pool,
           },
         });
+      } else {
+        alert(data.error || 'Permission denied');
       }
     } catch (err) {
       alert('Error deleting UPI ID');
@@ -976,7 +1037,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleResetUpiCounts = async () => {
     if (!confirm('Are you sure you want to reset all usage counters and collected amounts back to 0?')) return;
     try {
-      const res = await fetch('/api/admin/upi-pool/reset-counts', { method: 'POST' });
+      const res = await fetch('/api/admin/upi-pool/reset-counts', {
+        method: 'POST',
+        headers: getAdminFetchHeaders(),
+      });
       const data = await res.json();
       if (res.ok && data.success) {
         alert(data.message);
@@ -986,17 +1050,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             ...(settings.paymentGateway || ({} as any)),
             enabled: true,
             rotationStrategy: gatewayRotationStrategy,
-            defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
-            defaultPayeeName: settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
+            defaultUpiId: defaultDepositUpi.trim() || settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+            defaultPayeeName: upiDefaultName || settings.paymentGateway?.defaultPayeeName || 'SportX Gaming Official',
             subdomainUrl: gatewaySubdomain,
             qrTimerSeconds: gatewayTimerSeconds,
             autoRotateOnRefresh: true,
             upiPool: data.pool,
           },
         });
+      } else {
+        alert(data.error || 'Permission denied');
       }
     } catch (err) {
       alert('Error resetting counts');
+    }
+  };
+
+  const handleSavePaymentMethods = async () => {
+    setSavingPaymentMethods(true);
+    setPaymentMethodMsg(null);
+    try {
+      const res = await fetch('/api/admin/gateway/payment-methods', {
+        method: 'POST',
+        headers: getAdminFetchHeaders(),
+        body: JSON.stringify({
+          defaultUpiId: defaultDepositUpi.trim() || 'sportxpay@okaxis',
+          defaultPayeeName: upiDefaultName.trim() || 'SportX Gaming Official',
+          subdomainUrl: gatewaySubdomain.trim(),
+          rotationStrategy: gatewayRotationStrategy,
+          qrTimerSeconds: Number(gatewayTimerSeconds) || 600,
+          bankAccount: {
+            enabled: bankEnabled,
+            accountHolderName: bankAccountHolder.trim(),
+            bankName: bankName.trim(),
+            accountNumber: bankAccountNumber.trim(),
+            ifscCode: bankIfsc.trim().toUpperCase(),
+            branchName: bankBranch.trim(),
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPaymentMethodMsg({
+          text: '✅ Primary Deposit UPI & Bank Account details saved live!',
+          type: 'success',
+        });
+        if (onRefreshState) onRefreshState();
+      } else {
+        setPaymentMethodMsg({
+          text: data.error || 'Failed to save payment details',
+          type: 'error',
+        });
+      }
+    } catch (err: any) {
+      setPaymentMethodMsg({ text: err?.message || 'Network error saving payment methods', type: 'error' });
+    } finally {
+      setSavingPaymentMethods(false);
     }
   };
 
@@ -1010,13 +1119,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           rotationStrategy: gatewayRotationStrategy,
           subdomainUrl: gatewaySubdomain.trim(),
           qrTimerSeconds: Number(gatewayTimerSeconds) || 600,
-          defaultUpiId: settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
+          defaultUpiId: defaultDepositUpi.trim() || settings.paymentGateway?.defaultUpiId || 'sportxpay@okaxis',
           defaultPayeeName: upiDefaultName,
           autoRotateOnRefresh: true,
           upiPool: settings.paymentGateway?.upiPool || [],
+          bankAccount: {
+            enabled: bankEnabled,
+            accountHolderName: bankAccountHolder.trim(),
+            bankName: bankName.trim(),
+            accountNumber: bankAccountNumber.trim(),
+            ifscCode: bankIfsc.trim().toUpperCase(),
+            branchName: bankBranch.trim(),
+          },
         },
       });
-      alert('✅ Payment Gateway & Rotation Config saved successfully!');
+      alert('✅ Payment Gateway, UPI & Bank Config saved successfully!');
     } catch (err) {
       alert('Error saving gateway configuration');
     }
@@ -1069,7 +1186,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const [reportStartDate, setReportStartDate] = useState(getThirtyDaysAgoString());
   const [reportEndDate, setReportEndDate] = useState(getTodayString());
-  const [reportDetailTab, setReportDetailTab] = useState<'joinings' | 'packages' | 'withdrawals' | 'deposits'>('joinings');
+  const [reportDetailTab, setReportDetailTab] = useState<'daily_summary' | 'game_wise' | 'transactions' | 'joinings' | 'packages' | 'withdrawals' | 'deposits'>('daily_summary');
 
   const formatYYYYMMDD = (dateStr?: string | null) => {
     if (!dateStr) return '';
@@ -1172,6 +1289,338 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const totalLevelPaid = filteredTransactions
     .filter((t) => t.type === 'level_income' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
+
+  // Classify any transaction by Game / Category for accurate Game-Wise & Daily CSV reporting
+  const classifyTxCategory = (tx: Transaction): { game: string; flow: 'bet' | 'win' | 'deposit' | 'withdrawal' | 'commission' | 'other' } => {
+    const type = String(tx.type || '');
+    const notes = String(tx.notes || '').toLowerCase();
+
+    if (type === 'deposit') return { game: 'Deposit Wallet', flow: 'deposit' };
+    if (type === 'withdrawal') return { game: 'Withdrawal Payout', flow: 'withdrawal' };
+    if (type === 'aviator_bet') return { game: 'Aviator Crash', flow: 'bet' };
+    if (type === 'aviator_win') return { game: 'Aviator Crash', flow: 'win' };
+    if (type === 'color_prediction_bet') return { game: 'Color Win Go', flow: 'bet' };
+    if (type === 'color_prediction_win' || notes.includes('win go profit payout')) {
+      return { game: 'Color Win Go', flow: 'win' };
+    }
+    if (type === 'dragon_tiger_bet') return { game: 'Dragon vs Tiger', flow: 'bet' };
+    if (type === 'dragon_tiger_win' || notes.includes('dragon vs tiger')) {
+      return { game: 'Dragon vs Tiger', flow: notes.includes('win') || notes.includes('won') ? 'win' : 'bet' };
+    }
+    if (type === 'fantasy_entry') return { game: 'Cricket Fantasy 11', flow: 'bet' };
+    if (type === 'fantasy_win' || notes.includes('fantasy')) return { game: 'Cricket Fantasy 11', flow: 'win' };
+    if (type === 'slot777_bet' || (notes.includes('777') && notes.includes('bet'))) {
+      return { game: '777 Vegas Slots', flow: 'bet' };
+    }
+    if (type === 'slot777_win' || notes.includes('777 slot win')) {
+      return { game: '777 Vegas Slots', flow: 'win' };
+    }
+    if (type === 'rummy_bet' || (notes.includes('rummy') && notes.includes('stake'))) {
+      return { game: 'Indian Rummy', flow: 'bet' };
+    }
+    if (type === 'rummy_win' || notes.includes('rummy table winner')) {
+      return { game: 'Indian Rummy', flow: 'win' };
+    }
+    if (type === 'chickenroad_bet' || (notes.includes('chicken road') && notes.includes('bet'))) {
+      return { game: 'Chicken Road', flow: 'bet' };
+    }
+    if (type === 'chickenroad_win' || notes.includes('chicken road')) {
+      return { game: 'Chicken Road', flow: 'win' };
+    }
+    if (type === 'lottery_bet' || (type === 'product_purchase' && (notes.includes('lucky draw') || notes.includes('lottery')))) {
+      return { game: 'Lucky Draw Lottery', flow: 'bet' };
+    }
+    if (type === 'lottery_win' || notes.includes('lucky draw') || notes.includes('lottery winner')) {
+      return { game: 'Lucky Draw Lottery', flow: 'win' };
+    }
+    if (type === 'wheel_bet') return { game: 'Spin & Wheel', flow: 'bet' };
+    if (type === 'spin_reward') {
+      if (notes.includes('777 slot')) return { game: '777 Vegas Slots', flow: 'win' };
+      if (notes.includes('rummy')) return { game: 'Indian Rummy', flow: 'win' };
+      if (notes.includes('chicken road')) return { game: 'Chicken Road', flow: 'win' };
+      return { game: 'Spin & Wheel', flow: 'win' };
+    }
+    if (type === 'product_purchase') return { game: 'VIP Packages / Store', flow: 'bet' };
+    if (['roi', 'sponsor_bonus', 'level_income', 'rank_bonus', 'boosting_payout', 'bet_turnover_commission', 'sponsor_game_win_bonus', 'first_deposit_bonus', 'signup_bonus', 'vip_agent_bonus', 'special_matching_bonus'].includes(type)) {
+      return { game: 'Bonuses & Commissions', flow: 'commission' };
+    }
+    return { game: 'Other / Wallet Adjust', flow: 'other' };
+  };
+
+  const trackedGames = [
+    'Aviator Crash',
+    'Color Win Go',
+    'Dragon vs Tiger',
+    'Cricket Fantasy 11',
+    'Lucky Draw Lottery',
+    '777 Vegas Slots',
+    'Indian Rummy',
+    'Chicken Road',
+    'Spin & Wheel',
+    'VIP Packages / Store',
+  ];
+
+  const gameWiseReport = trackedGames.map((gameName) => {
+    const gameTxns = filteredTransactions.filter((t) => classifyTxCategory(t).game === gameName);
+    let betsCount = 0;
+    let totalBetInr = 0;
+    let totalWinOut = 0;
+
+    gameTxns.forEach((t) => {
+      const { flow } = classifyTxCategory(t);
+      const amt = Math.abs(Number(t.amount) || 0);
+      if (flow === 'bet') {
+        betsCount += 1;
+        totalBetInr += amt;
+      } else if (flow === 'win') {
+        totalWinOut += amt;
+      }
+    });
+
+    return {
+      gameName,
+      betsCount,
+      totalBetInr,
+      totalWinOut,
+      netProfit: totalBetInr - totalWinOut,
+    };
+  });
+
+  const totalGameBetVolume = gameWiseReport.reduce((sum, g) => sum + g.totalBetInr, 0);
+  const totalGameWinPayout = gameWiseReport.reduce((sum, g) => sum + g.totalWinOut, 0);
+  const totalPendingDepositsAmount = filteredDeposits.filter((d) => d.status === 'pending').reduce((s, d) => s + (d.amount || 0), 0);
+  const totalPendingWithdrawalsAmount = pendingWithdrawals.reduce((s, w) => s + (w.requestedAmount || 0), 0);
+
+  // Daily date-by-date aggregation map
+  const dailyDateSet = new Set<string>();
+  filteredDeposits.forEach((d) => { const dt = formatYYYYMMDD(d.createdAt); if (dt) dailyDateSet.add(dt); });
+  filteredWithdrawals.forEach((w) => { const dt = formatYYYYMMDD(w.createdAt); if (dt) dailyDateSet.add(dt); });
+  filteredTransactions.forEach((t) => { const dt = formatYYYYMMDD(t.createdAt); if (dt) dailyDateSet.add(dt); });
+  filteredJoinings.forEach((u) => { const dt = formatYYYYMMDD(u.registeredAt); if (dt) dailyDateSet.add(dt); });
+
+  const dailySummaryRows = Array.from(dailyDateSet)
+    .sort((a, b) => b.localeCompare(a))
+    .map((dateStr) => {
+      const dayDeposits = filteredDeposits.filter((d) => formatYYYYMMDD(d.createdAt) === dateStr);
+      const dayApprovedDeposits = dayDeposits.filter((d) => d.status === 'approved');
+      const dayPendingDeposits = dayDeposits.filter((d) => d.status === 'pending');
+
+      const dayWithdrawals = filteredWithdrawals.filter((w) => formatYYYYMMDD(w.createdAt) === dateStr);
+      const dayApprovedWithdrawals = dayWithdrawals.filter((w) => w.status === 'approved');
+      const dayPendingWithdrawals = dayWithdrawals.filter((w) => w.status === 'pending');
+
+      const dayTxns = filteredTransactions.filter((t) => formatYYYYMMDD(t.createdAt) === dateStr);
+      const dayJoinings = filteredJoinings.filter((u) => formatYYYYMMDD(u.registeredAt) === dateStr);
+
+      const gameDepositsMap: Record<string, number> = {};
+      trackedGames.forEach((g) => { gameDepositsMap[g] = 0; });
+
+      let gameBetsIn = 0;
+      let gameWinsOut = 0;
+
+      dayTxns.forEach((t) => {
+        const { game, flow } = classifyTxCategory(t);
+        const amt = Math.abs(Number(t.amount) || 0);
+        if (flow === 'bet') {
+          gameBetsIn += amt;
+          if (game in gameDepositsMap) {
+            gameDepositsMap[game] += amt;
+          }
+        } else if (flow === 'win') {
+          gameWinsOut += amt;
+        }
+      });
+
+      const approvedDepositInr = dayApprovedDeposits.reduce((s, d) => s + (d.amount || 0), 0);
+      const approvedWithdrawalInr = dayApprovedWithdrawals.reduce((s, w) => s + (w.netAmount || w.requestedAmount || 0), 0);
+
+      return {
+        date: dateStr,
+        newUsers: dayJoinings.length,
+        depositReqCount: dayDeposits.length,
+        depositApprovedCount: dayApprovedDeposits.length,
+        depositApprovedInr: approvedDepositInr,
+        depositPendingInr: dayPendingDeposits.reduce((s, d) => s + (d.amount || 0), 0),
+        withdrawalReqCount: dayWithdrawals.length,
+        withdrawalReqInr: dayWithdrawals.reduce((s, w) => s + (w.requestedAmount || 0), 0),
+        withdrawalApprovedCount: dayApprovedWithdrawals.length,
+        withdrawalApprovedInr: approvedWithdrawalInr,
+        withdrawalPendingInr: dayPendingWithdrawals.reduce((s, w) => s + (w.requestedAmount || 0), 0),
+        gameBetsIn,
+        gameWinsOut,
+        netCashflow: approvedDepositInr - approvedWithdrawalInr,
+        gameDepositsMap,
+      };
+    });
+
+  // CSV Helpers (RFC-4180 + UTF-8 BOM for Microsoft Excel ₹ compatibility)
+  const csvEscape = (val: any) => {
+    const str = String(val === null || val === undefined ? '' : val);
+    if (/[",\n\r]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const triggerCsvDownload = (filename: string, rows: Array<Array<any>>) => {
+    const csvContent = '\uFEFF' + rows.map((r) => r.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadDailySummaryCsv = () => {
+    const rows: Array<Array<any>> = [
+      [`SportX Daily Deposit, Withdrawal & Game-Wise Summary Report (${reportStartDate} to ${reportEndDate})`],
+      [],
+      ['--- PART 1: DAILY DATE-BY-DATE FINANCIAL & GAME RECORD ---'],
+      [
+        'Date',
+        'New Users',
+        'Deposits Approved (Count)',
+        'Deposits Approved (INR)',
+        'Deposits Pending (INR)',
+        'Withdrawals Requested (Count)',
+        'Withdrawals Requested (INR)',
+        'Withdrawals Paid (Count)',
+        'Withdrawals Paid (INR)',
+        'Withdrawals Pending (INR)',
+        'Net Cashflow (Deposits - Withdrawals INR)',
+        'Total Game Bets In (INR)',
+        'Total Game Wins Paid (INR)',
+        'Aviator Bets (INR)',
+        'Color Win Go Bets (INR)',
+        'Dragon vs Tiger Bets (INR)',
+        'Cricket Fantasy Entries (INR)',
+        'Lucky Draw Tickets (INR)',
+        '777 Slots Bets (INR)',
+        'Indian Rummy Bets (INR)',
+        'Chicken Road Bets (INR)',
+        'Spin & Wheel Bets (INR)',
+        'VIP Packages / Store (INR)',
+      ],
+      ...dailySummaryRows.map((d) => [
+        d.date,
+        d.newUsers,
+        d.depositApprovedCount,
+        d.depositApprovedInr.toFixed(2),
+        d.depositPendingInr.toFixed(2),
+        d.withdrawalReqCount,
+        d.withdrawalReqInr.toFixed(2),
+        d.withdrawalApprovedCount,
+        d.withdrawalApprovedInr.toFixed(2),
+        d.withdrawalPendingInr.toFixed(2),
+        d.netCashflow.toFixed(2),
+        d.gameBetsIn.toFixed(2),
+        d.gameWinsOut.toFixed(2),
+        (d.gameDepositsMap['Aviator Crash'] || 0).toFixed(2),
+        (d.gameDepositsMap['Color Win Go'] || 0).toFixed(2),
+        (d.gameDepositsMap['Dragon vs Tiger'] || 0).toFixed(2),
+        (d.gameDepositsMap['Cricket Fantasy 11'] || 0).toFixed(2),
+        (d.gameDepositsMap['Lucky Draw Lottery'] || 0).toFixed(2),
+        (d.gameDepositsMap['777 Vegas Slots'] || 0).toFixed(2),
+        (d.gameDepositsMap['Indian Rummy'] || 0).toFixed(2),
+        (d.gameDepositsMap['Chicken Road'] || 0).toFixed(2),
+        (d.gameDepositsMap['Spin & Wheel'] || 0).toFixed(2),
+        (d.gameDepositsMap['VIP Packages / Store'] || 0).toFixed(2),
+      ]),
+      [],
+      ['--- PART 2: GAME-WISE TOTAL BREAKDOWN (SELECTED DATE RANGE) ---'],
+      ['Game / Category Name', 'Total Bets / Entries', 'Money In / Bet Volume (INR)', 'Player Winnings Paid (INR)', 'Net House Margin (INR)'],
+      ...gameWiseReport.map((g) => [
+        g.gameName,
+        g.betsCount,
+        g.totalBetInr.toFixed(2),
+        g.totalWinOut.toFixed(2),
+        g.netProfit.toFixed(2),
+      ]),
+    ];
+    triggerCsvDownload(`SportX_Daily_Summary_${reportStartDate}_to_${reportEndDate}.csv`, rows);
+  };
+
+  const downloadFullTransactionsCsv = () => {
+    const userMap = new Map<string, User>(users.map((u) => [u.id, u]));
+    const ledgerRows: Array<{
+      iso: string;
+      date: string;
+      time: string;
+      nodeId: string;
+      userName: string;
+      category: string;
+      type: string;
+      amount: string;
+      status: string;
+      ref: string;
+      notes: string;
+    }> = [];
+
+    filteredDeposits.forEach((d) => {
+      const dt = new Date(d.createdAt);
+      ledgerRows.push({
+        iso: d.createdAt,
+        date: formatYYYYMMDD(d.createdAt),
+        time: isNaN(dt.getTime()) ? '' : dt.toLocaleTimeString('en-IN'),
+        nodeId: d.userNodeId,
+        userName: d.userName,
+        category: 'Deposit Request',
+        type: d.network || 'UPI / Bank',
+        amount: (Number(d.amount) || 0).toFixed(2),
+        status: d.status.toUpperCase(),
+        ref: d.txHash || '',
+        notes: d.adminNotes || `Deposit via ${d.network}`,
+      });
+    });
+
+    filteredWithdrawals.forEach((w) => {
+      const dt = new Date(w.createdAt);
+      ledgerRows.push({
+        iso: w.createdAt,
+        date: formatYYYYMMDD(w.createdAt),
+        time: isNaN(dt.getTime()) ? '' : dt.toLocaleTimeString('en-IN'),
+        nodeId: w.userNodeId,
+        userName: w.userName,
+        category: 'Withdrawal Request',
+        type: w.network || 'UPI / Bank',
+        amount: (Number(w.netAmount || w.requestedAmount) || 0).toFixed(2),
+        status: w.status.toUpperCase(),
+        ref: w.targetAddress || '',
+        notes: `Req: Rs.${w.requestedAmount} | Net: Rs.${w.netAmount} | ${w.adminNotes || ''}`,
+      });
+    });
+
+    filteredTransactions.forEach((t) => {
+      const dt = new Date(t.createdAt);
+      const u = userMap.get(t.userId);
+      const { game } = classifyTxCategory(t);
+      ledgerRows.push({
+        iso: t.createdAt,
+        date: formatYYYYMMDD(t.createdAt),
+        time: isNaN(dt.getTime()) ? '' : dt.toLocaleTimeString('en-IN'),
+        nodeId: t.userNodeId,
+        userName: u?.name || 'Player',
+        category: game,
+        type: t.type,
+        amount: Math.abs(Number(t.amount) || 0).toFixed(2),
+        status: String(t.status || 'completed').toUpperCase(),
+        ref: t.txHash || t.id,
+        notes: t.notes || '',
+      });
+    });
+
+    ledgerRows.sort((a, b) => (b.iso || '').localeCompare(a.iso || ''));
+
+    const rows: Array<Array<any>> = [
+      ['Date', 'Time', 'User Node ID', 'User Name', 'Game / Category', 'Transaction Type', 'Amount (INR)', 'Status', 'UTR / Reference / Target', 'Notes / Details'],
+      ...ledgerRows.map((r) => [r.date, r.time, r.nodeId, r.userName, r.category, r.type, r.amount, r.status, r.ref, r.notes]),
+    ];
+    triggerCsvDownload(`SportX_Transactions_Ledger_${reportStartDate}_to_${reportEndDate}.csv`, rows);
+  };
 
   const generatePdfReport = () => {
     try {
@@ -7532,27 +7981,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* TAB 10: DATE-WISE REPORTS & PDF EXPORT */}
+      {/* TAB 10: DATE-WISE REPORTS, GAME-WISE TURNOVER & CSV / PDF EXPORT */}
       {activeTab === 'reports' && (
         <div className="space-y-6">
-          {/* Top Banner with Download Button */}
-          <div className="bg-[#0b1424] border border-amber-500/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg">
+          {/* Top Banner with CSV & PDF Download Buttons */}
+          <div className="bg-[#0b1424] border border-amber-500/30 rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-lg">
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-                Date-Wise Performance & Operations Report
+                Daily Transaction Record, Game-Wise Turnover &amp; CSV Export
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Filter system joinings, package upgrades, and withdrawal statements date-wise and download an official PDF report.
+                Rozana kis game me kitna paisa aaya, kitna deposit approve hua, aur kitna withdrawal laga — sabka Daily &amp; Full Ledger CSV Excel me download karein.
               </p>
             </div>
-            <button
-              onClick={generatePdfReport}
-              className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download PDF Statement</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={downloadDailySummaryCsv}
+                className="px-4 py-2.5 bg-gradient-to-r from-emerald-400 to-teal-400 hover:brightness-105 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.35)] transition active:scale-95"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Download Daily &amp; Game CSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={downloadFullTransactionsCsv}
+                className="px-4 py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-black text-xs rounded-xl flex items-center justify-center gap-2 transition active:scale-95"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download All Txns CSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={generatePdfReport}
+                className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-[0_0_18px_rgba(245,158,11,0.35)] transition"
+              >
+                <Printer className="w-4 h-4" />
+                <span>PDF Report</span>
+              </button>
+            </div>
           </div>
 
           {/* Date Filter & Presets Card */}
@@ -7616,7 +8084,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             {/* Date Pickers Input Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">From Date (Start)</label>
                 <input
@@ -7638,8 +8106,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="flex items-end">
                 <button
                   type="button"
-                  onClick={generatePdfReport}
+                  onClick={downloadDailySummaryCsv}
                   className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Export Daily CSV</span>
+                </button>
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={generatePdfReport}
+                  className="w-full py-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/40 text-amber-300 font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Export PDF</span>
@@ -7650,51 +8128,116 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* Key Summary Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Stat 1: Joinings */}
-            <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-4 space-y-1">
+            {/* Stat 1: Approved Deposits */}
+            <div className="bg-[#0b1424] border border-emerald-500/30 rounded-2xl p-4 space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">New User Joinings</span>
-                <Users className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="text-2xl font-extrabold text-white">{filteredJoinings.length}</div>
-              <div className="text-[10px] text-slate-400">Users registered in selected range</div>
-            </div>
-
-            {/* Stat 2: Package Upgrades */}
-            <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-4 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Package Upgrades</span>
-                <Zap className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="text-2xl font-extrabold text-emerald-400">₹{totalPackageRevenue.toLocaleString('en-IN')}</div>
-              <div className="text-[10px] text-slate-400">{packageUpgrades.length} packages activated</div>
-            </div>
-
-            {/* Stat 3: Withdrawals */}
-            <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-4 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Approved Withdrawals</span>
-                <ArrowUpRight className="w-4 h-4 text-cyan-400" />
-              </div>
-              <div className="text-2xl font-extrabold text-cyan-300">₹{totalNetApprovedWithdrawals.toLocaleString('en-IN')}</div>
-              <div className="text-[10px] text-slate-400">{approvedWithdrawals.length} Approved ({pendingWithdrawals.length} Pending)</div>
-            </div>
-
-            {/* Stat 4: Approved Deposits */}
-            <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-4 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Approved Deposits</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Total Deposits (Approved)</span>
                 <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
               </div>
               <div className="text-2xl font-extrabold text-emerald-300">₹{totalApprovedDepositsAmount.toLocaleString('en-IN')}</div>
-              <div className="text-[10px] text-slate-400">{approvedDeposits.length} deposits approved</div>
+              <div className="text-[10px] text-slate-400">
+                {approvedDeposits.length} Approved • Pending: ₹{totalPendingDepositsAmount.toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            {/* Stat 2: Withdrawals */}
+            <div className="bg-[#0b1424] border border-cyan-500/30 rounded-2xl p-4 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Total Withdrawals Paid</span>
+                <ArrowUpRight className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="text-2xl font-extrabold text-cyan-300">₹{totalNetApprovedWithdrawals.toLocaleString('en-IN')}</div>
+              <div className="text-[10px] text-slate-400">
+                {approvedWithdrawals.length} Paid • Pending Req: ₹{totalPendingWithdrawalsAmount.toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            {/* Stat 3: Total Game Bets Volume */}
+            <div className="bg-[#0b1424] border border-amber-500/30 rounded-2xl p-4 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">All Games Volume (Bets)</span>
+                <Gamepad2 className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-2xl font-extrabold text-amber-300">₹{totalGameBetVolume.toLocaleString('en-IN')}</div>
+              <div className="text-[10px] text-slate-400">
+                Wins Paid: ₹{totalGameWinPayout.toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            {/* Stat 4: Joinings & Net */}
+            <div className="bg-[#0b1424] border border-purple-500/30 rounded-2xl p-4 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Net Deposit Flow &amp; Users</span>
+                <Users className="w-4 h-4 text-purple-400" />
+              </div>
+              <div className={`text-2xl font-extrabold ${totalApprovedDepositsAmount - totalNetApprovedWithdrawals >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                ₹{(totalApprovedDepositsAmount - totalNetApprovedWithdrawals).toLocaleString('en-IN')}
+              </div>
+              <div className="text-[10px] text-slate-400">
+                {filteredJoinings.length} New Users Joined • {packageUpgrades.length} Packages
+              </div>
             </div>
           </div>
 
           {/* Detailed Data Section with Sub-Tabs */}
           <div className="bg-[#0b1424] border border-slate-800 rounded-2xl p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReportDetailTab('daily_summary')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    reportDetailTab === 'daily_summary'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Daily Summary ({dailySummaryRows.length} Days)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportDetailTab('game_wise')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    reportDetailTab === 'game_wise'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Game-Wise Volume ({gameWiseReport.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportDetailTab('transactions')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    reportDetailTab === 'transactions'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All Transactions ({filteredTransactions.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportDetailTab('deposits')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    reportDetailTab === 'deposits'
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Deposits ({filteredDeposits.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportDetailTab('withdrawals')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    reportDetailTab === 'withdrawals'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Withdrawals ({filteredWithdrawals.length})
+                </button>
                 <button
                   type="button"
                   onClick={() => setReportDetailTab('joinings')}
@@ -7715,29 +8258,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Package Upgrades ({packageUpgrades.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportDetailTab('withdrawals')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                    reportDetailTab === 'withdrawals'
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Withdrawals ({filteredWithdrawals.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportDetailTab('deposits')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                    reportDetailTab === 'deposits'
-                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Deposits ({filteredDeposits.length})
+                  Packages ({packageUpgrades.length})
                 </button>
               </div>
 
@@ -7745,6 +8266,133 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 Detailed Log Breakdown for <span className="text-amber-400 font-mono font-bold">{reportStartDate}</span> to <span className="text-amber-400 font-mono font-bold">{reportEndDate}</span>
               </div>
             </div>
+
+            {/* Table 0A: Daily Date-By-Date Summary */}
+            {reportDetailTab === 'daily_summary' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 text-[10px] uppercase tracking-wider bg-[#050911]">
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Deposits Approved</th>
+                      <th className="p-3">Deposits Pending</th>
+                      <th className="p-3">Withdrawals Paid</th>
+                      <th className="p-3">Withdrawals Pending</th>
+                      <th className="p-3">Net Cashflow</th>
+                      <th className="p-3">Game Bets In</th>
+                      <th className="p-3">Game Wins Out</th>
+                      <th className="p-3">New Users</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {dailySummaryRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="p-6 text-center text-slate-500 text-xs">
+                          No daily financial records in the selected date range.
+                        </td>
+                      </tr>
+                    ) : (
+                      dailySummaryRows.map((row) => (
+                        <tr key={row.date} className="hover:bg-slate-800/30 transition">
+                          <td className="p-3 text-amber-300 font-bold">{row.date}</td>
+                          <td className="p-3 text-emerald-400 font-bold">
+                            ₹{row.depositApprovedInr.toLocaleString('en-IN')} ({row.depositApprovedCount})
+                          </td>
+                          <td className="p-3 text-slate-400">₹{row.depositPendingInr.toLocaleString('en-IN')}</td>
+                          <td className="p-3 text-cyan-300 font-bold">
+                            ₹{row.withdrawalApprovedInr.toLocaleString('en-IN')} ({row.withdrawalApprovedCount})
+                          </td>
+                          <td className="p-3 text-amber-400">₹{row.withdrawalPendingInr.toLocaleString('en-IN')}</td>
+                          <td className={`p-3 font-black ${row.netCashflow >= 0 ? 'text-emerald-300' : 'text-rose-400'}`}>
+                            ₹{row.netCashflow.toLocaleString('en-IN')}
+                          </td>
+                          <td className="p-3 text-white font-bold">₹{row.gameBetsIn.toLocaleString('en-IN')}</td>
+                          <td className="p-3 text-rose-300">₹{row.gameWinsOut.toLocaleString('en-IN')}</td>
+                          <td className="p-3 text-slate-300">{row.newUsers}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Table 0B: Game-Wise Turnover & Payout Breakdown */}
+            {reportDetailTab === 'game_wise' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 text-[10px] uppercase tracking-wider bg-[#050911]">
+                      <th className="p-3">#</th>
+                      <th className="p-3">Game / Arena Name</th>
+                      <th className="p-3">Total Bets / Plays</th>
+                      <th className="p-3">Money In (Bet Volume ₹)</th>
+                      <th className="p-3">Player Winnings Paid (₹)</th>
+                      <th className="p-3">Platform Net Margin (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {gameWiseReport.map((g, idx) => (
+                      <tr key={g.gameName} className="hover:bg-slate-800/30 transition">
+                        <td className="p-3 text-slate-500">{idx + 1}</td>
+                        <td className="p-3 font-sans font-bold text-white">{g.gameName}</td>
+                        <td className="p-3 text-cyan-300 font-bold">{g.betsCount}</td>
+                        <td className="p-3 text-emerald-400 font-extrabold">₹{g.totalBetInr.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="p-3 text-amber-300 font-bold">₹{g.totalWinOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className={`p-3 font-black ${g.netProfit >= 0 ? 'text-emerald-300' : 'text-rose-400'}`}>
+                          ₹{g.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Table 0C: Full Transaction Log */}
+            {reportDetailTab === 'transactions' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 text-[10px] uppercase tracking-wider bg-[#050911]">
+                      <th className="p-3">Date &amp; Time</th>
+                      <th className="p-3">User Node</th>
+                      <th className="p-3">Game / Category</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3">Amount (₹)</th>
+                      <th className="p-3">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {filteredTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-slate-500 text-xs">
+                          No transactions recorded in the selected date range.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTransactions.slice(0, 200).map((t) => {
+                        const { game, flow } = classifyTxCategory(t);
+                        return (
+                          <tr key={t.id} className="hover:bg-slate-800/30 transition">
+                            <td className="p-3 text-slate-400 whitespace-nowrap">
+                              {formatYYYYMMDD(t.createdAt)} {new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="p-3 text-amber-400 font-bold">{t.userNodeId}</td>
+                            <td className="p-3 font-sans text-cyan-300 font-bold">{game}</td>
+                            <td className="p-3 text-slate-400">{t.type}</td>
+                            <td className={`p-3 font-extrabold ${flow === 'win' || flow === 'withdrawal' ? 'text-amber-300' : 'text-emerald-400'}`}>
+                              ₹{Math.abs(Number(t.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="p-3 font-sans text-slate-300 max-w-md truncate" title={t.notes}>{t.notes || '-'}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Table 1: Joinings */}
             {reportDetailTab === 'joinings' && (
@@ -9653,6 +10301,131 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
+          {/* Primary Deposit UPI ID & Bank Account Details Card */}
+          <div className="bg-[#091326] border border-emerald-500/40 rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-900/40 pb-3">
+              <div>
+                <h4 className="text-sm font-black text-white flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-emerald-400" />
+                  <span>Direct Deposit UPI ID &amp; Bank Account Details (Cashier Setup)</span>
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Deposit ke liye Primary UPI ID aur Bank Account Number / IFSC yahan se add ya update karein. User ko Deposit popup me dikhai dega.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-bold bg-[#050a18] border border-emerald-500/30 px-3 py-1.5 rounded-xl cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bankEnabled}
+                  onChange={(e) => setBankEnabled(e.target.checked)}
+                  className="rounded text-emerald-500 focus:ring-0"
+                />
+                <span className={bankEnabled ? 'text-emerald-300' : 'text-slate-400'}>
+                  {bankEnabled ? 'Bank Transfer ON' : 'Bank Transfer OFF'}
+                </span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 block mb-1">Primary Deposit UPI ID (VPA)</label>
+                <input
+                  type="text"
+                  value={defaultDepositUpi}
+                  onChange={(e) => setDefaultDepositUpi(e.target.value)}
+                  placeholder="e.g. sportxpay@okaxis"
+                  className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-cyan-500/30 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 block mb-1">UPI Payee / Merchant Name</label>
+                <input
+                  type="text"
+                  value={upiDefaultName}
+                  onChange={(e) => setUpiDefaultName(e.target.value)}
+                  placeholder="e.g. SportX Gaming Official"
+                  className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-blue-900/50 text-white text-xs font-semibold focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 block mb-1">Bank Name</label>
+                <input
+                  type="text"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  placeholder="e.g. HDFC Bank / SBI / ICICI"
+                  className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-blue-900/50 text-white text-xs focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 block mb-1">Account Holder Name</label>
+                <input
+                  type="text"
+                  value={bankAccountHolder}
+                  onChange={(e) => setBankAccountHolder(e.target.value)}
+                  placeholder="e.g. SportX Gaming Pvt Ltd"
+                  className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-blue-900/50 text-white text-xs focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 block mb-1">Bank Account Number</label>
+                <input
+                  type="text"
+                  value={bankAccountNumber}
+                  onChange={(e) => setBankAccountNumber(e.target.value)}
+                  placeholder="e.g. 50200012345678"
+                  className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-emerald-500/30 text-emerald-300 font-mono text-xs focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">IFSC Code</label>
+                  <input
+                    type="text"
+                    value={bankIfsc}
+                    onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
+                    placeholder="HDFC0001234"
+                    className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-emerald-500/30 text-amber-300 font-mono text-xs focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 block mb-1">Branch</label>
+                  <input
+                    type="text"
+                    value={bankBranch}
+                    onChange={(e) => setBankBranch(e.target.value)}
+                    placeholder="Optional"
+                    className="w-full px-3 py-2 rounded-xl bg-[#050a18] border border-blue-900/50 text-white text-xs focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {paymentMethodMsg && (
+              <div
+                className={`p-3 rounded-xl text-xs font-bold border ${
+                  paymentMethodMsg.type === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                    : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+                }`}
+              >
+                {paymentMethodMsg.text}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleSavePaymentMethods}
+                disabled={savingPaymentMethods}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-105 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition active:scale-95 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingPaymentMethods ? 'Saving...' : 'Save Deposit UPI & Bank Details'}</span>
+              </button>
+            </div>
+          </div>
+
           {/* TWO-COLUMN GRID: BULK IMPORT & GATEWAY CONFIG */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* LEFT: BULK IMPORT 100+ UPI IDs */}
@@ -10144,6 +10917,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
+                  onClick={() => applyPreset('cashier_desk')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    subFormPreset === 'cashier_desk'
+                      ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>💰 Cashier Desk (UPI/Bank + Deposit &amp; Withdraw)</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => applyPreset('deposit_only')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                     subFormPreset === 'deposit_only'
@@ -10484,10 +11270,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div>
                       <div className="text-xs font-bold text-white flex items-center gap-1.5">
                         <HardDrive className="w-4 h-4 text-cyan-400" />
-                        <span>UPI Gateway & 100+ Pool (पेमेंट गेटवे)</span>
+                        <span>Deposit UPI &amp; Bank Account Gateway (यूपीआई / बैंक)</span>
                       </div>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        Rotating UPI addresses pool manage karna, bulk upload aur active/pause toggle karna.
+                        Deposit me UPI ID aur Bank Account details dalna/update karna aur rotating UPI pool manage karna.
                       </p>
                     </div>
                   </label>
@@ -10858,7 +11644,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     { key: 'canManageDragonTiger', label: '⚡ Dragon vs Tiger', desc: 'Force next round winner (Dragon/Tiger/Tie)' },
                     { key: 'canManageAviator', label: '🚀 Aviator Crash Game', desc: 'Force crash multiplier, early crash' },
                     { key: 'canManageLottery', label: '🎟️ Lottery & Lucky Draw', desc: 'Forced winning tickets, prize pools' },
-                    { key: 'canManageUpiGateway', label: '⚡ UPI Gateway Pool', desc: 'Manage 100+ rotating UPI pool IDs' },
+                    { key: 'canManageUpiGateway', label: '⚡ Deposit UPI & Bank Account', desc: 'Add/edit Deposit UPI ID, Bank Account & 100+ UPI pool' },
                     { key: 'canManageUsers', label: '👤 User Balances', desc: 'Edit wallet balances & user directory' },
                     { key: 'canManageTournament', label: '🏆 Bettor Tournament', desc: 'Leaderboard & tournament prizes' },
                     { key: 'canViewReports', label: '📊 Financial Reports', desc: 'Date-wise turnover report & PDF' },

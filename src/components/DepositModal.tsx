@@ -12,8 +12,9 @@ import {
   QrCode,
   CheckCircle2,
   ExternalLink,
+  Building2,
 } from 'lucide-react';
-import { SystemSettings, User, DepositRequest } from '../types';
+import { SystemSettings, User, DepositRequest, BankAccountConfig } from '../types';
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -139,6 +140,10 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     activePoolCount: 1,
   });
   const [loadingUpi, setLoadingUpi] = useState<boolean>(false);
+  const [paymentTab, setPaymentTab] = useState<'upi' | 'bank'>('upi');
+  const [liveBankAccount, setLiveBankAccount] = useState<BankAccountConfig | null>(
+    settings?.paymentGateway?.bankAccount || null
+  );
 
   // Payment processing state
   const [utrNumber, setUtrNumber] = useState('');
@@ -208,6 +213,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
           if (data.qrTimerSeconds) {
             setCountdownSeconds(data.qrTimerSeconds);
           }
+          if (data.bankAccount) {
+            setLiveBankAccount(data.bankAccount);
+          }
         }
       }
     } catch (err) {
@@ -255,6 +263,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     fetchRotatingUpi();
   };
 
+  const activeBank = liveBankAccount || settings?.paymentGateway?.bankAccount;
+  const hasBankTransfer = Boolean(activeBank?.enabled && activeBank?.accountNumber?.trim());
+
   const handleSubmitDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!utrNumber || utrNumber.trim().length < 6) return;
@@ -262,7 +273,10 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     setSubmitting(true);
     try {
       // Submit pure 1:1 INR deposit amount directly to system ledger
-      const methodLabel = `${selectedMethod.toUpperCase()} (${selectedChannel}) [${activeUpi.upiId}]`;
+      const methodLabel =
+        paymentTab === 'bank' && hasBankTransfer && activeBank
+          ? `BANK TRANSFER (${activeBank.bankName}) [A/C: ${activeBank.accountNumber}]`
+          : `${selectedMethod.toUpperCase()} (${selectedChannel}) [${activeUpi.upiId}]`;
 
       await onSubmitDeposit(selectedAmount, methodLabel, utrNumber.trim());
       setSuccessToast(true);
@@ -742,117 +756,192 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                 </div>
               )}
 
-              {/* QR Code Presentation Box */}
-              <div className="bg-[#071533] border border-blue-900/50 rounded-2xl p-4 sm:p-5 text-center space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Dynamic Rotating UPI</span>
-                  </div>
+              {/* UPI vs Bank Account Transfer Mode Switcher */}
+              {hasBankTransfer && (
+                <div className="grid grid-cols-2 gap-2 bg-[#071533] border border-blue-900/50 p-1.5 rounded-2xl">
                   <button
                     type="button"
-                    onClick={fetchRotatingUpi}
-                    disabled={loadingUpi}
-                    className="px-2 py-1 rounded-lg bg-[#0e214d] hover:bg-cyan-500/20 text-cyan-300 font-bold text-[11px] transition flex items-center gap-1 border border-cyan-500/30 active:scale-95 disabled:opacity-50"
+                    onClick={() => setPaymentTab('upi')}
+                    className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                      paymentTab === 'upi'
+                        ? 'bg-gradient-to-r from-[#2dd4bf] to-[#06b6d4] text-[#042823] shadow'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
                   >
-                    <RotateCw className={`w-3 h-3 ${loadingUpi ? 'animate-spin' : ''}`} />
-                    <span>Switch UPI</span>
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>UPI / QR Code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentTab('bank')}
+                    className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                      paymentTab === 'bank'
+                        ? 'bg-gradient-to-r from-[#2dd4bf] to-[#06b6d4] text-[#042823] shadow'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>Bank Account</span>
                   </button>
                 </div>
+              )}
 
-                {/* High contrast QR code container */}
-                <div className="w-48 h-48 mx-auto bg-white p-3 rounded-2xl shadow-xl flex items-center justify-center relative border-4 border-[#2dd4bf]">
-                  {loadingUpi ? (
-                    <div className="flex flex-col items-center gap-2 text-slate-800">
-                      <RotateCw className="w-6 h-6 animate-spin text-cyan-600" />
-                      <span className="text-xs font-bold">Getting Fresh UPI...</span>
+              {/* BANK TRANSFER PRESENTATION BOX */}
+              {paymentTab === 'bank' && hasBankTransfer && activeBank ? (
+                <div className="bg-[#071533] border border-cyan-500/40 rounded-2xl p-4 sm:p-5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-blue-900/60 pb-2.5">
+                    <div className="flex items-center gap-2 text-xs font-black text-cyan-300">
+                      <Building2 className="w-4 h-4" />
+                      <span>Direct Bank Deposit (IMPS / NEFT)</span>
                     </div>
-                  ) : (
-                    <>
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                          `upi://pay?pa=${activeUpi.upiId}&pn=${encodeURIComponent(
-                            activeUpi.payeeName
-                          )}&am=${selectedAmount}&cu=INR&tn=${encodeURIComponent(
-                            `Order ${activeUpi.sessionTxnId || 'SportX'}`
-                          )}`
-                        )}`}
-                        alt="UPI Payment QR Code"
-                        className="w-full h-full object-contain"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-9 h-9 bg-white rounded-lg shadow-md flex items-center justify-center p-1 border border-slate-200">
-                          <span className="text-[10px] font-black text-[#002e6e]">UPI</span>
+                    <span className="text-[11px] font-black text-white bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-lg">
+                      ₹{selectedAmount.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    {[
+                      { label: 'Bank Name', value: activeBank.bankName || '-' },
+                      { label: 'Account Holder', value: activeBank.accountHolderName || '-' },
+                      { label: 'Account Number', value: activeBank.accountNumber || '-', mono: true },
+                      { label: 'IFSC Code', value: activeBank.ifscCode || '-', mono: true },
+                      ...(activeBank.branchName ? [{ label: 'Branch', value: activeBank.branchName }] : []),
+                    ].map((row) => (
+                      <div
+                        key={row.label}
+                        className="bg-[#0b1b42] border border-blue-900/50 rounded-xl p-2.5 flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">{row.label}</div>
+                          <div className={`text-white font-bold truncate ${row.mono ? 'font-mono text-cyan-300' : ''}`}>
+                            {row.value}
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(row.value)}
+                          className="px-2.5 py-1 rounded-lg bg-[#2dd4bf] hover:bg-cyan-300 text-[#042823] font-black text-[10px] flex items-center gap-1 shrink-0"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </button>
                       </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="text-xl font-black text-white">
-                  ₹{selectedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </div>
-
-                {/* Rotating Allocated UPI ID with Copy Button */}
-                <div className="bg-[#0b1b42] border border-blue-900/60 rounded-xl p-2.5 flex items-center justify-between text-xs">
-                  <div className="min-w-0 text-left">
-                    <div className="text-[10px] text-slate-400 font-semibold uppercase flex items-center gap-1">
-                      <span>Allocated UPI ID:</span>
-                      <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 px-1 py-0.2 rounded">
-                        {activeUpi.provider || 'Bank'}
-                      </span>
-                    </div>
-                    <div className="font-mono font-bold text-cyan-300 truncate">{activeUpi.upiId}</div>
-                    <div className="text-[10px] text-slate-400 truncate">
-                      Payee: <span className="text-white font-semibold">{activeUpi.payeeName}</span>
-                    </div>
+                    ))}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(activeUpi.upiId)}
-                    className="px-3 py-1.5 rounded-lg bg-[#2dd4bf] hover:bg-cyan-300 active:scale-95 text-[#042823] font-black text-xs transition flex items-center gap-1 shadow-sm shrink-0"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copy</span>
-                  </button>
                 </div>
+              ) : (
+                /* QR Code Presentation Box */
+                <div className="bg-[#071533] border border-blue-900/50 rounded-2xl p-4 sm:p-5 text-center space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Dynamic Rotating UPI</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchRotatingUpi}
+                      disabled={loadingUpi}
+                      className="px-2 py-1 rounded-lg bg-[#0e214d] hover:bg-cyan-500/20 text-cyan-300 font-bold text-[11px] transition flex items-center gap-1 border border-cyan-500/30 active:scale-95 disabled:opacity-50"
+                    >
+                      <RotateCw className={`w-3 h-3 ${loadingUpi ? 'animate-spin' : ''}`} />
+                      <span>Switch UPI</span>
+                    </button>
+                  </div>
 
-                {/* 1-Tap App Shortcuts on Mobile */}
-                <div className="grid grid-cols-4 gap-1.5 pt-1">
-                  <a
-                    href={`phonepe://pay?pa=${encodeURIComponent(activeUpi.upiId)}&pn=${encodeURIComponent(
-                      activeUpi.payeeName
-                    )}&am=${selectedAmount}&cu=INR`}
-                    className="py-1.5 px-1 rounded-lg bg-[#0a1838] border border-blue-800/40 text-[10px] font-bold text-slate-200 hover:text-white text-center transition"
-                  >
-                    PhonePe
-                  </a>
-                  <a
-                    href={`tez://upi/pay?pa=${encodeURIComponent(activeUpi.upiId)}&pn=${encodeURIComponent(
-                      activeUpi.payeeName
-                    )}&am=${selectedAmount}&cu=INR`}
-                    className="py-1.5 px-1 rounded-lg bg-[#0a1838] border border-blue-800/40 text-[10px] font-bold text-slate-200 hover:text-white text-center transition"
-                  >
-                    GPay
-                  </a>
-                  <a
-                    href={`paytmmp://pay?pa=${encodeURIComponent(activeUpi.upiId)}&pn=${encodeURIComponent(
-                      activeUpi.payeeName
-                    )}&am=${selectedAmount}&cu=INR`}
-                    className="py-1.5 px-1 rounded-lg bg-[#0a1838] border border-blue-800/40 text-[10px] font-bold text-slate-200 hover:text-white text-center transition"
-                  >
-                    Paytm
-                  </a>
-                  <a
-                    href={`upi://pay?pa=${encodeURIComponent(activeUpi.upiId)}&pn=${encodeURIComponent(
-                      activeUpi.payeeName
-                    )}&am=${selectedAmount}&cu=INR`}
-                    className="py-1.5 px-1 rounded-lg bg-[#0a1838] border border-blue-800/40 text-[10px] font-bold text-slate-200 hover:text-white text-center transition"
-                  >
-                    BHIM
-                  </a>
+                  {/* High contrast QR code container */}
+                  <div className="w-48 h-48 mx-auto bg-white p-3 rounded-2xl shadow-xl flex items-center justify-center relative border-4 border-[#2dd4bf]">
+                    {loadingUpi ? (
+                      <div className="flex flex-col items-center gap-2 text-slate-800">
+                        <RotateCw className="w-6 h-6 animate-spin text-cyan-600" />
+                        <span className="text-xs font-bold">Getting Fresh UPI...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                            `upi://pay?pa=${activeUpi.upiId}&pn=${encodeURIComponent(
+                              activeUpi.payeeName
+                            )}&am=${selectedAmount}&cu=INR&tn=${encodeURIComponent(
+                              `Order ${activeUpi.sessionTxnId || 'SportX'}`
+                            )}`
+                          )}`}
+                          alt="UPI Payment QR Code"
+                          className="w-full h-full object-contain"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-9 h-9 bg-white rounded-lg shadow-md flex items-center justify-center p-1 border border-slate-200">
+                            <span className="text-[10px] font-black text-[#002e6e]">UPI</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="text-xl font-black text-white">
+                    ₹{selectedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+
+                  {/* Rotating Allocated UPI ID with Copy Button */}
+                  <div className="bg-[#0b1b42] border border-blue-900/60 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                    <div className="min-w-0 text-left">
+                      <div className="text-[10px] text-slate-400 font-semibold uppercase flex items-center gap-1">
+                        <span>Allocated UPI ID:</span>
+                        <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 px-1 py-0.2 rounded">
+                          {activeUpi.provider || 'Bank'}
+                        </span>
+                      </div>
+                      <div className="font-mono font-bold text-cyan-300 truncate">{activeUpi.upiId}</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Payee: <span className="text-white font-semibold">{activeUpi.payeeName}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(activeUpi.upiId)}
+                      className="px-3 py-1.5 rounded-lg bg-[#2dd4bf] hover:bg-cyan-300 active:scale-95 text-[#042823] font-black text-xs transition flex items-center gap-1 shadow-sm shrink-0"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </button>
+                  </div>
+
+                  {/* 1-Tap App Shortcuts on Mobile */}
+                  <div className="grid grid-cols-4 gap-1.5 pt-1">
+                    <a
+                      href={`phonepe://pay?pa=${encodeURIComponent(activeUpi.upiId)}&pn=${encodeURIComponent(
+                        activeUpi.payeeName
+                      )}&am=${selectedAmount}&cu=INR`}
+                      className="py-1.5 px-1 rounded-lg bg-[#0a1838] border border-blue-800/40 text-[10px] font-bold text-slate-200 hover:text-white text-center transition"
+                    >
+                      PhonePe
+                    </a>
+                    <a
+                      href={`tez://upi/pay?pa=${encodeURIComponent(activeUpi.upiId)}&pn=${encodeURIComponent(
+                        activeUpi.payeeName
+                      )}&am=${selectedAmount}&cu=INR`}
+                      className="py-1.5 px-1 rounded-lg bg-[#0a1838] border border-blue-800/40 text-[10px] font-bold text-slate-200 hover:text-white text-center transition"
+                    >
+                      GPay
+                    </a>
+                    <a
+                      href={`paytmmp://pay?pa=${encodeURIComponent(activeUpi.upiId)}&pn=${encodeURIComponent(
+                        activeUpi.payeeName
+                      )}&am=${selectedAmount}&cu=INR`}
+                      className="py-1.5 px-1 rounded-lg bg-[#0a1838] border border-blue-800/40 text-[10px] font-bold text-slate-200 hover:text-white text-center transition"
+                    >
+                      Paytm
+                    </a>
+                    <a
+                      href={`upi://pay?pa=${encodeURIComponent(activeUpi.upiId)}&pn=${encodeURIComponent(
+                        activeUpi.payeeName
+                      )}&am=${selectedAmount}&cu=INR`}
+                      className="py-1.5 px-1 rounded-lg bg-[#0a1838] border border-blue-800/40 text-[10px] font-bold text-slate-200 hover:text-white text-center transition"
+                    >
+                      BHIM
+                    </a>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 12-Digit UTR Input Form */}
               <form onSubmit={handleSubmitDeposit} className="space-y-3 bg-[#071533] border border-blue-900/50 rounded-2xl p-4">

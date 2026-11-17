@@ -371,11 +371,16 @@ export default function App() {
   };
 
   // Admin Handlers
+  const getAdminHeaders = () => ({
+    'Content-Type': 'application/json',
+    'x-user-id': currentUser?.id || localStorage.getItem('tp_user_id') || '',
+  });
+
   const handleUpdateSettings = async (newSettings: SystemSettings) => {
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
         body: JSON.stringify(newSettings),
       });
       const data = await res.json();
@@ -397,7 +402,7 @@ export default function App() {
     try {
       const res = await fetch('/api/admin/users/update-balance', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
         body: JSON.stringify({ userId, balance, upgradeBalance, depositBalance }),
       });
       if (res.ok) {
@@ -413,7 +418,7 @@ export default function App() {
     try {
       const res = await fetch('/api/admin/users/toggle-package', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
         body: JSON.stringify({ userId, packageId }),
       });
       if (res.ok) {
@@ -429,12 +434,15 @@ export default function App() {
     try {
       const res = await fetch('/api/admin/deposit/action', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
         body: JSON.stringify({ requestId, action, adminNotes: notes }),
       });
+      const data = await res.json();
       if (res.ok) {
         await fetchState();
         showToast(`Deposit request ${action}d!`);
+      } else {
+        showToast(data.error || 'Failed to update deposit request', 'error');
       }
     } catch (err) {
       showToast('Failed to update deposit request', 'error');
@@ -445,12 +453,15 @@ export default function App() {
     try {
       const res = await fetch('/api/admin/withdraw/action', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
         body: JSON.stringify({ requestId, action, adminNotes: notes }),
       });
+      const data = await res.json();
       if (res.ok) {
         await fetchState();
         showToast(`Withdrawal request ${action}d!`);
+      } else {
+        showToast(data.error || 'Failed to update withdrawal request', 'error');
       }
     } catch (err) {
       showToast('Failed to update withdrawal request', 'error');

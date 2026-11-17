@@ -312,6 +312,14 @@ const defaultSettings: SystemSettings = {
       { id: 'upi-7', upiId: 'bharatpay.user88@sbi', name: 'Bharat Payments Direct', provider: 'State Bank of India', dailyLimit: 100000, usedCount: 5, totalCollected: 9500, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
       { id: 'upi-8', upiId: 'royalwin24@barodampay', name: 'Royal Win Enterprise', provider: 'Bank of Baroda', dailyLimit: 100000, usedCount: 7, totalCollected: 13200, isActive: true, createdAt: '2026-11-01T00:00:00.000Z' },
     ],
+    bankAccount: {
+      enabled: false,
+      accountHolderName: 'SportX Gaming Pvt Ltd',
+      bankName: 'HDFC Bank',
+      accountNumber: '',
+      ifscCode: '',
+      branchName: 'Mumbai Main Branch',
+    },
   },
   gameSubdomains: {
     enabled: true,
@@ -1730,8 +1738,12 @@ function ensurePaymentGatewaySettings() {
       ...defaultSettings.paymentGateway!,
       ...(state.settings.paymentGateway || {}),
       upiPool: state.settings.paymentGateway?.upiPool?.length ? state.settings.paymentGateway.upiPool : defaultSettings.paymentGateway!.upiPool,
+      bankAccount: state.settings.paymentGateway?.bankAccount || defaultSettings.paymentGateway!.bankAccount,
     };
     saveStore();
+  }
+  if (!state.settings.paymentGateway.bankAccount) {
+    state.settings.paymentGateway.bankAccount = { ...defaultSettings.paymentGateway!.bankAccount! };
   }
 }
 
@@ -2635,6 +2647,28 @@ function checkAdminPermission(
   return { allowed: true, user, status: 200 };
 }
 
+function checkAnyAdminPermission(
+  req: Request,
+  permKeys: Array<keyof AdminPermissions>
+): { allowed: boolean; user?: User; error?: string; status: number } {
+  const baseAuth = checkAdminPermission(req);
+  if (!baseAuth.allowed || !baseAuth.user) return baseAuth;
+  const u = baseAuth.user;
+  if (u.isSuperAdmin || u.id === 'usr-root' || u.nodeId === 'NX-ROOT01') {
+    return { allowed: true, user: u, status: 200 };
+  }
+  const hasAny = permKeys.some((k) => Boolean(u.adminPermissions && u.adminPermissions[k]));
+  if (!hasAny) {
+    return {
+      allowed: false,
+      user: u,
+      error: `Permission Denied: Requires one of [${permKeys.join(', ')}] permissions.`,
+      status: 403,
+    };
+  }
+  return { allowed: true, user: u, status: 200 };
+}
+
 // API ROUTES
 
 // 1. Get Full Application State or Current User Context
@@ -3190,6 +3224,7 @@ app.get('/api/payment/active-upi', (req: Request, res: Response) => {
       activePoolCount: 0,
       totalPoolCount: upiPool.length,
       subdomainUrl: gateway.subdomainUrl || '',
+      bankAccount: gateway.bankAccount || null,
       sessionTxnId: `ORD-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
     });
   }
@@ -3227,12 +3262,67 @@ app.get('/api/payment/active-upi', (req: Request, res: Response) => {
     activePoolCount: activePool.length,
     totalPoolCount: upiPool.length,
     subdomainUrl: gateway.subdomainUrl || '',
+    bankAccount: gateway.bankAccount || null,
     sessionTxnId: `ORD-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+  });
+});
+
+// 6a-2. ADMIN / SUB-ADMIN: Save Primary Deposit UPI & Bank Account Details
+app.post('/api/admin/gateway/payment-methods', (req: Request, res: Response) => {
+  const auth = checkAnyAdminPermission(req, ['canManageUpiGateway', 'canManageDeposits', 'canManageSettings']);
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
+  ensurePaymentGatewaySettings();
+  const gw = state.settings.paymentGateway!;
+  const {
+    defaultUpiId,
+    defaultPayeeName,
+    subdomainUrl,
+    rotationStrategy,
+    qrTimerSeconds,
+    bankAccount,
+  } = req.body || {};
+
+  if (typeof defaultUpiId === 'string' && defaultUpiId.trim()) {
+    gw.defaultUpiId = defaultUpiId.trim();
+  }
+  if (typeof defaultPayeeName === 'string' && defaultPayeeName.trim()) {
+    gw.defaultPayeeName = defaultPayeeName.trim();
+  }
+  if (typeof subdomainUrl === 'string') {
+    gw.subdomainUrl = subdomainUrl.trim();
+  }
+  if (rotationStrategy && ['roundRobin', 'random', 'leastUsed'].includes(rotationStrategy)) {
+    gw.rotationStrategy = rotationStrategy;
+  }
+  if (qrTimerSeconds !== undefined && !isNaN(Number(qrTimerSeconds))) {
+    gw.qrTimerSeconds = Math.max(60, Math.min(3600, Number(qrTimerSeconds)));
+  }
+  if (bankAccount && typeof bankAccount === 'object') {
+    gw.bankAccount = {
+      enabled: Boolean(bankAccount.enabled),
+      accountHolderName: String(bankAccount.accountHolderName || '').trim(),
+      bankName: String(bankAccount.bankName || '').trim(),
+      accountNumber: String(bankAccount.accountNumber || '').trim(),
+      ifscCode: String(bankAccount.ifscCode || '').trim().toUpperCase(),
+      branchName: String(bankAccount.branchName || '').trim(),
+    };
+  }
+
+  saveStore();
+  res.json({
+    success: true,
+    message: 'Deposit UPI & Bank Account details saved successfully!',
+    paymentGateway: gw,
+    settings: state.settings,
   });
 });
 
 // 6b. ADMIN: Bulk Upload up to 100+ UPI IDs at once
 app.post('/api/admin/upi-pool/bulk', (req: Request, res: Response) => {
+  const auth = checkAnyAdminPermission(req, ['canManageUpiGateway', 'canManageDeposits', 'canManageSettings']);
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   ensurePaymentGatewaySettings();
   const { bulkText, defaultName, replaceAll, dailyLimit } = req.body;
 
@@ -3330,6 +3420,9 @@ app.post('/api/admin/upi-pool/bulk', (req: Request, res: Response) => {
 
 // 6c. ADMIN: Toggle Active/Paused state of a UPI ID
 app.post('/api/admin/upi-pool/toggle', (req: Request, res: Response) => {
+  const auth = checkAnyAdminPermission(req, ['canManageUpiGateway', 'canManageDeposits', 'canManageSettings']);
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   ensurePaymentGatewaySettings();
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: 'Missing UPI ID' });
@@ -3351,6 +3444,9 @@ app.post('/api/admin/upi-pool/toggle', (req: Request, res: Response) => {
 
 // 6d. ADMIN: Delete a single UPI ID from pool
 app.delete('/api/admin/upi-pool/:id', (req: Request, res: Response) => {
+  const auth = checkAnyAdminPermission(req, ['canManageUpiGateway', 'canManageDeposits', 'canManageSettings']);
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   ensurePaymentGatewaySettings();
   const { id } = req.params;
   const pool = state.settings.paymentGateway?.upiPool || [];
@@ -3370,6 +3466,9 @@ app.delete('/api/admin/upi-pool/:id', (req: Request, res: Response) => {
 
 // 6e. ADMIN: Reset all usage and collection counts
 app.post('/api/admin/upi-pool/reset-counts', (req: Request, res: Response) => {
+  const auth = checkAnyAdminPermission(req, ['canManageUpiGateway', 'canManageDeposits', 'canManageSettings']);
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   ensurePaymentGatewaySettings();
   const pool = state.settings.paymentGateway?.upiPool || [];
   pool.forEach((u) => {
@@ -3763,6 +3862,16 @@ app.post('/api/spin/play', (req: Request, res: Response) => {
         error: `Insufficient balance! Bet amount: ₹${numBet.toFixed(2)}. Available: ₹${totalAvail.toFixed(2)}`,
       });
     }
+    state.transactions.unshift({
+      id: `tx-wheel-bet-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: user.id,
+      userNodeId: user.nodeId,
+      type: 'wheel_bet',
+      amount: numBet,
+      status: 'completed',
+      notes: `🎡 Wheel of Fortune Bet (${isHighRisk ? 'High Risk' : 'Standard'}) - ₹${numBet.toFixed(2)}`,
+      createdAt: new Date().toISOString(),
+    });
   }
 
   const rand = Math.random();
@@ -3954,6 +4063,17 @@ app.post('/api/slot777/spin', (req: Request, res: Response) => {
     winTitle = 'SINGLE CHERRY! 0.5X';
   }
 
+  state.transactions.unshift({
+    id: `tx-slot777-bet-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'slot777_bet',
+    amount: numBet,
+    status: 'completed',
+    notes: `🎰 777 Vegas Slot Spin Bet [${reels.join('-')}] - ₹${numBet.toFixed(2)}`,
+    createdAt: new Date().toISOString(),
+  });
+
   const payout = numBet * multiplier;
   if (payout > 0) {
     user.winningBalance = (user.winningBalance || 0) + payout;
@@ -3964,7 +4084,7 @@ app.post('/api/slot777/spin', (req: Request, res: Response) => {
       id: `tx-slot777-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       userId: user.id,
       userNodeId: user.nodeId,
-      type: 'spin_reward',
+      type: 'slot777_win',
       amount: payout,
       status: 'completed',
       notes: `🎰 777 Slot Win: [${reels.join('-')}] ${winTitle} - Won ₹${payout.toFixed(2)}`,
@@ -4016,6 +4136,17 @@ app.post('/api/rummy/play', (req: Request, res: Response) => {
   const isWinner = isPureWin !== false;
   let payout = 0;
 
+  state.transactions.unshift({
+    id: `tx-rummy-bet-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'rummy_bet',
+    amount: numStake,
+    status: 'completed',
+    notes: `🃏 Indian Rummy Table Entry Stake - ₹${numStake.toFixed(2)}`,
+    createdAt: new Date().toISOString(),
+  });
+
   if (isWinner) {
     const grossPot = numStake * 2;
     payout = grossPot * (1 - houseMarginPercent / 100);
@@ -4027,7 +4158,7 @@ app.post('/api/rummy/play', (req: Request, res: Response) => {
       id: `tx-rummy-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       userId: user.id,
       userNodeId: user.nodeId,
-      type: 'spin_reward',
+      type: 'rummy_win',
       amount: payout,
       status: 'completed',
       notes: `🃏 Rummy Table Winner! 13-Card Pure Show (Pot ₹${payout.toFixed(2)} credited)`,
@@ -4153,6 +4284,17 @@ app.post('/api/chickenroad/start', (req: Request, res: Response) => {
   activeChickenRounds.set(user.id, round);
   user.totalBetTurnover = (user.totalBetTurnover || 0) + numBet;
 
+  state.transactions.unshift({
+    id: `tx-chicken-bet-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId: user.id,
+    userNodeId: user.nodeId,
+    type: 'chickenroad_bet',
+    amount: numBet,
+    status: 'completed',
+    notes: `🐔 Chicken Road Bet (${diff.toUpperCase()}) - ₹${numBet.toFixed(2)}`,
+    createdAt: new Date().toISOString(),
+  });
+
   saveStore();
   return res.json({
     success: true,
@@ -4221,7 +4363,7 @@ app.post('/api/chickenroad/step', (req: Request, res: Response) => {
       id: `tx-chicken-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       userId: user.id,
       userNodeId: user.nodeId,
-      type: 'spin_reward',
+      type: 'chickenroad_win',
       amount: finalPrize,
       status: 'completed',
       notes: `🐔 Chicken Road 10X GOLDEN EGG Finish! Won ₹${finalPrize.toFixed(2)} (${finishMultiplier}X)`,
@@ -4286,7 +4428,7 @@ app.post('/api/chickenroad/cashout', (req: Request, res: Response) => {
     id: `tx-chicken-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     userId: user.id,
     userNodeId: user.nodeId,
-    type: 'spin_reward',
+    type: 'chickenroad_win',
     amount: payout,
     status: 'completed',
     notes: `🐔 Chicken Road Cash Out: Lane ${round.currentStep}/${round.totalSteps} (${multiplier}X) - Won ₹${payout.toFixed(2)}`,
@@ -6389,13 +6531,23 @@ app.post('/api/boosting/simulate', (req: Request, res: Response) => {
 
 // A1. Update System Settings
 app.put('/api/admin/settings', (req: Request, res: Response) => {
+  const auth = checkAnyAdminPermission(req, ['canManageSettings', 'canManageUpiGateway', 'canManageDeposits']);
+  if (!auth.allowed) return res.status(auth.status).json({ error: auth.error });
+
   const newSettings: SystemSettings = req.body;
   if (!newSettings) return res.status(400).json({ error: 'Invalid settings body' });
 
-  const mergedSettings: SystemSettings = {
-    ...state.settings,
-    ...newSettings,
-  };
+  const caller = auth.user;
+  const isFullSettingsAllowed = Boolean(
+    caller?.isSuperAdmin ||
+      caller?.id === 'usr-root' ||
+      caller?.nodeId === 'NX-ROOT01' ||
+      caller?.adminPermissions?.canManageSettings
+  );
+
+  const mergedSettings: SystemSettings = isFullSettingsAllowed
+    ? { ...state.settings, ...newSettings }
+    : { ...state.settings };
 
   if (newSettings.walletAddresses) {
     mergedSettings.walletAddresses = {
@@ -6552,8 +6704,10 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
     };
   }
 
-  // Sanitize payment gateway & UPI pool
+  // Sanitize payment gateway & UPI pool + Bank Account
   if (newSettings.paymentGateway) {
+    const incomingBank = newSettings.paymentGateway.bankAccount;
+    const prevBank = state.settings.paymentGateway?.bankAccount || defaultSettings.paymentGateway!.bankAccount!;
     mergedSettings.paymentGateway = {
       ...(state.settings.paymentGateway || defaultSettings.paymentGateway!),
       ...newSettings.paymentGateway,
@@ -6578,6 +6732,16 @@ app.put('/api/admin/settings', (req: Request, res: Response) => {
             notes: item.notes || '',
           })).filter((x) => x.upiId.length >= 4)
         : (state.settings.paymentGateway?.upiPool || defaultSettings.paymentGateway!.upiPool),
+      bankAccount: incomingBank
+        ? {
+            enabled: Boolean(incomingBank.enabled),
+            accountHolderName: String(incomingBank.accountHolderName || '').trim(),
+            bankName: String(incomingBank.bankName || '').trim(),
+            accountNumber: String(incomingBank.accountNumber || '').trim(),
+            ifscCode: String(incomingBank.ifscCode || '').trim().toUpperCase(),
+            branchName: String(incomingBank.branchName || '').trim(),
+          }
+        : prevBank,
     };
   }
 
