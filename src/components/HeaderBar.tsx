@@ -151,21 +151,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             </div>
           )}
 
-          {/* Admin Switcher Toggle (Visible for Admin and Sub-Admin Nodes) */}
-          {(user?.isAdmin || user?.isSubAdmin || user?.nodeId === 'NX-ROOT01') && (
-            <button
-              onClick={() => setIsAdminView(!isAdminView)}
-              className={`flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg transition border font-mono ${
-                isAdminView
-                  ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isAdminView ? 'User' : 'Admin'}</span>
-            </button>
-          )}
-
           {/* Account Security Key Button */}
           {user && (
             <button

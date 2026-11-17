@@ -59,6 +59,7 @@ import {
   Globe,
   Power,
   Gamepad2,
+  Play,
 } from 'lucide-react';
 import { GAME_SUBDOMAIN_LIST, isGameEnabled, GameRouteKey } from '../utils/subdomainRouter';
 import {
@@ -543,6 +544,63 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setLuckyDrawMsg({ text: `Network error: ${err.message}`, type: 'error' });
     } finally {
       setSavingLuckyDraw(false);
+    }
+  };
+
+  const [triggeringAdminDraw, setTriggeringAdminDraw] = useState(false);
+
+  const handleTriggerAdminLuckyDraw = async (targetStep?: number) => {
+    setTriggeringAdminDraw(true);
+    setLuckyDrawMsg(null);
+    try {
+      const currentStep = luckyDrawData?.currentDrawStep || 0;
+      const stepToDraw = targetStep || (currentStep >= 5 ? 1 : currentStep + 1);
+      const res = await fetch('/api/luckydraw/admin/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          step: stepToDraw,
+          forcedPrizes: ldForcedPrizes,
+          ticketPrice: ldTicketPrice === '' ? 100 : Number(ldTicketPrice),
+          prizeAmount: ldPrize1 === '' ? 25000 : Number(ldPrize1),
+          secondPrizeAmount: ldPrize2 === '' ? 10000 : Number(ldPrize2),
+          thirdPrizeAmount: ldPrize3 === '' ? 5000 : Number(ldPrize3),
+          fourthPrizeAmount: ldPrize4 === '' ? 2500 : Number(ldPrize4),
+          fifthPrizeAmount: ldPrize5 === '' ? 1500 : Number(ldPrize5),
+          guaranteedPrizeAmount: ldPrizeGuaranteed === '' ? 500 : Number(ldPrizeGuaranteed),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.luckyDraw) setLuckyDrawData(data.luckyDraw);
+        setLuckyDrawMsg({
+          text: `🎉 Step #${data.step || stepToDraw} Draw Triggered! Winning 6-Digit Number: #${data.winningNumber}. All player Lottery screens are rolling now!`,
+          type: 'success',
+        });
+        if (onRefreshState) onRefreshState();
+      } else {
+        setLuckyDrawMsg({ text: `❌ Failed: ${data.error || 'Could not trigger draw'}`, type: 'error' });
+      }
+    } catch (err: any) {
+      setLuckyDrawMsg({ text: `❌ Error triggering draw: ${err.message}`, type: 'error' });
+    } finally {
+      setTriggeringAdminDraw(false);
+    }
+  };
+
+  const handleResetAdminLuckyDraw = async () => {
+    setLuckyDrawMsg(null);
+    try {
+      const res = await fetch('/api/luckydraw/admin/reset', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.luckyDraw) setLuckyDrawData(data.luckyDraw);
+        setLuckyDrawMsg({ text: '🔄 Round Reset to Step 0! Ready for new 1st-5th sequential draws.', type: 'success' });
+      } else {
+        setLuckyDrawMsg({ text: `❌ Reset failed: ${data.error || 'Unknown error'}`, type: 'error' });
+      }
+    } catch (err: any) {
+      setLuckyDrawMsg({ text: `❌ Error resetting round: ${err.message}`, type: 'error' });
     }
   };
 
@@ -2999,7 +3057,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div>
                 <label className="text-[11px] font-bold text-slate-300 uppercase block mb-1">
-                  Root Domain (e.g. sportx.game)
+                  Root Domain (e.g. sportx.tech)
                 </label>
                 <input
                   type="text"
@@ -3017,7 +3075,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       },
                     })
                   }
-                  placeholder="yourdomain.com"
+                  placeholder="sportx.tech"
                   className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 text-xs font-mono focus:outline-none focus:border-cyan-500"
                 />
               </div>
@@ -3042,7 +3100,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       },
                     })
                   }
-                  placeholder="https://yourdomain.com"
+                  placeholder="https://sportx.tech"
                   className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-emerald-300 text-xs font-mono focus:outline-none focus:border-cyan-500"
                 />
               </div>
@@ -3067,7 +3125,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       },
                     })
                   }
-                  placeholder="https://yourdomain.com (leave blank if same backend)"
+                  placeholder="https://sportx.tech (leave blank if same backend)"
                   className="w-full bg-[#050911] border border-slate-700 rounded-xl px-3 py-2 text-amber-300 text-xs font-mono focus:outline-none focus:border-cyan-500"
                 />
               </div>
@@ -3101,7 +3159,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => {
                   const cleanRoot = (
                     (editableSettings.gameSubdomains?.rootDomain || '').trim() ||
-                    (typeof window !== 'undefined' ? window.location.hostname : '')
+                    'sportx.tech'
                   )
                     .replace(/^https?:\/\//i, '')
                     .replace(/\/.*$/, '');
@@ -3166,7 +3224,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         },
                       });
                     }}
-                    placeholder={`https://${game.prefix}.${editableSettings.gameSubdomains?.rootDomain || 'yourdomain.com'}`}
+                    placeholder={`https://${game.prefix}.${editableSettings.gameSubdomains?.rootDomain || 'sportx.tech'}`}
                     className="w-full bg-[#09111e] border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] text-cyan-300 font-mono focus:outline-none focus:border-cyan-500"
                   />
                 </div>
@@ -9121,6 +9179,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {luckyDrawMsg.text}
             </div>
           )}
+
+          {/* Live 5-Step Lottery Roller Controller */}
+          <div className="bg-[#070e1d] border-2 border-amber-500/40 rounded-2xl p-5 space-y-4 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-sm font-black text-amber-300 flex items-center gap-2">
+                  <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span>Live 5-Step Lottery Roller Controller (Broadcasts to All Players)</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Clicking any step below triggers the 10-second 6-digit electric roller live on luckydraw.sportx.tech for all players.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetAdminLuckyDraw}
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Reset Round</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              {[1, 2, 3, 4, 5].map((step) => {
+                const titles = ['1st Prize', '2nd Prize', '3rd Prize', '4th Prize', '5th Prize'];
+                const amts = [ldPrize1 || 25000, ldPrize2 || 10000, ldPrize3 || 5000, ldPrize4 || 2500, ldPrize5 || 1500];
+                const drawnList = luckyDrawData?.drawnPrizes || [];
+                const drawnItem = drawnList.find((p: any) => p.prizeRank === step);
+                const isNext = (luckyDrawData?.currentDrawStep || 0) + 1 === step;
+
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => handleTriggerAdminLuckyDraw(step)}
+                    disabled={triggeringAdminDraw}
+                    className={`p-3 rounded-xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer disabled:opacity-50 ${
+                      drawnItem
+                        ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50'
+                        : isNext
+                        ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-black border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                        : 'bg-[#040814] text-slate-300 border-slate-700 hover:border-amber-400/50'
+                    }`}
+                  >
+                    <span className="text-[10px] uppercase font-black">
+                      {drawnItem ? `✓ #${drawnItem.ticketNumber}` : `Roll Step #${step}`}
+                    </span>
+                    <span className="text-xs font-black">{titles[step - 1]}</span>
+                    <span className="text-[10px] opacity-80">₹{Number(amts[step - 1]).toLocaleString('en-IN')}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Quick Summary Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

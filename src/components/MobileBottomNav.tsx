@@ -160,9 +160,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 isAccountActive ? 'scale-110 text-[#22d3ee]' : 'stroke-current'
               }`}
             />
-            {user?.isAdmin && (
-              <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-amber-400" />
-            )}
           </div>
           <span className={`text-[10px] mt-1 font-medium ${isAccountActive ? 'font-bold text-[#22d3ee]' : ''}`}>
             Account

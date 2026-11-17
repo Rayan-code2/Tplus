@@ -36,8 +36,9 @@ import { AuthModal } from './components/AuthModal';
 import { AuthView } from './components/AuthView';
 import { PaymentGatewayView } from './components/PaymentGatewayView';
 import { VipPrivilegeView } from './components/VipPrivilegeView';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import { detectRouteFromLocation, navigateToAppTab, isGameEnabled, isGameRouteTab, GAME_SUBDOMAIN_LIST } from './utils/subdomainRouter';
+import { AdminPortalLogin } from './components/AdminPortalLogin';
+import { AlertCircle, CheckCircle2, ShieldCheck, LogOut, ExternalLink } from 'lucide-react';
+import { detectRouteFromLocation, navigateToAppTab, isGameEnabled, isGameRouteTab, GAME_SUBDOMAIN_LIST, resolveMainLobbyUrl } from './utils/subdomainRouter';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -51,8 +52,9 @@ export default function App() {
   const [productOrders, setProductOrders] = useState<ProductOrder[]>([]);
 
   const initialRoute = detectRouteFromLocation();
-  const [activeTab, setActiveTab] = useState<string>(initialRoute.activeTab || 'dashboard');
-  const [isAdminView, setIsAdminView] = useState<boolean>(initialRoute.activeTab === 'admin');
+  const [activeTab, setActiveTab] = useState<string>(initialRoute.isAdminSubdomain ? 'admin' : (initialRoute.activeTab === 'admin' ? 'dashboard' : initialRoute.activeTab) || 'dashboard');
+  const [isAdminView, setIsAdminView] = useState<boolean>(initialRoute.isAdminSubdomain);
+  const [isAdminPortalAuthed, setIsAdminPortalAuthed] = useState<boolean>(false);
   const [isAuthPage, setIsAuthPage] = useState<boolean>(true);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
 
@@ -87,7 +89,24 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (storedId && data.currentUser) {
+        const routeNow = detectRouteFromLocation();
+
+        if (routeNow.isAdminSubdomain) {
+          const verifiedAdminId = sessionStorage.getItem('sportx_admin_verified');
+          const matchedAdmin = (data.users || []).find(
+            (u: any) =>
+              u.id === verifiedAdminId &&
+              (u.isAdmin || u.isSuperAdmin || u.isSubAdmin || u.nodeId === 'NX-ROOT01')
+          );
+          if (matchedAdmin) {
+            setCurrentUser(matchedAdmin);
+            localStorage.setItem('tp_user_id', matchedAdmin.id);
+            setIsAdminPortalAuthed(true);
+            setIsAuthPage(false);
+          } else {
+            setIsAdminPortalAuthed(false);
+          }
+        } else if (storedId && data.currentUser) {
           setCurrentUser(data.currentUser);
           setIsAuthPage(false);
         } else if (!storedId) {
@@ -132,8 +151,8 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => {
       const nextRoute = detectRouteFromLocation();
-      setActiveTab(nextRoute.activeTab || 'dashboard');
-      setIsAdminView(nextRoute.activeTab === 'admin');
+      setActiveTab(nextRoute.isAdminSubdomain ? 'admin' : (nextRoute.activeTab === 'admin' ? 'dashboard' : nextRoute.activeTab) || 'dashboard');
+      setIsAdminView(nextRoute.isAdminSubdomain);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -585,19 +604,144 @@ export default function App() {
   const handleLogout = async () => {
     try {
       localStorage.removeItem('tp_user_id');
+      sessionStorage.removeItem('sportx_admin_verified');
+      setIsAdminPortalAuthed(false);
       await fetch('/api/auth/logout', { method: 'POST' });
       setCurrentUser(null);
       setIsAuthPage(true);
       showToast('Logged out of Node Session', 'success');
     } catch (err) {
       localStorage.removeItem('tp_user_id');
+      sessionStorage.removeItem('sportx_admin_verified');
+      setIsAdminPortalAuthed(false);
       setIsAuthPage(true);
     }
   };
 
-  // Check if accessing Standalone Payment Gateway (via Subdomain, /pay, /gateway, or activeTab)
+  // Check Subdomain / Route Context
   const currentRouteInfo = detectRouteFromLocation();
   const isGatewaySubdomainOrPath = currentRouteInfo.isGatewaySubdomain;
+
+  // STRICTLY ISOLATED PASSWORD-PROTECTED ADMIN SUBDOMAIN (admin.sportx.tech or ?portal=admin)
+  if (currentRouteInfo.isAdminSubdomain) {
+    const hasAdminPriv = Boolean(
+      currentUser &&
+        (currentUser.isAdmin || currentUser.isSuperAdmin || currentUser.isSubAdmin || currentUser.nodeId === 'NX-ROOT01')
+    );
+
+    if (!isAdminPortalAuthed || !hasAdminPriv) {
+      return (
+        <AdminPortalLogin
+          onSuccess={(adminUser) => {
+            setCurrentUser(adminUser);
+            setIsAdminPortalAuthed(true);
+            setIsAuthPage(false);
+            fetchState();
+          }}
+          onBackToMainSite={() => {
+            const lobby = resolveMainLobbyUrl(settings, null);
+            if (lobby) {
+              window.location.href = lobby;
+            } else {
+              window.location.href = '/';
+            }
+          }}
+        />
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-[#060a14] text-slate-100 font-sans">
+        {toast && (
+          <div className="fixed top-20 right-6 z-50 animate-bounce">
+            <div
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl font-mono text-xs font-bold border backdrop-blur-md ${
+                toast.type === 'success'
+                  ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-300'
+                  : 'bg-red-950/90 border-red-500/60 text-red-300'
+              }`}
+            >
+              {toast.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+              )}
+              <span>{toast.message}</span>
+            </div>
+          </div>
+        )}
+
+        <header className="sticky top-0 z-40 bg-[#090e1a]/95 backdrop-blur-md border-b border-amber-500/25 px-4 sm:px-6 h-14 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="w-5 h-5 text-amber-400" />
+            <span className="font-black text-sm sm:text-base tracking-tight text-white">
+              SportX <span className="text-amber-400">Admin Sovereign</span>
+            </span>
+            <span className="hidden sm:inline-block text-[10px] font-mono bg-amber-500/15 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded-full">
+              #{currentUser?.nodeId}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const lobby = resolveMainLobbyUrl(settings, null);
+                if (lobby) {
+                  window.location.href = lobby;
+                } else {
+                  window.location.href = '/';
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">Player Site</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-xs font-bold text-rose-300 transition"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Lock & Logout</span>
+            </button>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto p-3 sm:p-6">
+          <AdminPanel
+            key="view-admin-subdomain"
+            currentUser={currentUser!}
+            settings={settings!}
+            users={users}
+            depositRequests={depositRequests}
+            withdrawalRequests={withdrawalRequests}
+            boostingQueue={boostingQueue}
+            transactions={transactions}
+            products={products}
+            productOrders={productOrders}
+            onUpdateSettings={handleUpdateSettings}
+            onUpdateUserBalance={handleUpdateUserBalance}
+            onToggleUserPackage={handleToggleUserPackage}
+            onDepositAction={handleDepositAction}
+            onWithdrawAction={handleWithdrawAction}
+            onForceBoostingWinner={handleForceBoostingWinner}
+            onSyncBoostingQueue={handleSyncBoostingQueue}
+            onDeleteBoostingEntry={handleDeleteBoostingEntry}
+            onAddProduct={handleAddProduct}
+            onUpdateProduct={handleUpdateProduct}
+            onDeleteProduct={handleDeleteProduct}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onToggleAdmin={handleToggleAdmin}
+            onDeleteUser={handleDeleteUser}
+            onSwitchUser={handleSwitchUser}
+            onRefreshState={fetchState}
+          />
+        </main>
+      </div>
+    );
+  }
 
   if (activeTab === 'payment_gateway' || isGatewaySubdomainOrPath) {
     return (
@@ -730,36 +874,7 @@ export default function App() {
 
         {/* Main Content Area */}
         <main className={`flex-1 ${activeTab === 'cricket' ? 'p-0 bg-[#f8fafc]' : activeTab === 'chickenroad' ? 'p-0 sm:p-2' : 'p-3 sm:p-6 lg:p-8'} pb-16 md:pb-8 max-w-7xl mx-auto w-full overflow-x-hidden`}>
-          {(isAdminView || activeTab === 'admin') && (currentUser?.isAdmin || currentUser?.isSubAdmin || currentUser?.nodeId === 'NX-ROOT01') ? (
-            <AdminPanel
-              key="view-admin"
-              currentUser={currentUser}
-              settings={settings}
-              users={users}
-              depositRequests={depositRequests}
-              withdrawalRequests={withdrawalRequests}
-              boostingQueue={boostingQueue}
-              transactions={transactions}
-              products={products}
-              productOrders={productOrders}
-              onUpdateSettings={handleUpdateSettings}
-              onUpdateUserBalance={handleUpdateUserBalance}
-              onToggleUserPackage={handleToggleUserPackage}
-              onDepositAction={handleDepositAction}
-              onWithdrawAction={handleWithdrawAction}
-              onForceBoostingWinner={handleForceBoostingWinner}
-              onSyncBoostingQueue={handleSyncBoostingQueue}
-              onDeleteBoostingEntry={handleDeleteBoostingEntry}
-              onAddProduct={handleAddProduct}
-              onUpdateProduct={handleUpdateProduct}
-              onDeleteProduct={handleDeleteProduct}
-              onUpdateOrderStatus={handleUpdateOrderStatus}
-              onToggleAdmin={handleToggleAdmin}
-              onDeleteUser={handleDeleteUser}
-              onSwitchUser={handleSwitchUser}
-              onRefreshState={fetchState}
-            />
-          ) : isGameRouteTab(activeTab) && !isGameEnabled(activeTab, settings) ? (
+          {isGameRouteTab(activeTab) && !isGameEnabled(activeTab, settings) ? (
             <div
               key="view-game-disabled"
               className="max-w-md mx-auto mt-10 bg-[#0b1424] border border-amber-500/40 rounded-3xl p-6 text-center space-y-4 shadow-2xl"

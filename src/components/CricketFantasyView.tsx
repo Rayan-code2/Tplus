@@ -1799,27 +1799,6 @@ export const CricketFantasyView: React.FC<CricketFantasyViewProps> = ({
         </div>
 
         <span className="tag ok">₹{store.wallet} INR</span>
-
-        <div className="seg">
-          <button
-            className={isUserRole ? 'on' : ''}
-            onClick={() => {
-              setRole('user');
-              setBannerMsg('');
-            }}
-          >
-            Player
-          </button>
-          <button
-            className={!isUserRole ? 'on' : ''}
-            onClick={() => {
-              setRole('admin');
-              setBannerMsg('');
-            }}
-          >
-            Admin
-          </button>
-        </div>
       </header>
 
       {bannerMsg && (

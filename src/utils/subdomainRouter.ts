@@ -65,10 +65,10 @@ const ALIAS_TO_TAB: Record<string, string> = {
   vip: 'vip',
   privileges: 'vip',
   agency: 'agency',
-  admin: 'admin',
 };
 
 export const ALL_KNOWN_SUBDOMAIN_PREFIXES = new Set([
+  'admin',
   'aviator',
   'wingo',
   'colorprediction',
@@ -175,6 +175,7 @@ export interface DetectedLocationRoute {
   activeTab: string;
   isGatewaySubdomain: boolean;
   isGameSubdomain: boolean;
+  isAdminSubdomain: boolean;
   subdomainPrefix: string | null;
 }
 
@@ -184,6 +185,7 @@ export function detectRouteFromLocation(): DetectedLocationRoute {
       activeTab: 'dashboard',
       isGatewaySubdomain: false,
       isGameSubdomain: false,
+      isAdminSubdomain: false,
       subdomainPrefix: null,
     };
   }
@@ -191,15 +193,40 @@ export function detectRouteFromLocation(): DetectedLocationRoute {
   const hostname = window.location.hostname.toLowerCase();
   const pathname = window.location.pathname.toLowerCase();
   const searchParams = new URLSearchParams(window.location.search);
-
-  // 1. Check host subdomain prefix (e.g., aviator.jalwa.game, wingo.jalwa.game, pay.jalwa.game)
   const firstLabel = hostname.split('.')[0];
+
+  // 0. Dedicated Admin Subdomain (e.g., admin.sportx.tech) or explicit preview ?portal=admin
+  if (!isPreviewOrLocalHost(hostname) && firstLabel === 'admin') {
+    return {
+      activeTab: 'admin',
+      isGatewaySubdomain: false,
+      isGameSubdomain: false,
+      isAdminSubdomain: true,
+      subdomainPrefix: 'admin',
+    };
+  }
+
+  if (
+    isPreviewOrLocalHost(hostname) &&
+    (searchParams.get('portal') === 'admin' || pathname.replace(/^\/+|\/+$/g, '') === 'admin-portal')
+  ) {
+    return {
+      activeTab: 'admin',
+      isGatewaySubdomain: false,
+      isGameSubdomain: false,
+      isAdminSubdomain: true,
+      subdomainPrefix: 'admin',
+    };
+  }
+
+  // 1. Check host subdomain prefix (e.g., aviator.sportx.tech, wingo.sportx.tech, pay.sportx.tech)
   if (!isPreviewOrLocalHost(hostname) && firstLabel && ALIAS_TO_TAB[firstLabel]) {
     const mappedTab = ALIAS_TO_TAB[firstLabel];
     return {
       activeTab: mappedTab,
       isGatewaySubdomain: mappedTab === 'payment_gateway',
       isGameSubdomain: mappedTab !== 'payment_gateway' && Boolean(GAME_TAB_TO_PREFIX[mappedTab]),
+      isAdminSubdomain: false,
       subdomainPrefix: firstLabel,
     };
   }
@@ -212,6 +239,7 @@ export function detectRouteFromLocation(): DetectedLocationRoute {
       activeTab: mappedTab,
       isGatewaySubdomain: mappedTab === 'payment_gateway',
       isGameSubdomain: false,
+      isAdminSubdomain: false,
       subdomainPrefix: GAME_TAB_TO_PREFIX[mappedTab] || null,
     };
   }
@@ -227,6 +255,7 @@ export function detectRouteFromLocation(): DetectedLocationRoute {
         activeTab: mappedTab,
         isGatewaySubdomain: mappedTab === 'payment_gateway',
         isGameSubdomain: false,
+        isAdminSubdomain: false,
         subdomainPrefix: GAME_TAB_TO_PREFIX[mappedTab] || null,
       };
     }
@@ -236,6 +265,7 @@ export function detectRouteFromLocation(): DetectedLocationRoute {
     activeTab: 'dashboard',
     isGatewaySubdomain: false,
     isGameSubdomain: false,
+    isAdminSubdomain: false,
     subdomainPrefix: null,
   };
 }
@@ -278,6 +308,7 @@ export function resolveSubdomainUrlForTab(
   user?: User | null
 ): string | null {
   if (typeof window === 'undefined') return null;
+  if (isPreviewOrLocalHost(window.location.hostname)) return null;
 
   const prefix = GAME_TAB_TO_PREFIX[tab];
   if (!prefix) return null;
@@ -331,6 +362,7 @@ export function resolveMainLobbyUrl(
   user?: User | null
 ): string | null {
   if (typeof window === 'undefined') return null;
+  if (isPreviewOrLocalHost(window.location.hostname)) return null;
 
   const explicitLobby = normalizeHttpUrl(settings?.gameSubdomains?.mainAppUrl || '');
   if (explicitLobby) {
@@ -404,10 +436,16 @@ export function navigateToAppTab(
     return;
   }
 
-  // Other shared shell routes (admin, finance, agency, store)
+  // Prevent accessing admin view from user domains
+  if (targetTab === 'admin' && !routeInfo.isAdminSubdomain) {
+    setActiveTab('dashboard');
+    setIsAdminView(false);
+    return;
+  }
+
+  // Other shared shell routes (finance, agency, store)
   if (typeof window !== 'undefined') {
     const pathMap: Record<string, string> = {
-      admin: '/admin',
       finance: '/finance',
       agency: '/agency',
       store: '/store',
@@ -419,5 +457,5 @@ export function navigateToAppTab(
   }
 
   setActiveTab(targetTab);
-  setIsAdminView(targetTab === 'admin');
+  setIsAdminView(routeInfo.isAdminSubdomain && targetTab === 'admin');
 }

@@ -299,7 +299,7 @@ const defaultSettings: SystemSettings = {
     rotationStrategy: 'roundRobin',
     defaultUpiId: 'sportxpay@okaxis',
     defaultPayeeName: 'SportX Gaming Official',
-    subdomainUrl: '',
+    subdomainUrl: 'https://pay.sportx.tech',
     qrTimerSeconds: 600,
     autoRotateOnRefresh: true,
     upiPool: [
@@ -315,20 +315,20 @@ const defaultSettings: SystemSettings = {
   },
   gameSubdomains: {
     enabled: true,
-    rootDomain: '',
-    mainAppUrl: '',
-    apiBaseUrl: '',
+    rootDomain: 'sportx.tech',
+    mainAppUrl: 'https://sportx.tech',
+    apiBaseUrl: 'https://sportx.tech',
     autoSubdomainOnCustomDomain: true,
     urls: {
-      aviator: '',
-      colorprediction: '',
-      cricket: '',
-      dragontiger: '',
-      luckydraw: '',
-      chickenroad: '',
-      rummy: '',
-      slot777: '',
-      spinwheel: '',
+      aviator: 'https://aviator.sportx.tech',
+      colorprediction: 'https://wingo.sportx.tech',
+      cricket: 'https://cricket.sportx.tech',
+      dragontiger: 'https://dragontiger.sportx.tech',
+      luckydraw: 'https://luckydraw.sportx.tech',
+      chickenroad: 'https://chickenroad.sportx.tech',
+      rummy: 'https://rummy.sportx.tech',
+      slot777: 'https://slots.sportx.tech',
+      spinwheel: 'https://spin.sportx.tech',
     },
   },
   enabledGames: {
@@ -1752,6 +1752,21 @@ function ensureGameSubdomainSettings() {
     };
     changed = true;
   }
+  if (!state.settings.gameSubdomains.rootDomain || !state.settings.gameSubdomains.rootDomain.trim()) {
+    state.settings.gameSubdomains.rootDomain = defSub.rootDomain;
+    state.settings.gameSubdomains.mainAppUrl = state.settings.gameSubdomains.mainAppUrl?.trim() || defSub.mainAppUrl;
+    state.settings.gameSubdomains.apiBaseUrl = state.settings.gameSubdomains.apiBaseUrl?.trim() || defSub.apiBaseUrl;
+    const defUrls = defSub.urls!;
+    (Object.keys(defUrls) as Array<keyof typeof defUrls>).forEach((k) => {
+      if (!state.settings.gameSubdomains!.urls[k]?.trim()) {
+        state.settings.gameSubdomains!.urls[k] = defUrls[k];
+      }
+    });
+    if (state.settings.paymentGateway && !state.settings.paymentGateway.subdomainUrl?.trim()) {
+      state.settings.paymentGateway.subdomainUrl = 'https://pay.sportx.tech';
+    }
+    changed = true;
+  }
   const defEnabled = defaultSettings.enabledGames!;
   if (!state.settings.enabledGames) {
     state.settings.enabledGames = { ...defEnabled };
@@ -2661,7 +2676,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
       (u.nodeId && u.nodeId.toLowerCase() === cleanInput) ||
       (u.email && u.email.toLowerCase() === cleanInput) ||
       (u.name && u.name.toLowerCase() === cleanInput) ||
-      ((cleanInput === 'admin' || cleanInput === 'root' || cleanInput === 'administrator' || cleanInput === 'admin@sportx.game' || cleanInput === 'admin@tetherplus.io') && (u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isAdmin))
+      ((cleanInput === 'admin' || cleanInput === 'root' || cleanInput === 'administrator' || cleanInput === 'admin@sportx.tech' || cleanInput === 'admin@sportx.game' || cleanInput === 'admin@tetherplus.io') && (u.id === 'usr-root' || u.nodeId === 'NX-ROOT01' || u.isAdmin))
   );
 
   if (!user) {
@@ -2674,10 +2689,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   }
 
   const userPass = String(user.password || '123456').trim();
-  // Valid match: matches exact user password, OR if admin allows emergency admin credentials
-  const isMatch =
-    inputPass === userPass ||
-    (user.isAdmin && (inputPass === 'admin' || inputPass === 'admin123' || inputPass === '123456'));
+  const isMatch = inputPass === userPass;
 
   if (!isMatch) {
     return res.status(400).json({ error: 'Incorrect password. Please check your password or click "Forgot your password?".' });

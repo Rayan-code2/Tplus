@@ -264,29 +264,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {renderNavGroup(gameNavItems, 'Casino & Games')}
           {renderNavGroup(financialNavItems, 'Cashier & Wallet')}
           {renderNavGroup(affiliateNavItems, 'Affiliate Partner')}
-
-          {/* Admin Control Link (For Admins and Sub-Admins) */}
-          {(user?.isAdmin || user?.isSubAdmin || user?.nodeId === 'NX-ROOT01') && (
-            <div className="pt-2">
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest px-3 mb-1 font-bold">
-                Administration
-              </div>
-              <button
-                onClick={() => handleSelect('admin')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition duration-200 border ${
-                  activeTab === 'admin' || isAdminView
-                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                    : 'hover:bg-slate-800/60 text-slate-400 hover:text-slate-200 border border-transparent'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Shield className="w-4 h-4 text-amber-400" />
-                  <span className="font-bold text-xs">Admin Control Panel</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-500" />
-              </button>
-            </div>
-          )}
         </nav>
       </div>
 

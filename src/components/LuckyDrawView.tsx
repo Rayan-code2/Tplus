@@ -45,6 +45,7 @@ interface LuckyDrawViewProps {
   onRefreshState?: () => void;
   onBack?: () => void;
   showToast?: (message: string, type?: 'success' | 'error') => void;
+  allowAdminControls?: boolean;
 }
 
 // Shared AudioContext Singleton to eliminate browser stutter and audio thread leaks
@@ -74,6 +75,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
   onRefreshState,
   onBack,
   showToast,
+  allowAdminControls = false,
 }) => {
   const [luckyDraw, setLuckyDraw] = useState<LuckyDrawState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -711,6 +713,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
             currentDrawStep: stepTriggered - 1,
           });
         }
+        setActiveLotteryTab('draw');
         start10SecRollAnimation(
           data.winningNumber,
           data.winners || [],
@@ -720,12 +723,22 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
         );
       } else {
         setIsRolling(false);
-        alert(data.error || 'Error triggering draw');
+        displayToast(data.error || 'Error triggering draw', 'error');
       }
     } catch (err: any) {
       setIsRolling(false);
-      alert('Error triggering draw: ' + err.message);
+      displayToast('Error triggering draw: ' + err.message, 'error');
     }
+  };
+
+  // Instant 10-Second Demo Roll for testing the 6-digit scrolling reels anytime
+  const handleDemoTestRoll = () => {
+    if (isRolling) return;
+    const mySampleTicket = userTickets[0]?.ticketNumber;
+    const randomSixDigit = mySampleTicket || String(Math.floor(100000 + Math.random() * 900000));
+    const nextRank = ((luckyDraw?.currentDrawStep || 0) >= 5 ? 1 : (luckyDraw?.currentDrawStep || 0) + 1);
+    displayToast(`🎰 Demo Test Roll started! Target 6-Digit Number: #${randomSixDigit}`, 'success');
+    start10SecRollAnimation(randomSixDigit, [], Date.now(), nextRank);
   };
 
   // Admin Assign / Gift Reserved Ticket Handler
@@ -938,7 +951,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
           <span>Draw Rules</span>
         </button>
 
-        {(currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
+        {allowAdminControls && (currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
           <button
             onClick={() => setActiveLotteryTab('admin')}
             className={`px-3.5 py-2 rounded-xl text-xs font-black transition whitespace-nowrap flex items-center gap-1 ${
@@ -1013,18 +1026,48 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
                 </span>
               </div>
 
-              {/* Status Badge */}
-              <div
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-black uppercase ${
-                  isRolling
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
-                    : currentStepNum >= 5
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full ${isRolling ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
-                <span>{isRolling ? `⚡ ROLLING (${rollSecondsLeft.toFixed(1)}s)` : currentStepNum >= 5 ? 'ROUND COMPLETED' : `STEP ${currentStepNum} OF 5`}</span>
+              {/* Action Buttons & Status Badge */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {allowAdminControls && (
+                  <button
+                    type="button"
+                    onClick={handleDemoTestRoll}
+                    disabled={isRolling}
+                    className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-cyan-500/20 to-teal-500/20 hover:from-cyan-500/30 hover:to-teal-500/30 text-cyan-300 border border-cyan-400/50 text-[11px] font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 disabled:opacity-40 cursor-pointer shadow-sm"
+                    title="Test 10-second 6-digit scrolling number animation"
+                  >
+                    <Play className="w-3 h-3 fill-cyan-300 text-cyan-300" />
+                    <span>Test Roll</span>
+                  </button>
+                )}
+
+                {allowAdminControls && (currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
+                  <button
+                    type="button"
+                    onClick={() => handleAdminTriggerDraw()}
+                    disabled={isRolling}
+                    className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black border border-amber-300 text-[11px] font-black uppercase tracking-wider flex items-center gap-1 transition active:scale-95 disabled:opacity-40 cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.35)]"
+                    title="Execute Official Live Draw Step"
+                  >
+                    <Zap className="w-3 h-3 fill-black text-black" />
+                    <span>
+                      {currentStepNum >= 5 ? 'Draw New Round' : `Live Draw #${currentStepNum + 1}`}
+                    </span>
+                  </button>
+                )}
+
+                <div
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-black uppercase ${
+                    isRolling
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
+                      : currentStepNum >= 5
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                      : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${isRolling ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
+                  <span>{isRolling ? `⚡ ROLLING (${rollSecondsLeft.toFixed(1)}s)` : currentStepNum >= 5 ? 'ROUND COMPLETED' : `STEP ${currentStepNum} OF 5`}</span>
+                </div>
               </div>
             </div>
 
@@ -1514,7 +1557,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
                 <span>Export CSV</span>
               </button>
 
-              {(currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
+              {allowAdminControls && (currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1721,7 +1764,7 @@ export const LuckyDrawView: React.FC<LuckyDrawViewProps> = ({
       )}
 
       {/* 9. TAB CONTENT: ADMIN CONTROLS */}
-      {activeLotteryTab === 'admin' && (currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
+      {allowAdminControls && activeLotteryTab === 'admin' && (currentUser.isAdmin || currentUser.nodeId === 'NX-ROOT01') && (
         <div className="rounded-3xl bg-[#0d091a] border-2 border-rose-500/60 p-4 sm:p-6 shadow-2xl space-y-5">
           <div className="flex items-center justify-between border-b border-rose-500/30 pb-3">
             <div className="flex items-center gap-2">
